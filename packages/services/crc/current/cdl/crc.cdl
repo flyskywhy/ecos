@@ -52,6 +52,7 @@
 cdl_package CYGPKG_CRC {
     display       "Compute CRCs"
     include_dir   cyg/crc
+    doc           ref/services-crc.html
 
     compile       posix_crc.c crc16.c crc32.c
     description "
@@ -63,7 +64,7 @@ cdl_package CYGPKG_CRC {
         display "POSIX CRC tests"
         flavor  data
         no_define
-        calculated { "tests/crc_test.c" }
+        calculated { "tests/crc_test" }
     }
 }
 
