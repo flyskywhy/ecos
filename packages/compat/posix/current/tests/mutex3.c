@@ -56,6 +56,14 @@
 #include <pkgconf/kernel.h>
 #endif
 
+#ifdef CYGPKG_ISOINFRA
+# include <sys/types.h>
+# include <pthread.h>
+# include <semaphore.h>
+# include <time.h>
+# include <unistd.h>
+#endif
+
 #if !defined(CYGPKG_POSIX_PTHREAD)
 #define NA_MSG "POSIX threads not enabled"
 
@@ -85,11 +93,6 @@ cyg_start(void)
     CYG_TEST_NA(NA_MSG);
 }
 #else
-
-#include <sys/types.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <time.h>
 
 #include <cyg/infra/cyg_ass.h>
 #include <cyg/infra/cyg_trac.h>
