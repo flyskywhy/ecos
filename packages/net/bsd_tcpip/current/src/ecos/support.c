@@ -201,6 +201,9 @@ cyg_net_malloc(u_long size, int type, int flags)
     } else {
         res = cyg_mempool_var_alloc(net_mem, size);
     }
+    if ((flags & M_ZERO) && res) {
+      memset(res,0,size);
+    }
     FINISH_STATS(stats_malloc);
     log(LOG_MDEBUG, "%p\n", res);
     return (res);

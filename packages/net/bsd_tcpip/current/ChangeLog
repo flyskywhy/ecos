@@ -1,3 +1,8 @@
+2003-04-29  Andrew Lunn  <andrew.lunn@ascom.ch>
+
+	* src/ecos/support.c (cyg_net_malloc): Honour the M_ZERO
+	flag. Otherwise we get random junk in places we don't want it.
+
 2003-03-14  Andrew Lunn  <andrew.lunn@ascom.ch>
 
 	* src/sys/net/if.c (if_attach): Removed printf which causes the
