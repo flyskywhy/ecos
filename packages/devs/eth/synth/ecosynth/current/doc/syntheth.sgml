@@ -1,4 +1,4 @@
-<!DOCTYPE refentry  PUBLIC "-//OASIS//DTD DocBook V3.1//EN">
+<!-- DOCTYPE refentry  PUBLIC "-//OASIS//DTD DocBook V3.1//EN" -->
 
 <!-- {{{ Banner                         -->
 
@@ -32,6 +32,10 @@
 <!-- =============================================================== -->
 
 <!-- }}} -->
+
+<part id="devs-eth-synth-ecosynth-ref">
+<!-- reference id="devs-eth-synth-ecosynth-ref" -->
+  <title>Synthetic Target Ethernet Driver</title>
 
 <refentry id="devs-eth-synth-ecosynth">
   <refmeta>
@@ -512,3 +516,5 @@ instantiated, for example <literal>{eth0 eth1}</literal>.
   </refsect1>
 
 </refentry>
+</part>
+<!-- /reference -->
