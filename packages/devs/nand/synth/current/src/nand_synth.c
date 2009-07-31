@@ -90,6 +90,8 @@ static struct cyg_hal_sys_timeval       timeval;
 // The current image file.
 static int              image_fd    = -1;
 static int*             image_header;
+static int*             image_erase_counts;
+static int*             image_write_counts;
 static int*             image_factory_bads;
 static unsigned char*   image_ok_blocks;
 static unsigned char*   image_data;
@@ -97,7 +99,11 @@ static unsigned char*   image_data;
 // Various size fields.
 #define HEADER_SIZE     64
 #define DATA_SIZE       (BLOCK_COUNT * PAGES_PER_BLOCK * (PAGESIZE + SPARE_PER_PAGE))
-#define IMAGE_SIZE      (HEADER_SIZE + (MAX_FACTORY_BAD * 4) + (BLOCK_COUNT / 8) + DATA_SIZE)
+#define IMAGE_SIZE      (HEADER_SIZE +                                      \
+                         (BLOCK_COUNT * sizeof(int)) +                      \
+                         (BLOCK_COUNT * PAGES_PER_BLOCK * sizeof(int)) +    \
+                         (MAX_FACTORY_BAD * sizeof(int)) +                  \
+                         (BLOCK_COUNT / 8) + DATA_SIZE)
 
 // For interacting with the I/O auxiliary. synth_buf can be used for
 // other things.
@@ -997,7 +1003,7 @@ erase_check_injections(cyg_nand_block_addr block)
 //
 // The file format is as follows:
 //   A 64-byte parameter block containing:
-//     A magic number 0xEC05A11E
+//     A magic number 0xEC05A11F
 //     Page size
 //     Spare (OOB) size
 //     Pages per block
@@ -1005,6 +1011,10 @@ erase_check_injections(cyg_nand_block_addr block)
 //     timeval.tv_sec
 //     timeval.tv_usec
 //     Spare fields.
+//   Erase counts
+//     Number_of_blocks integers
+//   Write counts
+//     (Number_of_blocks * Pages_per_block) integers
 //   Factory-bad blocks.
 //     32 integers. -1 indicates no entry.
 //   An array of good/bad blocks
@@ -1014,7 +1024,7 @@ erase_check_injections(cyg_nand_block_addr block)
 //       All pages without padding
 //         The data area followed by the spare area.
 
-#define NAND_SYNTH_MAGIC        0xec05a11d
+#define NAND_SYNTH_MAGIC        0xec05a11F
 
 
 static int
@@ -1056,6 +1066,19 @@ open_image(void)
             cyg_hal_sys_close(image_fd);
             diag_printf("NAND synth_devinit: error, failed to write header to image file %s\n", IMAGE_FILENAME);
             return -EIO;
+        }
+        // And the erase count and page write count arrays
+        memset(synth_buf, 0x00, SYNTH_BUFSIZE);
+        to_write    = BLOCK_COUNT * (PAGES_PER_BLOCK + 1) * sizeof(int);
+        while (to_write > 0) {
+            int this_write = (to_write > SYNTH_BUFSIZE) ? SYNTH_BUFSIZE : to_write;
+            written = cyg_hal_sys_write(image_fd, synth_buf, this_write);
+            if (written != this_write) {
+                cyg_hal_sys_close(image_fd);
+                diag_printf("NAND synth_devinit: error, failed to write counters to image file %s\n", IMAGE_FILENAME);
+                return -EIO;
+            }
+            to_write -= written;
         }
 
         // And the factory-bad blocks.
@@ -1200,10 +1223,20 @@ open_image(void)
         return -EIO;
     }
     image_header        = (int*) i;
-    image_factory_bads  = (int*) (i + HEADER_SIZE);
-    image_ok_blocks     = (unsigned char*) (i + HEADER_SIZE + MAX_FACTORY_BAD * 4);
+    image_erase_counts  = (int*) (i + HEADER_SIZE);
+    image_write_counts  = image_erase_counts + BLOCK_COUNT;
+    image_factory_bads  = image_write_counts + (BLOCK_COUNT * PAGES_PER_BLOCK);
+    image_ok_blocks     = (unsigned char*) (image_factory_bads + MAX_FACTORY_BAD);
     image_data          = image_ok_blocks + (BLOCK_COUNT / 8);
 
+#if 0
+    diag_printf("Image header    @ %p\n", image_header);
+    diag_printf("Erase counts    @ %p\n", image_erase_counts);
+    diag_printf("Write counts    @ %p\n", image_write_counts);
+    diag_printf("Factory-bads    @ %p\n", image_factory_bads);
+    diag_printf("OK block bitmap @ %p\n", image_ok_blocks);
+    diag_printf("Image data      @ %p\n", image_data);   
+#endif    
     // Final sanity check. Make sure that all the factory bad blocks are marked bad.
     for (i = 0; i < MAX_FACTORY_BAD; i++) {
         int bad = CYG_BE32_TO_CPU(image_factory_bads[i]);
@@ -1429,6 +1462,7 @@ synth_writepage(cyg_nand_device *dev, cyg_nand_page_addr page, const void * src,
     int     i;
     int     idx;
     int     page_gone_bad   = 0;
+    int     counter;
     
     CYG_ASSERTC(image_fd >= 0);
     CYG_ASSERTC(dev != NULL);
@@ -1485,6 +1519,12 @@ synth_writepage(cyg_nand_device *dev, cyg_nand_page_addr page, const void * src,
         }
     }
     if (0 == result) {
+        counter                     = CYG_BE32_TO_CPU(image_write_counts[page]);
+        counter                    += 1;
+        image_write_counts[page]    = CYG_CPU_TO_BE32(counter);
+    }
+    
+    if (0 == result) {
         page_gone_bad = write_check_injections(page);
 
         if (src && (size > 0)) {
@@ -1540,6 +1580,7 @@ synth_eraseblock(cyg_nand_device *dev, cyg_nand_block_addr blk)
     int     result  = 0;
     size_t  offset;
     int     block_gone_bad  = 0;
+    int     counter;
 
     CYG_ASSERTC(image_fd >= 0);
     CYG_ASSERTC(dev != NULL);
@@ -1559,6 +1600,11 @@ synth_eraseblock(cyg_nand_device *dev, cyg_nand_block_addr blk)
     if (is_block_bad(blk)) {
         diag_printf("NAND synth_eraseblock: attempt to erase block %d which was previously marked bad.\n", blk);
         result = -EIO;
+    }
+    if (0 == result) {
+        counter                  = CYG_BE32_TO_CPU(image_erase_counts[blk]);
+        counter                 += 1;
+        image_erase_counts[blk]  = CYG_CPU_TO_BE32(counter);
     }
     if (0 == result) {
         block_gone_bad = erase_check_injections(blk);

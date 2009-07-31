@@ -472,14 +472,14 @@ selected settings.
 
   <refsect1 id="devs-nand-synth-file-formats"><title>File Formats</title>
     <para>
-A NAND image is a binary file with four sections: a 64-byte header
-block; an array of the factory-bad blocks; a bitmap of the good and
-bad blocks; and the actual data. The header consists of the following
-data structure:
+A NAND image is a binary file with six sections: a 64-byte header
+block; an array of erase counts; an array of write counts; an array of
+the factory-bad blocks; a bitmap of the good and bad blocks; and the
+actual data. The header consists of the following data structure:
     </para>
     <programlisting width=72>
 struct header {
-  cyg_uint32 magic;           // 0xEC05A11E
+  cyg_uint32 magic;           // 0xEC05A11F
   cyg_uint32 page_size;       // CYGNUM_DEVS_NAND_SYNTH_PAGESIZE
   cyg_uint32 spare_size;      // CYGNUM_DEVS_NAND_SYNTH_SPARE_PER_PAGE
   cyg_uint32 pages_per_block; // CYGNUM_DEVS_NAND_SYNTH_PAGES_PER_BLOCK
@@ -490,20 +490,27 @@ struct header {
 };
     </programlisting>
     <para>
-All integers are stored in bigendian format.
-The <structfield>magic</structfield> field is used to check that a
-file really holds a NAND image. The next four fields specify the
-emulated device size and layout, as per the corresponding CDL options.
-The <structfield>tv_sec</structfield>
-and <structfield>tv_usec</structfield> fields are filled in with
-the result of a <function>gettimeofday()</function> system call during
+All integers in the header and in the following three sections are
+stored in bigendian format. The <structfield>magic</structfield> field
+is used to check that a file really holds a NAND image. The next four
+fields specify the emulated device size and layout, as per the
+corresponding CDL options. The <structfield>tv_sec</structfield> and
+<structfield>tv_usec</structfield> fields are filled in with the
+result of a <function>gettimeofday()</function> system call during
 driver initialization. These fields also appear in logfiles, so code
 can check that a logfile and an image file correspond to the same test
 run.
     </para>
     <para>
-The array of factory-bad blocks consists of 32 integers, again in
-bigendian format, holding the settings of the target definition's file
+Following the header is an array of BLOCK_COUNT integers holding the
+number of erase calls for each block. Next is an array of (BLOCK_COUNT
+&ast; PAGES_PER_BLOCK) integers holding the number of write calls for
+each page. These arrays can be used to check that higher-level code is
+performing wear levelling.
+    </para>
+    <para>
+The array of factory-bad blocks consists of 32 integers holding the
+settings of the target definition's file
 <varname>factory_bad</varname> setting at the time that the image file
 was created.
     </para>
