@@ -183,7 +183,7 @@ cdl_package CYGPKG_DEVS_NAND_SYNTH {
         display "Synthetic NAND device tests"
         flavor data
         no_define
-        calculated { "tests/eccdamage" }
+        calculated { "tests/eccdamage tests/bbt tests/multipagebbt" }
         description "
         This option specifies the set of tests for the synthetic NAND device."
     }

@@ -100,9 +100,9 @@ device driver must be created. Each driver is for a particular NAND
 part or family of parts; the HAL for each board then instantiates the
 relevant driver(s) appropriately with board-specific glue such as the
 memory-mapped I/O range to use. Full details on creating a driver are
-presented in <xref linkend="nand-devs-writing">.</para>
+presented in <xref linkend="nand-devs-writing" />.</para>
 
-<para>There is also a <xref linkend="nanddev-synth"> for testing purposes,
+<para>There is also a <xref linkend="devs-nand-synth" /> for testing purposes,
 which is present on the <emphasis>synth</emphasis> target.
 </para>
 </sect2>
@@ -537,7 +537,7 @@ applications.</para>
 
 <para>Occasionally, it is necessary for applications to mark a block
 as bad. This most commonly happens when a write operation fails
-(see <xref linkend="nand-app-writing"> above). To do this, call
+(see <xref linkend="nand-app-writing" /> above). To do this, call
 <function>cyg_nand_bbt_markbad</function>; the return is 0 for success,
 or a negative eCos error code.</para>
 
@@ -582,10 +582,13 @@ data fields and function pointers. Each NAND chip to be made available
 to the library requires exactly one instance of this struct.</para>
 
 <tip><para>The <type>cyg_nand_device</type> structure includes a
-<structfield>void* priv</structfield> member which is treated as
-opaque. The driver may use this member as it sees fit; it is intended
-to provide an easy means to identify the NAND array, MMIO addresses or
-function pointers to use and so on.</para></tip>
+<structfield>void* priv</structfield> member which is treated
+as opaque. The driver may use this member as it sees fit; it is
+intended to provide an easy means to identify the NAND array, MMIO
+addresses or function pointers to use and so on. Typically this is
+used by the chip driver for its own purposes, and includes a further
+opaque member for the use of the HAL port.
+</para></tip>
 
 <para>The function pointers in the struct form the driver's high-level
 functions; they make use of the low-level functions to talk to the
@@ -649,7 +652,7 @@ requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
 <note><para>
 This requirement is due to the internal workings of the eCos NAND
 library: a buffer is required for certain operations which
-manipulate up to a NAND page worht of data, internally to the library.
+manipulate up to a NAND page worth of data, internally to the library.
 This is declared once as a global buffer for safety under low-memory 
 conditions; a page may be too big to use temporary storage on the C stack,
 and the NAND library deliberately avoids the use of
@@ -684,9 +687,8 @@ using the <type>CYG_NAND_DEVICE</type> macro.)</para>
 
 <para> This source code layout is not intended as a prescription. It
 would for example be entirely in order to store pointers to the low-level
-functions in the a struct and set <structfield>priv</structfield> to point
-to that struct: the result would be having high- and low-level functions
-in their own object files, at the cost of adding a level of indirection.</para>
+functions in a struct and set <structfield>priv</structfield> to point
+to that struct, which could be useful in some cases.</para>
 
 <note><para>The device driver must not call <function>malloc</function>
 or otherwise allocate memory; all data should be in the stack or set
@@ -717,10 +719,10 @@ command;
 properties;
 </para></listitem>
 <listitem><para>setting up the partition table list (see <xref
-linkend="nand-devs-partitions">);
+linkend="nand-devs-partitions" />);
 </para></listitem>
 <listitem><para>setting up mutexes as necessary (see <xref
-linkend="nand-devs-locking">);
+linkend="nand-devs-locking" />);
 </para></listitem>
 <listitem><para>populating the other members of the
 <type>cyg_nand_device</type> struct (see below).
@@ -905,16 +907,19 @@ once you've figured out how the components interrelate.</para>
 <para> The worst case is where you have no support from any sort of
 controller hardware and have to bit-bang to talk to the chip. This is
 a much more involved process; you have to take great care to get the
-timings right with carefully tuned delay loops. The result is usually
+timings right with carefully tuned delays. The result is usually
 quite CPU intensive, and could be clock speed sensitive too; you should
 check for and take account of any CDL settings in the architecture and
 variant HAL which allow the CPU clock frequency to be changed.</para>
 
 <tip><para> If your low-level functions take a
 <type>cyg_nand_device</type> pointer as an argument, you can use its
-<structfield>priv</structfield> member to point to some relevant data
-like the MMIO addresses to use, which is preferable to hard-coding them
-in multiple places.  </para></tip>
+<structfield>priv</structfield> member to hold or point to some relevant
+data like the MMIO addresses to use, which is preferable to hard-coding
+them.  Indeed, if you wish your board port to support more than one chip,
+you should use the <structfield>priv</structfield> member to distinguish
+between them.
+</para></tip>
 </sect2>
 
 <sect2 id="nand-devs-partition">
@@ -999,8 +1004,8 @@ find them.</para>
 <title>Unit and functional tests</title>
 <!-- sect1 id="nand-tests"><title>Unit and functional tests</title -->
 <para> The NAND library includes a number of tests. The most useful to
-driver writers is <filename>readwrite</filename>; the others are only
-likely to be of interest to library maintainers.</para>
+driver writers are <filename>readwrite</filename> and <filename>rwbenchmark</filename>;
+the others are only likely to be of interest to library maintainers.</para>
 
 <glosslist>
 <glossentry><glossterm>readwrite</glossterm><glossdef><para>Performs a
@@ -1008,6 +1013,15 @@ read-write-erase cycle on the first NAND device it finds, checking that
 its operations have had the expected effect on the device contents. This
 is a potentially destructive test; do not run it on a device containing
 data you care about!
+</para></glossdef></glossentry>
+<glossentry><glossterm>rwbenchmark</glossterm><glossdef><para>
+A more involved version of <filename>readwrite</filename>, this is a
+timing test which performs multiple reads, writes and erases and 
+applies statistical techniques to the results in the same way that
+<filename>tm_basic</filename> instruments the speed of various eCos kernel functions.
+<emphasis>
+This is a potentially destructive test; do not run it on a device containing
+data you care about!</emphasis>
 </para></glossdef></glossentry>
 <glossentry><glossterm>nandunit</glossterm><glossdef><para>Some unit tests
 which do not require any NAND device: ECC known answer vectors, and OOB
@@ -1019,238 +1033,33 @@ work.</para></glossdef></glossentry>
 
 <para>There are some further tests of the library which
 require the synthetic NAND device. They are described in <xref
-linkend="nanddev-synth-tests">.</para>
+linkend="devs-nand-synth-tests"/>.</para>
 
 </chapter>
+
+<chapter id="nand-utils">
+<title>Ancillary NAND utilities</title>
+<para> The following utilities are included with the NAND library.
+They are standalone eCos applications and should be built in the normal way. </para>
+
+<glosslist>
+<glossentry><glossterm>erasenand.c</glossterm><glossdef><para>
+Loops over all the blocks of a partition, erasing all the blocks which are not
+marked as bad.  The device and partition to erase are set by #define.
+<note><para>This will not erase the Bad Block Table. This is because
+the BBT reports its own blocks as "Reserved" when queried via
+<function>cyg_nand_bbt_query</function>.  </para></note>
+</para></glossdef></glossentry>
+<glossentry><glossterm>erase_bbt_dangerous.c</glossterm><glossdef><para>
+Erases the NAND blocks comprising the primary and mirror bad-block tables of a device.
+The device to erase is set by #define.
+(The tables are detected by the library in the usual way. If none are present, the
+library will scan the device for factory-bad blocks to create such a table, then this
+code will immediately erase it.)
+<emphasis>It is particularly dangerous to run this code on a production
+device, as it may not be possible to later reconstruct the list of factory-bad blocks.</emphasis>
+</para></glossdef></glossentry>
+</glosslist>
+</chapter>
+
 </part>
-
-<part id="nand-drivers-present">
-<title>NAND device drivers</title>
-<chapter id="nanddev-synth" xreflabel="Synthetic NAND device">
-<title>The synthetic NAND device</title>
-<para> This device is only applicable on the <emphasis>synth</emphasis>
-eCos target. It uses an mmaped file on the host filesystem as a persistent
-backing store; the first time the device is opened, or if the file has
-been deleted, it is freshly created which will cause a brief delay.</para>
-
-<para>Otherwise, this driver works just like other NAND devices. </para>
-
-<sect1 id="nanddev-synth-config"><title>Configuration</title>
-<sect2 id="nanddev-synth-config-options"><title>Configuration options in the CDL</title>
-<para></para>
-
-<glosslist>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_PAGESIZE</constant></glossterm><glossdef><para>
-Sets the size of the data area of each page of the device. May
-be 512 or 2048. This option also directly affects the size
-of the spare (Out Of Band) area of each page, which is 8
-spare bytes per 256 data bytes and appears as the symbol
-<constant>CYGNUM_NAND_SYNTH_SPARE_PER_PAGE</constant>.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_PAGES_PER_BLOCK</constant></glossterm><glossdef><para>The
-number of pages per eraseblock. Valid sizes are currently 32, 64, 128
-and 256.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_BLOCK_COUNT</constant></glossterm><glossdef><para>The
-number of eraseblocks on the device. This may be any power of 2 from
-256 to 8192.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGSEM_NAND_SYNTH_FILENAME</constant></glossterm><glossdef><para>The
-filename to use. The default is <filename>synth_nand.dat</filename>,
-i.e. it appears in the current working directory from where you invoke
-the synthetic application.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGSEM_NAND_SYNTH_RANDOMLY_LOSE</constant></glossterm><glossdef><para>If
-set, bit flip errors are frequently and pseudo-randomly induced during
-read operations. (This is only really useful when stress testing an
-ECC implementation.)</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGPKG_DEVS_NAND_SYNTH_CFLAGS_ADD</constant>,
-<constant>CYGPKG_DEVS_NAND_SYNTH_CFLAGS_REMOVE</constant></glossterm><glossdef><para>Standard
-options to configure compiler flags.</para></glossdef></glossentry>
-</glosslist>
-</sect2>
-
-<sect2 id="nanddev-synth-config-computed"><title>Computed options in the CDL</title>
-<glosslist>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_SPARE_PER_PAGE</constant></glossterm><glossdef><para>The
-size of the spare area, in bytes per page.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_BLOCKSIZE</constant></glossterm><glossdef><para>The
-total data size (i.e. not counting the spare area) of an eraseblock,
-in kilobytes.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGNUM_NAND_SYNTH_CHIPSIZE</constant></glossterm><glossdef><para>The
-total data size of the whole synthetic device, in kilobytes.</para></glossdef></glossentry>
-</glosslist>
-</sect2>
-</sect1>
-
-<sect1 id="nanddev-synth-partitions"><title>Partitioning</title>
-<para> As with all NAND devices, you must partition the synthetic device
-appropriately.</para>
-
-<para> We provide a CDL script to allow you to set the partitions manually
-(see <constant>CYGSEM_DEVS_NAND_SYNTH_PARTITION_MANUAL_CONFIG</constant>);
-if you choose to use this, the relevant data structures will automatically
-be set up for you when the device is initialised. By default, the manual
-config CDL script sets up a single partition (number 0) encompassing
-the entire device.</para>
-
-<para> It is possible to configure the partitions in some other way,
-should it be appropriate for your setup. To do so you will have
-to add appropriate code to <function>synth_devinit</function> in
-<filename>nand_synth.c</filename>.</para>
-</sect1>
-
-<sect1 id="nanddev-synth-tests"><title>Tests specific to the synthetic NAND device</title>
-
-<glosslist>
-<glossentry><glossterm>bbt</glossterm><glossdef><para>Bad Block Table
-unit test. Finds a readable block, then fiddles with its status in the
-BBT confirming expected behaviour.  Requires the synthetic NAND device.
-</para></glossdef></glossentry>
-<glossentry><glossterm>multipagebbt</glossterm><glossdef><para>As for
-<emphasis>bbt</emphasis> but insists that the device parameters mean that
-the BBT spans multiple pages on-chip. (This is perhaps a contrived case,
-but might crop up in future with larger devices, so needed to be tested.)
-</para></glossdef></glossentry>
-<glossentry><glossterm>eccdamage</glossterm><glossdef><para>An ECC
-error fuzzing exercise on the synthetic NAND device.  Requires
-<option>CYGSEM_NAND_SYNTH_RANDOMLY_LOSE</option>, which induces
-pseudo-random bit errors; after 1,000 runs, the number of errors corrected
-is reported.</para></glossdef></glossentry>
-</glosslist>
-</sect1>
-</chapter>
-
-<chapter id="nanddev-samsung-k9">
-<title>Samsung K9 family NAND chips</title>
-
-<para> This package - <constant>CYGPKG_DEVS_NAND_SAMSUNG_K9</constant>
-- is intended to provide chip-level support for the Samsung K9 family.</para>
-
-<note><para>Initially only the K9F1G08U0A has been tested and further
-work will be required to adjust it for the differences to other chips
-of the family.</para>
-
-<para> This part is not quite ONFI-compliant, but this code could
-probably be extended to a much wider set of chips - or indeed to the ONFI
-specification - without too much trouble. Appropriate definitions will
-be required for the chip identifier, decoding of the Read ID response,
-and the chip's blockcount-bits and device-size fields.</para>
-</note>
-
-<para> Support for this chip family is provided as a .inl file
-<filename>k9fxx08x0x.inl</filename> which is not intended to be compiled
-on its own. Instead it should be #included by the relevant platform HAL
-and in doing so provided with appropriate functions to access the raw
-hardware (MMIO addresses, GPIO configuration, etc).</para>
-
-<para> At the present time, this driver has the following further limitation:</para>
-<itemizedlist>
-<listitem><para>Only parts with an 8-bit data bus are supported. Wider
-buses could be implemented without much work.</para></listitem>
-<listitem><para>The in-RAM bad block table is a static global. To support
-multiple chips, it to a device sporting multiple chips, this will have
-to be made chip-specific.</para></listitem>
-</itemizedlist>
-
-<para>
-For an example of instantiating this driver, see <xref
-linkend="nanddev-ea-lpc2468">.</para>
-
-<sect1 id="nanddev-samsung-k9-functions-required">
-<title>Functions required from the instantiating driver</title>
-<para>
-These functions are prototyped in 
-<filename>k9fxx08x0x.h</filename>.</para>
-
-<glosslist>
-<glossentry><glossterm><function>write_cmd(device,
-command)</function></glossterm><glossdef><para>Writes a single command
-byte to the chip's command latch.</para></glossdef></glossentry>
-<glossentry><glossterm><function>write_addrbytes(device, pointer to bytes,
-number of bytes)</function></glossterm><glossdef><para>Writes a number
-of address bytes in turn to the chip's address latch.</para></glossdef></glossentry>
-<glossentry><glossterm><function>read_data_1(device)</function>,
-<function>read_data_bulk(device, output pointer, number of
-bytes)</function></glossterm><glossdef><para>Reads data from the device,
-respectively a single byte and in bulk.</para></glossdef></glossentry>
-<glossentry><glossterm><function>write_data_1(device, byte)</function>,
-<function>write_data_bulk(device, data pointer, number of
-bytes)</function></glossterm><glossdef><para>Writes data to the device,
-respectively a single byte and in bulk.</para></glossdef></glossentry>
-<glossentry><glossterm><function>wait_ready_or_time(device, initial delay,
-fallback time)</function></glossterm><glossdef><para>Wait for the chip
-to assert its READY line or, if not available, fall back to a worst-case
-time delay (measured in microseconds).</para></glossdef></glossentry>
-<glossentry><glossterm><function>wait_ready_or_status(device,
-mask)</function></glossterm><glossdef><para>Wait for the chip to assert
-its READY line or, if not available, enter a polling loop waiting for
-its Status register (ANDed with the given mask) to be non-zero.</para></glossdef></glossentry>
-</glosslist>
-<note><para> All the above functions have no return value, except for
-<function>read_data_1</function> which returns the byte it has read.</para></note>
-</sect1>
-
-</chapter>
-
-<chapter id="nanddev-ea-lpc2468">
-<title>NAND support for the Embedded Artists LPC2468 board</title>
-<para> This driver implements the board-specific access
-functions to access the Samsung K9 NAND chip on the EA
-LPC2468 board.  To include the driver, activate the CDL option
-<constant>CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND</constant>.  It is
-capable of operating with or without the NAND_RDY line connected.</para>
-
-<sect1 id="nanddev-ea-lpc2468-cdl">
-<title>Configuration options</title>
-
-<glosslist>
-<glossentry><glossterm><constant>CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_USE_NAND_RDY</constant></glossterm>
-<glossdef><para>
-The EA OEM Base Board provides a jumper which connects the ready line of
-the NAND chip (NAND_RDY) to pin P2.12 on the CPU. Setting this option
-indicates to the driver that that jumper, or similar layout with the same
-effect, is in place. This provides an improvement in efficiency,
-but must not be set if the jumper is not so connected.</para></glossdef></glossentry>
-<glossentry><glossterm><constant>CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND_RDY_USE_INTERRUPT</constant></glossterm>
-<glossdef><para><emphasis>(Only active if
-<constant>CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_USE_NAND_RDY</constant> is
-set.)</emphasis> If set, pin P2.12 (see above) is set up as an interrupt
-(EINT2). Setting this causes the thread invoking the driver to sleep when
-waiting for a program or erase operation to complete, as opposed to
-entering a polling loop. This potentially represents an efficiency gain
-if you have at least one other thread which can carry on performing
-useful work while the NAND chip works.</para>
-<para>If this option is not set, the driver polls the ready line.</para>
-<para>When this option is set, the driver automatically detects 
-whether the eCos kernel scheduler is running; if it is not, interrupt
-mode cannot operate, and the driver falls back to polling the ready
-line.</para>
-<para>Interrupt mode imposes its own overheads on the driver thread.
-Benchmarking chip program and erase operations alone will necessarily 
-appear to show a slow-down in interrupt mode when the scheduler is running.
-This option can only improve efficiency on a holistic basis, and only
-then in the case where there are other threads which can continue 
-to work while the driver is waiting for the NAND operation to complete.
-</para></glossdef></glossentry>
-</glosslist>
-</sect1>
-
-<sect1 id="nanddev-ea-lpc2468-part">
-<title>Partitioning the NAND chip</title>
-
-<para> The NAND chip must be partitioned before it can become available
-to applications.</para>
-
-<para> We provide a CDL script to
-allow you to set the partitions manually (see
-<constant>CYGSEM_DEVS_NAND_EA_LPC2468_PARTITION_MANUAL_CONFIG</constant>);
-if you choose to use this, the relevant data structures will automatically
-be set up for you when the device is initialised. By default, the manual
-config CDL script sets up a single partition (number 0) encompassing
-the entire device.</para>
-
-<para> It is possible to configure the partitions in some other way,
-should it be appropriate for your setup. To do so you will have to add
-appropriate code to <filename>ea_lpc2468_nand.c</filename>.</para>
-</sect1>
-
-</chapter>
-</part>
-

@@ -209,7 +209,7 @@ cdl_package CYGPKG_IO_NAND {
 		display "NAND library tests"
 		flavor data
 		no_define
-		calculated { "tests/nandunit tests/readlimits tests/bbt tests/multipagebbt tests/readwrite tests/rwbenchmark" }
+		calculated { "tests/nandunit tests/readlimits tests/readwrite tests/rwbenchmark" }
 		description "
 		This option specifies the set of tests for the NAND library."
 	}

@@ -47,6 +47,8 @@
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#define DEVICE "onboard"
+
 #include <cyg/nand/nand.h>
 #include <cyg/infra/diag.h>
 #include <stdio.h>
@@ -69,7 +71,7 @@ void rawerase(cyg_nand_device *dev, cyg_nand_block_addr blk)
 int main(void)
 {
     cyg_nand_device *dev;
-    MUST(0==cyg_nand_lookup("onboard", &dev),"lookup failed\n");
+    MUST(0==cyg_nand_lookup(DEVICE, &dev),"lookup failed\n");
     rawerase(dev,dev->bbt.primary);
     rawerase(dev,dev->bbt.mirror);
     diag_printf("BBT should now be erased.\n");

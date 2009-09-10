@@ -425,7 +425,7 @@ will pop up a dialog box allowing the various settings to be edited.
       <informalfigure PgWide=1>
         <mediaobject>
           <imageobject>
-            <imagedata fileref="dialog1.png" Scalefit=1 Align="Center">
+            <imagedata fileref="dialog1.png" Scalefit=1 Align="Center"/>
           </imageobject>
         </mediaobject>
       </informalfigure>
@@ -450,7 +450,7 @@ If the Logging tab is selected then the dialog changes to the following:
       <informalfigure PgWide=1>
         <mediaobject>
           <imageobject>
-            <imagedata fileref="dialog2.png" Scalefit=1 Align="Center">
+            <imagedata fileref="dialog2.png" Scalefit=1 Align="Center"/>
           </imageobject>
         </mediaobject>
       </informalfigure>
@@ -653,6 +653,27 @@ synthetic target architectural HAL package, otherwise the I/O auxiliary will be
 unable to locate the NAND support.
     </para>
   </refsect1>
+
+  <refsect1 id="devs-nand-synth-tests"><title>Test programs</title>
+<glosslist>
+<glossentry><glossterm>bbt</glossterm><glossdef><para>Bad Block Table
+unit test. Finds a readable block, then fiddles with its status in the
+BBT confirming expected behaviour.  Requires the synthetic NAND device.
+</para></glossdef></glossentry>
+<glossentry><glossterm>multipagebbt</glossterm><glossdef><para>As for
+<emphasis>bbt</emphasis> but insists that the device parameters mean that
+the BBT spans multiple pages on-chip. (This is perhaps a contrived case,
+but might crop up in future with larger devices, so needed to be tested.)
+</para></glossdef></glossentry>
+<glossentry><glossterm>eccdamage</glossterm><glossdef><para>An ECC
+error fuzzing exercise.  Requires
+<option>CYGSEM_NAND_SYNTH_RANDOMLY_LOSE</option>, which induces
+pseudo-random bit errors; after 1,000 runs, the number of errors corrected
+is reported.</para></glossdef></glossentry>
+</glosslist>
+    <para>
+</para>
+</refsect1>
 
 </refentry>
 </part>
