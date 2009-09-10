@@ -4914,6 +4914,7 @@ target ea2468 {
                    CYGPKG_IO_I2C
                    CYGPKG_DEVS_I2C_ARM_LPC2XXX     
                    CYGPKG_DEVS_ADC_ARM_LPC24XX
+                   CYGPKG_DEVS_NAND_SAMSUNG_K9
         }
         description "
             The Embedded Artists LPC2468 HAL package provides the support
@@ -6915,6 +6916,7 @@ target stm3210e_eval {
                    CYGPKG_IO_SPI
                    CYGPKG_DEVS_SPI_CORTEXM_STM32
                    CYGPKG_DEVS_ADC_CORTEXM_STM32
+                   CYGPKG_DEVS_NAND_ST_NANDXXXX3A
                  }
         description "The stm3210e_eval target provides the packages needed
         to run eCos on the STM3210E EVAL board."
