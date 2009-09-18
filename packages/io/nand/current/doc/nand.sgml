@@ -207,6 +207,38 @@ whilst programming do not apply here, except in special cases such as
 OneNAND devices.</para>
 </sect1>
 
+<sect1 id="nand-deployment-notes"><title>Preparing for deployment</title>
+<para>
+It is generally not recommended to hard-code physical on-NAND locations
+in case of factory bad blocks or block failures in the field.
+<footnote><para>Usually the first block is guaranteed to be defect free
+for a certain number of erase cycles. This tends to be necessary if
+bootstrapping the CPU off NAND, and is an obvious exception to this
+rule.</para></footnote> Instead it is preferable to set up 
+<emphasis>partitions</emphasis> on the chip with a generous safety 
+margin and to store data in a location-independent way. This is
+commonly achieved by placing logical tags in the spare area of each
+page, or using a log-structured filesystem such as YAFFS. Such
+strategies remove the dependence on physical addressing, at the cost of
+increased complexity.</para>
+
+<para>The upshot of this is that you cannot reliably create a simple
+binary image to bulk-program in the factory. A more complicated
+programming operation is required to take account of your chip
+partitions, logical addressing strategy and any bad blocks which 
+may be encountered during write.
+</para>
+</sect1>
+
+</chapter>
+
+<chapter id="nand-using">
+<title>Using the NAND library</title>
+
+<para>The eCos NAND library exposes two principal APIs: one for
+applications to use and the other to communicate with
+device drivers.</para>
+
 <sect1 id="nand-app-config"><title>Configuring the NAND library</title>
 <para>The following configuration options are provided. They affect the
 library globally, i.e. across all drivers.</para>
@@ -249,15 +281,6 @@ any NAND device may have. The default is 4, which should be enough for
 most purposes; unnecessarily setting this higher wastes RAM.</para></listitem></varlistentry>
 </variablelist>
 </sect1>
-
-</chapter>
-
-<chapter id="nand-using">
-<title>Using the NAND library</title>
-
-<para>The eCos NAND library exposes two principal APIs. This is the
-first, for applications to use. The second is for the NAND library to
-communicate with device drivers.</para>
 
 <sect1 id="nand-using-app-api"><title>The NAND Application API</title>
 <para>All of the functions described here are declared in the header file
@@ -999,10 +1022,11 @@ find them.</para>
 </sect1>
 </chapter>
 
-<chapter id="nand-tests">
+<chapter id="nand-tests-utils">
 
-<title>Unit and functional tests</title>
-<!-- sect1 id="nand-tests"><title>Unit and functional tests</title -->
+<title>Tests and utilities</title>
+
+<sect1 id="nand-tests"><title>Unit and functional tests</title>
 <para> The NAND library includes a number of tests. The most useful to
 driver writers are <filename>readwrite</filename> and <filename>rwbenchmark</filename>;
 the others are only likely to be of interest to library maintainers.</para>
@@ -1035,9 +1059,7 @@ work.</para></glossdef></glossentry>
 require the synthetic NAND device. They are described in <xref
 linkend="devs-nand-synth-tests"/>.</para>
 
-</chapter>
-
-<chapter id="nand-utils">
+<sect1 id="nand-utils">
 <title>Ancillary NAND utilities</title>
 <para> The following utilities are included with the NAND library.
 They are standalone eCos applications and should be built in the normal way. </para>
@@ -1060,6 +1082,7 @@ code will immediately erase it.)
 device, as it may not be possible to later reconstruct the list of factory-bad blocks.</emphasis>
 </para></glossdef></glossentry>
 </glosslist>
+</sect1>
 </chapter>
 
 </part>
