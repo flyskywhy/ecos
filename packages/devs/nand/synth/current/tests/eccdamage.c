@@ -118,7 +118,7 @@ int cyg_user_start(void)
     if (cyg_nanddevtab == &cyg_nanddevtab_end)
         CYG_TEST_NA("No NAND devices found");
 
-    unsigned char msgbuf[256];
+    char msgbuf[256];
     snprintf(msgbuf, sizeof(msgbuf)-1, "Using NAND device %s", cyg_nanddevtab->devname);
     CYG_TEST_INFO(msgbuf);
     CYG_TEST_CHECK(0==cyg_nand_lookup(cyg_nanddevtab->devname, &dev),"lookup failed");

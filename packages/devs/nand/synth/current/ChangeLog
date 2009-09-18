@@ -1,3 +1,9 @@
+2009-09-16  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Buildfix bbt.c and eccdamage.c
+	* nand_synth.c: Ensure that bit errors induced by RANDOMLY_LOSE mode
+	can occur over the whole range of the page data and spare area.
+
 2009-08-28  Ross Younger  <wry@ecoscentric.com>
 
 	* tests: Add bbt.c and multipagebbt.c (moved from io/nand).

@@ -1351,7 +1351,7 @@ err_exit:
 }
 
 #ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
-static unsigned losscount=0;
+unsigned losscount=0;
 
 externC unsigned
 cyg_nand_synth_get_losscount(void)
@@ -1410,7 +1410,7 @@ synth_readpage(cyg_nand_device *dev, cyg_nand_page_addr page, void * dest, size_
             ++losscount;
             // where (which byte) will we lose: in the page or in its ECC?
 #define ECC_COUNT ((PAGESIZE/256)*3)
-            int range = PAGESIZE + ECC_COUNT;
+            int range = PAGESIZE + SPARE_PER_PAGE;
             int where=rand()%range; // slightly biased selection but will do
             int bit = rand()%8;
 
@@ -1418,16 +1418,8 @@ synth_readpage(cyg_nand_device *dev, cyg_nand_page_addr page, void * dest, size_
                 if (dest)
                     ((unsigned char*)dest)[where] ^= (1<<bit);
             } else {
-                if (spare) {
-                    /* this is a horrid layering violation */
-                    static unsigned char ecc[ECC_COUNT], appspare[dev->oob->app_size], packedbuf[SPARE_PER_PAGE];
-                    // find out where the ECC is and zot it ..
-                    nand_oob_unpack(dev, appspare, dev->oob->app_size, ecc, &(image_data[offset + PAGESIZE]));
-                    where -= PAGESIZE;
-                    ecc[where] ^= (1<<bit);
-                    nand_oob_pack(dev, appspare, dev->oob->app_size, ecc, packedbuf);
-                    memcpy(spare, packedbuf, spare_size);
-                }
+                if (spare)
+                    ((unsigned char*)spare)[where - PAGESIZE] ^= (1<<bit);
             }
         }
     }

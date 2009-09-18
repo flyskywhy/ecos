@@ -62,7 +62,11 @@ cyg_start( void )
 #include <cyg/nand/nand.h>
 #include <cyg/nand/nand_devtab.h>
 #include <cyg/infra/diag.h>
-#include "nand_bbt.h"
+
+/* Forbidden knowledge: internal BBT functions */
+int cyg_nand_bbti_query(cyg_nand_device *dev, cyg_nand_block_addr blk);
+int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk,
+                                  cyg_nand_bbt_status_t st);
 
 /* Assert-like ... */
 #define MUST(what) do { CYG_TEST_CHECK((what), #what); } while(0)
