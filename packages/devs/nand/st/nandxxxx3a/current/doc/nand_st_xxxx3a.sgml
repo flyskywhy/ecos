@@ -74,15 +74,15 @@ A platform HAL would typically make use of this driver in a single source file w
 
 <para>
 For more details about the infrastructure provided by the NAND layer
-and the semantics it expects of the chip driver, refer to i
-<xref linkend="io-nand-overview"/>. An example driver instantiation can be
-found in <xref linkend="devs-nand-stm3210e"/>.
+and the semantics it expects of the chip driver, refer to
+<xref linkend="io-nand-overview">. An example driver instantiation can be
+found in <xref linkend="cortexm-stm3210e-part">.
 </para></sect2>
 
 <sect2 id="devs-nand-st-xxxx3a-memory-note">
 <title>Memory usage note</title>
 <para>
-As discussed in <xref linkend="nand-devs-highlevel"/>, the chip
+As discussed in <xref linkend="nand-devs-highlevel">, the chip
 initialisation function must set up the <varname>bbt.data</varname>
 pointer in the <type>cyg_nand_device</type> struct.  This driver does so
 by including pointer to a sufficiently large byte array in the
