@@ -425,7 +425,7 @@ will pop up a dialog box allowing the various settings to be edited.
       <informalfigure PgWide=1>
         <mediaobject>
           <imageobject>
-            <imagedata fileref="dialog1.png" Scalefit=1 Align="Center"/>
+            <imagedata fileref="dialog1.png" Scalefit=1 Align="Center">
           </imageobject>
         </mediaobject>
       </informalfigure>
@@ -450,7 +450,7 @@ If the Logging tab is selected then the dialog changes to the following:
       <informalfigure PgWide=1>
         <mediaobject>
           <imageobject>
-            <imagedata fileref="dialog2.png" Scalefit=1 Align="Center"/>
+            <imagedata fileref="dialog2.png" Scalefit=1 Align="Center">
           </imageobject>
         </mediaobject>
       </informalfigure>

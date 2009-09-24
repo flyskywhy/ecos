@@ -1056,8 +1056,9 @@ work.</para></glossdef></glossentry>
 </glosslist>
 
 <para>There are some further tests of the library which
-require the synthetic NAND device. They are described in <xref
-linkend="devs-nand-synth-tests"/>.</para>
+require the synthetic NAND device. They are described in 
+<xref linkend="devs-nand-synth-tests"/>.</para>
+</sect1>
 
 <sect1 id="nand-utils">
 <title>Ancillary NAND utilities</title>

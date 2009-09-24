@@ -74,8 +74,8 @@ A platform HAL would typically make use of this driver in a single source file w
 
 <para>
 For more details about the infrastructure provided by the NAND layer
-and the semantics it expects of the chip driver, refer to <xref
-linkend="io-nand-overview"/>. An example driver instantiation can be
+and the semantics it expects of the chip driver, refer to i
+<xref linkend="io-nand-overview"/>. An example driver instantiation can be
 found in <xref linkend="devs-nand-stm3210e"/>.
 </para></sect2>
 
