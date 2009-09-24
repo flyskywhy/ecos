@@ -100,9 +100,9 @@ device driver must be created. Each driver is for a particular NAND
 part or family of parts; the HAL for each board then instantiates the
 relevant driver(s) appropriately with board-specific glue such as the
 memory-mapped I/O range to use. Full details on creating a driver are
-presented in <xref linkend="nand-devs-writing" />.</para>
+presented in <xref linkend="nand-devs-writing">.</para>
 
-<para>There is also a <xref linkend="devs-nand-synth" /> for testing purposes,
+<para>There is also a <xref linkend="devs-nand-synth"> for testing purposes,
 which is present on the <emphasis>synth</emphasis> target.
 </para>
 </sect2>
@@ -560,7 +560,7 @@ applications.</para>
 
 <para>Occasionally, it is necessary for applications to mark a block
 as bad. This most commonly happens when a write operation fails
-(see <xref linkend="nand-app-writing" /> above). To do this, call
+(see <xref linkend="nand-app-writing"> above). To do this, call
 <function>cyg_nand_bbt_markbad</function>; the return is 0 for success,
 or a negative eCos error code.</para>
 
@@ -1057,7 +1057,7 @@ work.</para></glossdef></glossentry>
 
 <para>There are some further tests of the library which
 require the synthetic NAND device. They are described in 
-<xref linkend="devs-nand-synth-tests"/>.</para>
+<xref linkend="devs-nand-synth-tests">.</para>
 </sect1>
 
 <sect1 id="nand-utils">

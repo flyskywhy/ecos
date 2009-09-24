@@ -87,13 +87,13 @@ with the following steps:</para>
 <para>
 For more details about the infrastructure provided by the NAND layer
 and the semantics it expects of the chip driver, refer to 
-<xref linkend="io-nand-overview"/>. An example driver instantiation can be
-found in <xref linkend="nanddev-ea-lpc2468"/>.</para>
+<xref linkend="io-nand-overview">. An example driver instantiation can be
+found in <xref linkend="nanddev-ea-lpc2468">.</para>
 
 <sect2 id="nanddev-samsung-k9-memory-note">
 <title>Memory usage</title>
 <para>
-As discussed in <xref linkend="nand-devs-highlevel"/>, the chip
+As discussed in <xref linkend="nand-devs-highlevel">, the chip
 initialisation function must set up the <varname>bbt.data</varname>
 pointer in the <type>cyg_nand_device</type> struct.  This driver does so
 by including a sufficiently large byte array in the <type>k9_priv</type>
