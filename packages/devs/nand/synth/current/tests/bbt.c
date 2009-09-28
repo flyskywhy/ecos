@@ -85,6 +85,8 @@ void read_bbt(cyg_nand_device *dev, unsigned char *my_bbt)
     }
 }
 
+unsigned char tmp[CYGNUM_NAND_PAGEBUFFER];
+
 int cyg_user_start(void)
 {
     cyg_nand_device *dev;
@@ -112,7 +114,6 @@ int cyg_user_start(void)
     } while (cyg_nand_bbti_query(dev, rblk) != CYG_NAND_BBT_OK);
 
     cyg_nand_page_addr pg = rblk * NAND_PAGES_PER_BLOCK(dev);
-    unsigned char tmp[NAND_BYTES_PER_PAGE(dev)];
     MUST(0==cyg_nand_read_page(prt, pg, tmp, NAND_BYTES_PER_PAGE(dev), 0, 0));
 
     /* Mark bad, check the table is as expected, ensure we can't read it */

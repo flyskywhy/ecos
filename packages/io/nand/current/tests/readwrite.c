@@ -45,6 +45,7 @@
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#include <cyg/infra/cyg_ass.h>
 #include <cyg/infra/testcase.h>
 #include <cyg/nand/nand.h>
 #include <cyg/nand/nand_devtab.h>
@@ -83,13 +84,16 @@ cyg_start( void )
  * pretty good for running tests */
 extern unsigned char _stext[], _etext[];
 
+#define datasize CYGNUM_NAND_PAGEBUFFER
+unsigned char buf[datasize], buf2[datasize];
+ar4ctx rnd;
+
 int cyg_user_start(void)
 {
     cyg_nand_device *dev;
     cyg_nand_partition *prt;
     cyg_nand_block_addr blk;
     cyg_nand_page_addr pg;
-    ar4ctx rnd;
     int i;
 
     CYG_TEST_INIT();
@@ -118,8 +122,7 @@ int cyg_user_start(void)
     diag_printf("Erasing block %d\n", blk);
     MUST(0==cyg_nand_erase_block(prt, blk));
 
-    int datasize = NAND_BYTES_PER_PAGE(dev);
-    unsigned char buf[datasize], buf2[datasize];
+    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) <= CYGNUM_NAND_PAGEBUFFER);
     ar4prng_many(&rnd, buf, datasize);
 
     diag_printf("Read/write to page %d (block %d)\n", pg, blk);

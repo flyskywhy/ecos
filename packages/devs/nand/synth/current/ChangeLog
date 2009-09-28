@@ -1,3 +1,8 @@
+2009-09-28  Ross Younger  <wry@ecoscentric.com>
+
+	* tests: Don't put unreasonably large arrays on stack. Build-fix
+	multipagebbt.
+
 2009-09-16  Ross Younger  <wry@ecoscentric.com>
 
 	* tests: Buildfix bbt.c and eccdamage.c

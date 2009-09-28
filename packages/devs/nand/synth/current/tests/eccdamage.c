@@ -93,10 +93,13 @@ cyg_nand_partition *prt;
 cyg_nand_block_addr blk;
 cyg_nand_page_addr pg;
 
+#define datasize CYGNUM_NAND_PAGEBUFFER
+
+unsigned char buf[datasize], buf2[datasize];
+char msgbuf[256];
+
 void cycle(void)
 {
-    int datasize = NAND_BYTES_PER_PAGE(dev);
-    unsigned char buf[datasize], buf2[datasize];
     ar4prng_many(&rnd, buf, datasize);
 
     MUST(0==cyg_nand_write_page(prt, pg, buf, datasize, 0, 0));
@@ -118,7 +121,6 @@ int cyg_user_start(void)
     if (cyg_nanddevtab == &cyg_nanddevtab_end)
         CYG_TEST_NA("No NAND devices found");
 
-    char msgbuf[256];
     snprintf(msgbuf, sizeof(msgbuf)-1, "Using NAND device %s", cyg_nanddevtab->devname);
     CYG_TEST_INFO(msgbuf);
     CYG_TEST_CHECK(0==cyg_nand_lookup(cyg_nanddevtab->devname, &dev),"lookup failed");

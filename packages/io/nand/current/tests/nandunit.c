@@ -98,18 +98,19 @@ int xcanary_check(CYG_BYTE *buf)
     return 1;
 }
 
+CYG_BYTE oob_buf[128];
+CYG_BYTE testpattern[64], recvbuf[128];
+
 int oob_packing(void)
 {
     /* We are testing the mechanism, not the specifics of any given layout.
      * We are interested in whether the application data is correctly
      * stored and unpacked, without overrunning anything. */
     init_fakenand();
-    CYG_BYTE oob_buf[128];
     CYG_BYTE *oob = &oob_buf[32];
     memset(oob_buf, CANARY, sizeof oob_buf); // To act as a simple canary
     canary_check(oob_buf);
 
-    CYG_BYTE testpattern[64], recvbuf[128];
     CYG_BYTE *rcv = &recvbuf[32];
     memset(recvbuf, CANARY, sizeof recvbuf);
     int i;
@@ -164,12 +165,13 @@ eccvector vec[] =
     { 0 }
 };
 
+unsigned char chunk[CHUNKSIZE],
+              ecc[ECCSIZE];
+
+ar4ctx ctx;
+
 int do_ecc_known_answer(eccvector *v)
 {
-    ar4ctx ctx;
-    unsigned char chunk[CHUNKSIZE],
-                  ecc[ECCSIZE];
-
     ar4prng_init(&ctx, (unsigned char*)v->seed, strlen(v->seed));
     ar4prng_many(&ctx, chunk, CHUNKSIZE);
 

@@ -1,3 +1,7 @@
+2009-09-28  Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Don't put large arrays on stack.
+
 2009-08-28  Ross Younger  <wry@eCosCentric.com>
 
 	* doc/nand.sgml: Update. Split entries for NAND device drivers out into

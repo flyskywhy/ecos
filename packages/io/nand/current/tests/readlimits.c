@@ -70,19 +70,18 @@ int tried_bad = 0, passes = 0, fails = 0;
     }   \
 } while(0)
 
+unsigned char buf[CYGNUM_NAND_PAGEBUFFER];
+
 /* Try to read a page.
  * Pass 1 if you expect it to work, 0 if you don't.
  * Returns 0 for test pass (i.e. it worked as well as it was supposed to),
  * -1 for test fail (it didn't). */
 int tryread(cyg_nand_partition *prt, cyg_nand_page_addr pg, int shouldwork)
 {
-    int pagesize = NAND_BYTES_PER_PAGE(prt->dev);
-    unsigned char buf[pagesize];
-
 #if 0
     printf("Trying %d...\n",pg);
 #endif
-    int rv = cyg_nand_read_page(prt, pg, buf, pagesize, NULL, 0);
+    int rv = cyg_nand_read_page(prt, pg, buf, sizeof(buf), NULL, 0);
 
     if (!shouldwork) ++tried_bad;
     if (rv==0)

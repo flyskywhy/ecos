@@ -328,6 +328,10 @@ next:
 }
 
 unsigned char pagebuffer[CYGNUM_NAND_PAGEBUFFER];
+timing ft_read[NREADS];
+timing ft_write[NWRITES];
+timing ft_erase[NERASES];
+
 
 void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
 {
@@ -337,7 +341,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
     int i;
     const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
-    timing ft[NREADS];
+#define ft ft_read
 
     for (i=0; i < NREADS; i++) {
         wait_for_tick();
@@ -368,6 +372,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         if (pg > pgend) pg = pgstart;
     }
     show_times(ft, NREADS, "NAND page reads (page + OOB)");
+#undef ft
 }
 
 
@@ -379,7 +384,7 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
     int i;
     const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
-    timing ft[NWRITES];
+#define ft ft_write
 
     memset(pagebuffer, 0xFF, sizeof pagebuffer);
     memset(oob, 0xFF, oobz);
@@ -397,13 +402,14 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
     }
     cyg_nand_erase_block(part, b);
     show_times(ft, NWRITES, "NAND full-page writes");
+#undef ft
 }
 
 
 void test_erases(cyg_nand_partition *part, cyg_nand_block_addr b)
 {
     int i;
-    timing ft[NERASES];
+#define ft ft_erase
 
     for (i=0; i < NERASES; i++) {
         wait_for_tick();
@@ -412,6 +418,7 @@ void test_erases(cyg_nand_partition *part, cyg_nand_block_addr b)
         get_timestamp(&ft[i].end);
     }
     show_times(ft, NERASES, "NAND block erases");
+#undef ft
 }
 
 
