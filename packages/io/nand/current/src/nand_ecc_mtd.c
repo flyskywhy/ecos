@@ -134,7 +134,8 @@ void nand_trans_result(u_char reg2, u_char reg3,
 /*
  * Calculate 3 byte ECC code for 256 byte block
  */
-static void mtd_calculate_ecc(const u_char *dat, u_char *ecc_code)
+static void mtd_calculate_ecc(struct _cyg_nand_device_t *dev,
+        const u_char *dat, size_t nbytes, u_char *ecc_code)
 {
     u_char idx, reg1, reg2, reg3;
     int j;
@@ -145,9 +146,11 @@ static void mtd_calculate_ecc(const u_char *dat, u_char *ecc_code)
     
     /* Build up column parity */ 
     for(j = 0; j < 256; j++) {
+        u_char d = 0xff;
+        if (j < nbytes) d = dat[j];
         
         /* Get CP0 - CP5 from table */
-        idx = nand_ecc_precalc_table[dat[j]];
+        idx = nand_ecc_precalc_table[d];
         reg1 ^= (idx & 0x3f);
         
         /* All bit XOR = 1 ? */
@@ -169,7 +172,8 @@ static void mtd_calculate_ecc(const u_char *dat, u_char *ecc_code)
 /*
  * Detect and correct a 1 bit error for 256 byte block
  */
-static int mtd_correct_data(u_char *dat, u_char *read_ecc, const u_char *calc_ecc)
+static int mtd_correct_data(struct _cyg_nand_device_t *dev,
+        u_char *dat, size_t nbytes, u_char *read_ecc, const u_char *calc_ecc)
 {
     u_char a, b, c, d1, d2, d3, add, bit, i;
     
@@ -215,9 +219,12 @@ static int mtd_correct_data(u_char *dat, u_char *read_ecc, const u_char *calc_ec
                 b >>= 1;
             }
             b = 0x01;
-            a = dat[add];
-            a ^= (b << bit);
-            dat[add] = a;
+
+            if (add < nbytes) {
+                a = dat[add];
+                a ^= (b << bit);
+                dat[add] = a;
+            }
             return 1;
         }
         else {
@@ -255,5 +262,5 @@ static int mtd_correct_data(u_char *dat, u_char *read_ecc, const u_char *calc_ec
     return -1;
 }
 
-CYG_NAND_ECC_ALG(linux_mtd_ecc, 256, 3, mtd_calculate_ecc, mtd_correct_data);
+CYG_NAND_ECC_ALG_SW(linux_mtd_ecc, 256, 3, NULL, mtd_calculate_ecc, mtd_correct_data);
 

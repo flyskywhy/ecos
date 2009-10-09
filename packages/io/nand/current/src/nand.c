@@ -146,23 +146,37 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
     if (!rv) {
         if (!dev->is_inited) {
             int i;
+
+            if (dev->version != 2) {
+                NAND_ERROR(dev, "Device %s declares incompatible version %d (expected 2)", devname, dev->version);
+                goto done;
+            }
             CYG_CHECK_DATA_PTRC(dev->fns);
             CYG_CHECK_FUNC_PTRC(dev->fns->devinit);
-            CYG_CHECK_FUNC_PTRC(dev->fns->read_page);
-            CYG_CHECK_FUNC_PTRC(dev->fns->write_page);
-            CYG_CHECK_FUNC_PTRC(dev->fns->erase_block);
-            CYG_CHECK_FUNC_PTRC(dev->fns->is_factory_bad);
 
-            dev->version = 1;
             dev->pf = nand_default_pf;
             for (i=0; i<CYGNUM_NAND_MAX_PARTITIONS; i++)
                 dev->partition[i].dev = 0;
             dev->bbt.data = 0; // Paranoia, ensure devinit sets up
+
             rv = dev->fns->devinit(dev);
+
             if (rv) {
                 NAND_ERROR(dev,"Could not initialise NAND device \"%s\": code %d\n", devname, rv);
                 goto done;
             }
+
+            // Now check that we have everything we need
+            CYG_CHECK_FUNC_PTRC(dev->fns->read_begin);
+            CYG_CHECK_FUNC_PTRC(dev->fns->read_stride);
+            CYG_CHECK_FUNC_PTRC(dev->fns->read_finish);
+            CYG_CHECK_FUNC_PTRC(dev->fns->write_begin);
+            CYG_CHECK_FUNC_PTRC(dev->fns->write_stride);
+            CYG_CHECK_FUNC_PTRC(dev->fns->write_finish);
+
+            CYG_CHECK_FUNC_PTRC(dev->fns->erase_block);
+            CYG_CHECK_FUNC_PTRC(dev->fns->is_factory_bad);
+
             CYG_CHECK_DATA_PTRC(dev->bbt.data);
             CYG_CHECK_DATA_PTRC(dev->ecc);
             CYG_CHECK_DATA_PTRC(dev->oob);
@@ -190,6 +204,8 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
                 rv = -ENOSYS;
                 goto done;
             }
+
+            // NOW we are ready to read from the device !
 
             rv = cyg_nand_bbti_find_tables(dev);
             if (rv == -ENOENT) {
@@ -245,44 +261,142 @@ __externC
 int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
                 void * dest, size_t size, void * spare, size_t spare_size)
 {
-    int tries=0;
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
 
-    if (dest)  CYG_CHECK_DATA_PTRC(dest);
-    if (spare) CYG_CHECK_DATA_PTRC(spare);
-
     if (size > (1<<dev->page_bits)) return -EFBIG;
     if (spare_size > dev->spare_per_page) return -EFBIG;
 
-    LOCK_DEV(dev);
-
-    CYG_BYTE ecc_read[CYG_NAND_ECCPERPAGE(dev)],
-             ecc_calc[CYG_NAND_ECCPERPAGE(dev)];
-    CYG_BYTE oob_buf[dev->spare_per_page];
-
     EG(valid_page_addr(prt, page));
+
     cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev,page);
     if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
         NAND_CHATTER(1,dev,"Asked to read page %u in bad block %u\n", page, blk);
         EG(-EINVAL);
     }
 
-    do {
-        ++tries;
+    EG(nandi_read_page_raw(dev, page, dest, size, spare, spare_size));
 
-        EG(dev->fns->read_page(dev, page, dest, size, oob_buf, dev->spare_per_page));
+err_exit:
+    return rv;
+}
+
+
+/* Internal, mostly-unchecked interface to read a page. */
+int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
+            CYG_BYTE * dest, const size_t sizex, CYG_BYTE * spare, size_t spare_size)
+{
+    CYG_BYTE ecc_read[CYG_NAND_ECCPERPAGE(dev)],
+             ecc_calc[CYG_NAND_ECCPERPAGE(dev)];
+    CYG_BYTE *ecc_calc_p, *ecc_read_p;
+
+    CYG_BYTE oob_buf[dev->spare_per_page];
+    int rv=0,tries=0;
+    size_t remain;
+    const int ecc_is_hw = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
+
+    // Stride for reading from device:
+    const unsigned read_data_stride = ecc_is_hw ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    // Stride for calculating/checking/repairing ECC:
+    const unsigned ecc_data_stride = dev->ecc->data_size;
+    // Stride within the ECC data
+    const unsigned ecc_stride = dev->ecc->ecc_size;
+
+    if (dest)  CYG_CHECK_DATA_PTRC(dest);
+    if (spare) CYG_CHECK_DATA_PTRC(spare);
+
+    if (!ecc_is_hw) {
+        // if s/w ecc, part-stride reads are not yet supported
+        if (sizex % ecc_data_stride != 0)
+            EG(-ENOSYS);
+    }
+
+    LOCK_DEV(dev);
+
+    do {
+        CYG_BYTE *data_dest = dest;
+        CYG_BYTE *ecc_dest = ecc_calc;
+
+        ++tries;
+        remain = sizex;
+
+        EG(dev->fns->read_begin(dev, page));
+
+        if (dest) {
+            int step;
+            while (remain) {
+                step = read_data_stride;
+
+                if (ecc_is_hw && dev->ecc->init) dev->ecc->init(dev);
+
+                if (step > remain) {
+                    step = remain;
+                    EG(dev->fns->read_stride(dev, data_dest, step));
+                    EG(dev->fns->read_stride(dev, 0, read_data_stride - step));
+                } else {
+                    EG(dev->fns->read_stride(dev, data_dest, step));
+                }
+                if (ecc_is_hw) {
+                    dev->ecc->calc(dev, 0, 0, ecc_dest);
+                    ecc_dest += ecc_stride;
+                }
+                data_dest += step;
+                remain -= step;
+            }
+        }
+
+        EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
 
         nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
 
-        if (!dest) goto err_exit; // No data? Can't ECC it!
-        if (size != 1<<dev->page_bits) goto err_exit;
-        // FIXME: Make part-page ECC work.
+        if (dest && !ecc_is_hw) {
+            // Calculate software ECC in one go to try and take advantage
+            // of the instruction cache.
+            int step = ecc_data_stride;
+            data_dest = dest;
+            remain = sizex;
+            ecc_calc_p = ecc_calc;
 
-        nand_ecci_calc_page(dev, dest, ecc_calc);
-        rv = nand_ecci_repair_page(dev, dest, ecc_read, ecc_calc);
+            while (remain) {
+                // We have already checked above that we're not doing any part-strides.
+                if (dev->ecc->init) dev->ecc->init(dev);
+                dev->ecc->calc(dev, data_dest, step, ecc_calc_p);
+
+                remain -= step;
+                data_dest += step;
+                ecc_calc_p += ecc_stride;
+            }
+        }
+
+        rv = 0;
+        if (dest) {
+            int step = ecc_data_stride;
+            int step_rv;
+            remain = sizex;
+            data_dest = dest;
+
+            ecc_calc_p = ecc_calc;
+            ecc_read_p = ecc_read;
+
+            while (remain) {
+                if (step > remain) step = remain;
+
+                step_rv = dev->ecc->repair(dev,data_dest,step,ecc_read_p,ecc_calc_p);
+                if (step_rv == -1) {
+                    rv = -1;
+                    break;
+                }
+                rv |= step_rv;
+
+                data_dest += step;
+                ecc_read_p += ecc_stride;
+                ecc_calc_p += ecc_stride;
+                remain -= step;
+            }
+        }
+
         if (rv==-1 && (tries < CYGNUM_NAND_MAX_READ_RETRIES) ) {
             NAND_CHATTER(4, dev, "NAND: ECC uncorrectable error on read, retrying\n");
         }
@@ -292,15 +406,16 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         case 0:
             NAND_CHATTER(8,dev,"Read page %u OK\n", page);
             break;
-        case -1:
-            NAND_ERROR(dev,"NAND: Page %u read gave ECC uncorrectable error\n", page);
-            rv=-EIO;
-            break;
         case 1:
         case 2:
         case 3:
             NAND_CHATTER(2,dev, "Page %u ECC correction, type %d\n", page,rv);
             rv=0;
+            break;
+        case -1:
+        default:
+            NAND_ERROR(dev,"NAND: Page %u read gave ECC uncorrectable error\n", page);
+            rv=-EIO;
             break;
     }
 err_exit:
@@ -308,44 +423,104 @@ err_exit:
     return rv;
 }
 
+/* Internal, mostly-unchecked interface to write a page. */
 __externC
 int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         const void * src, size_t size, const void * spare, size_t spare_size)
 {
-#ifdef CYGSEM_IO_NAND_READONLY
-    return -EROFS;
-#else
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
 
-    if (src)   CYG_CHECK_DATA_PTRC(src);
-    if (spare) CYG_CHECK_DATA_PTRC(spare);
-
-    LOCK_DEV(dev);
-
-    CYG_BYTE ecc[CYG_NAND_ECCPERPAGE(dev)];
-    CYG_BYTE oob_packed[dev->spare_per_page];
-
     EG(valid_page_addr(prt, page));
+
     cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev,page);
     if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
         NAND_CHATTER(1,dev,"Asked to write page %u in bad block %u\n", page, blk);
         EG(-EINVAL);
     }
+    EG(nandi_write_page_raw(dev, page, src, size, spare, spare_size));
 
-    if (src && (size == 1<<dev->page_bits)) {
-        nand_ecci_calc_page(dev, src, ecc);
-        // FIXME: Make ECC work on part-pages.
-    } else {
-        // No data, can't compute an ECC, hope they're not overwriting...
-        memset(ecc, 0xff, CYG_NAND_ECCPERPAGE(dev));
+err_exit:
+    return rv;
+}
+
+__externC
+int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
+        const CYG_BYTE * src, const size_t sizex, const CYG_BYTE * spare, size_t spare_size)
+{
+#ifdef CYGSEM_IO_NAND_READONLY
+    return -EROFS;
+#else
+    int rv;
+    CYG_BYTE oob_packed[dev->spare_per_page];
+    CYG_BYTE ecc[CYG_NAND_ECCPERPAGE(dev)];
+
+    const int ecc_is_hw = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
+    const unsigned write_data_stride = ecc_is_hw ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    const unsigned ecc_data_stride = dev->ecc->data_size;
+    const unsigned ecc_stride = dev->ecc->ecc_size;
+    size_t remain;
+    CYG_BYTE *ecc_dest = ecc;
+
+    memset(ecc, 0xff, CYG_NAND_ECCPERPAGE(dev));
+
+    if (src)   CYG_CHECK_DATA_PTRC(src);
+    if (spare) CYG_CHECK_DATA_PTRC(spare);
+
+    // If we're doing software ECC, do it all in one go now.
+    if (src && !ecc_is_hw) {
+        int step = ecc_data_stride;
+        const CYG_BYTE *data_src = src;
+        remain = sizex;
+
+        // if s/w ecc, part-stride writes are not yet supported
+        if (remain % ecc_data_stride != 0)
+            EG(-ENOSYS);
+
+        while (remain) {
+            //if (step > remain) step = remain; // NYI
+            if (dev->ecc->init) dev->ecc->init(dev);
+            dev->ecc->calc(dev, data_src, step, ecc_dest);
+
+            remain -= step;
+            data_src += step;
+            ecc_dest += ecc_stride;
+        }
     }
-    nand_oob_pack(dev, spare, spare_size, ecc, oob_packed);
 
+    LOCK_DEV(dev);
+    EG(dev->fns->write_begin(dev, page));
+    if (src) {
+        int step = write_data_stride;
+        remain = sizex;
+        while (remain) {
+            if (ecc_is_hw && dev->ecc->init) dev->ecc->init(dev);
+
+            if (step > remain) {
+                step = remain;
+                // We can only support part-stride writes by assuming
+                // that the rest of the stride is 0xFF.
+                // (Woe betide the caller if it isn't.)
+                EG(dev->fns->write_stride(dev, src, step));
+                EG(dev->fns->write_stride(dev, 0, write_data_stride - step));
+            } else {
+                EG(dev->fns->write_stride(dev, src, step));
+            }
+            if (ecc_is_hw) {
+                dev->ecc->calc(dev, 0, 0, ecc_dest);
+                ecc_dest += ecc_stride;
+            }
+            src += step;
+            remain -= step;
+        }
+    }
+
+    nand_oob_pack(dev, spare, spare_size, ecc, oob_packed);
     NAND_CHATTER(8,dev,"Write page %u\n", page);
-    EG(dev->fns->write_page(dev, page, src, size, oob_packed, dev->spare_per_page));
+    EG(dev->fns->write_finish(dev, oob_packed, dev->spare_per_page));
+
     /* N.B. We don't read-back to verify; drivers may do so themselves if
      * they wish. Typically the spec sheet says that a read-back test
      * is unnecessary if the device reports a successful program, and 
@@ -446,14 +621,17 @@ void nand_ecci_calc_page(cyg_nand_device *dev, const CYG_BYTE *page, CYG_BYTE *e
     CYG_CHECK_DATA_PTRC(ecc_o);
 
     for (i=0; i<nblocks; i++) {
-        dev->ecc->calc(page,ecc_o);
+        if (dev->ecc->init)
+            dev->ecc->init(dev);
+        dev->ecc->calc(dev,page,dev->ecc->data_size,ecc_o);
         page += dev->ecc->data_size;
         ecc_o += dev->ecc->ecc_size;
     }
 }
 
-/* Checks and (if necessary) repairs the ECC for a whole device page.
- * 'page' points to the data; a whole page will necessarily be read.
+/* Checks and (if necessary) repairs the ECC for (up to) a whole device page.
+ * 'page' points to the data; an error at position after @nbytes@ will not
+ * be corrected.
  * Broadly the same semantics as for cyg_nand_ecc_t.repair; 
  * both ECCs are of size CYG_NAND_ECCPERPAGE(dev), and ecc_read may
  * be corrected as well as the data.
@@ -464,7 +642,8 @@ void nand_ecci_calc_page(cyg_nand_device *dev, const CYG_BYTE *page, CYG_BYTE *e
  *      3 if there was at least one corrected error in both data and ECC
  *     -1 if there was an uncorrectable error (>1 bit in a single ECC block)
  */
-int nand_ecci_repair_page(cyg_nand_device *dev, CYG_BYTE *page, CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc)
+int nand_ecci_repair_page(cyg_nand_device *dev, CYG_BYTE *page, size_t remain,
+        CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc)
 {
     int i, page_rv=0;
     const int nblocks = (1<<dev->page_bits) / dev->ecc->data_size;
@@ -473,10 +652,13 @@ int nand_ecci_repair_page(cyg_nand_device *dev, CYG_BYTE *page, CYG_BYTE *ecc_re
     CYG_CHECK_DATA_PTRC(ecc_calc);
 
     for (i=0; i<nblocks; i++) {
-        int chunk_rv = dev->ecc->repair(page,ecc_read,ecc_calc);
+        int stride = dev->ecc->data_size;
+        if (stride > remain) stride = remain;
+        int chunk_rv = dev->ecc->repair(dev,page,stride,ecc_read,ecc_calc);
         if (chunk_rv < 0) return chunk_rv;
         page_rv |= chunk_rv;
         page += dev->ecc->data_size;
+        remain -= dev->ecc->data_size;
         ecc_read += dev->ecc->ecc_size;
         ecc_calc += dev->ecc->ecc_size;
     }

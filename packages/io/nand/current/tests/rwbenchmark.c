@@ -332,6 +332,14 @@ timing ft_read[NREADS];
 timing ft_write[NWRITES];
 timing ft_erase[NERASES];
 
+static void check_ff(const CYG_BYTE * buf, size_t size)
+{
+    while (size--) {
+        if (*buf != 0xFF) {
+            CYG_TEST_FAIL("readback check failed");
+        }
+    }
+}
 
 void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
 {
@@ -343,31 +351,45 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
     unsigned char oob[oobz];
 #define ft ft_read
 
+    // TODO: Rather than reading 0xff, read back a test pattern that we've just put in there.
+#define CLEARDATA() memset(pagebuffer, 0, sizeof pagebuffer)
+#define CHECKDATA() check_ff(pagebuffer, sizeof pagebuffer)
+#define CLEAROOB() memset(oob, 0, oobz)
+#define CHECKOOB() check_ff(oob, oobz)
+
     for (i=0; i < NREADS; i++) {
+        CLEARDATA();
         wait_for_tick();
         get_timestamp(&ft[i].start);
         cyg_nand_read_page(part, pg, pagebuffer, sizeof pagebuffer, 0, 0);
         get_timestamp(&ft[i].end);
+        CHECKDATA();
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
     show_times(ft, NREADS, "NAND page reads (page data only)");
 
     for (i=0; i < NREADS; i++) {
+        CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
         cyg_nand_read_page(part, pg, 0, 0, oob, oobz);
         get_timestamp(&ft[i].end);
+        CHECKOOB();
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
     show_times(ft, NREADS, "NAND page reads (OOB only)");
 
     for (i=0; i < NREADS; i++) {
+        CLEARDATA();
+        CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
         cyg_nand_read_page(part, pg, pagebuffer, sizeof pagebuffer, oob, oobz);
         get_timestamp(&ft[i].end);
+        CHECKDATA();
+        CHECKOOB();
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
@@ -442,6 +464,7 @@ void rwbenchmark_main(void)
     show_test_parameters();
     show_times_hdr();
 
+    cyg_nand_erase_block(part, block);
     test_reads(part, block);
     test_writes(part,block);
     test_erases(part,block);

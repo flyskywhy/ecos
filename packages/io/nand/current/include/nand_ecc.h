@@ -51,33 +51,72 @@
 
 struct _cyg_nand_device_t;
 
-/* ECC algorithm parameterisation block. */
+/* A "software" ECC algorithm:
+ *  - must read all its data from RAM
+ *  - probably doesn't need an initialisation step
+ *
+ * A "hardware" algorithm: 
+ *  - updates its internal state as data goes by
+ *  - probably does need an initialisation step (and locking, but the
+ *  caller should take care of that)
+ */
+
 typedef struct {
+    const unsigned flags;
+#define NAND_ECC_FLAG_IS_HARDWARE (1<<0) /* Engages `hardware' semantics */
+
     /* How many data bytes does this algorithm read? */
     const unsigned  data_size;
     /* How many ECC bytes does this algorithm use per data block? */
     const unsigned  ecc_size;
-    /* Calculates the ECC for the given data block */
-    void (*calc)(const CYG_BYTE *dat, CYG_BYTE *ecc);
+    /* Initialises an ECC computation. May be NULL if not required. */
+    void (*init)(struct _cyg_nand_device_t *dev);
+
+    /* Returns the ECC for the given data block.
+     * If IS_HARDWARE:
+     *  - dat and nbytes are ignored
+     * If ! IS_HARDWARE:
+     *  - dat and nbytes are required
+     *  - if nbytes is less than the chunk size, the remainder are
+     *    assumed to be 0xff.
+     */
+    void (*calc)(struct _cyg_nand_device_t *dev, 
+                 const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc);
+
     /* Repairs the ECC for the given data block, if needed.
      * Call this if your read-from-chip ECC doesn't match what you computed
      * over the data block. Both *dat and *ecc_read may be corrected.
+     *
+     * `nbytes' is the number of bytes we're interested in; if a correction
+     * is indicated outside of that range, it will be ignored.
+     *
      * Returns: 
      *       0 for no errors
      *       1 for a corrected single bit error in the data
      *       2 for a corrected single bit error in the ECC
      *      -1 for an uncorrectable error (more than one bit)
      */
-    int (*repair)(CYG_BYTE *dat, CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
+    int (*repair)(struct _cyg_nand_device_t *dev,
+                  CYG_BYTE *dat, size_t nbytes, 
+                  CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
 } cyg_nand_ecc_t;
 
-#define CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _calc, _repair)  \
-    cyg_nand_ecc_t _name = {                            \
-        .data_size = _dataz,                                    \
-        .ecc_size = _eccz,                                      \
-        .calc = _calc,                                          \
-        .repair = _repair,                                      \
+#define CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, _flags)  \
+    cyg_nand_ecc_t _name = {                                           \
+        .data_size = _dataz,                                           \
+        .ecc_size = _eccz,                                             \
+        .init = _init,                                                 \
+        .calc = _calc,                                                 \
+        .repair = _repair,                                             \
+        .flags = _flags,                                               \
     }
+
+#define CYG_NAND_ECC_ALG_SW(_name, _dataz, _eccz, _init, _calc, _repair) \
+    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, 0)
+
+#define CYG_NAND_ECC_ALG_HW(_name, _dataz, _eccz, _init, _calc, _repair) \
+    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, \
+            NAND_ECC_FLAG_IS_HARDWARE)
 
 /* Useful code ==================================================== */
 
@@ -92,8 +131,9 @@ typedef struct {
 void nand_ecci_calc_page(struct _cyg_nand_device_t *dev,
                          const CYG_BYTE *page, CYG_BYTE *ecc_o);
 
-/* Checks and (if necessary) repairs the ECC for a whole device page.
- * 'page' points to the data; a whole page will necessarily be read.
+/* Checks and (if necessary) repairs the ECC for (up to) a whole device page.
+ * 'page' points to the data; an error at position after @nbytes@ will not
+ * be corrected.
  * Broadly the same semantics as for cyg_nand_ecc_t.repair; 
  * both ECCs are of size CYG_NAND_ECCPERPAGE(dev), and ecc_read may
  * be corrected as well as the data.
@@ -105,7 +145,7 @@ void nand_ecci_calc_page(struct _cyg_nand_device_t *dev,
  *     -1 if there was an uncorrectable error (>1 bit in a single ECC block)
  */ 
 int nand_ecci_repair_page(struct _cyg_nand_device_t *dev,
-                          CYG_BYTE *page,
+                          CYG_BYTE *page, size_t nbytes,
                           CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
 
 /* Implementations ================================================ */

@@ -183,6 +183,7 @@ static CYG_BYTE nand_pattern_mirror [] = { '1','t','b','B' };
 #define NAND_PATTERN_OFFSET 8
 #define NAND_PATTERN_SIZE 4
 #define NAND_VERSION_OFFSET 12
+#define NAND_VERSION_SIZE 1
 
 #define EG(x) do { rv = (x); if (rv != 0) goto err_exit; } while(0)
 
@@ -239,21 +240,14 @@ static int bbti_incorporate_one(cyg_nand_device *dev, cyg_nand_block_addr blk)
 
     int blks_to_read = 1 << dev->blockcount_bits;
     while (blks_to_read>0) {
-        CYG_BYTE oob[dev->spare_per_page];
-        CYG_BYTE ecc_read[CYG_NAND_ECCPERPAGE(dev)],
-                 ecc_calc[CYG_NAND_ECCPERPAGE(dev)];
-
-        EG(dev->fns->read_page(dev, pg, bbt_pagebuf, 1<<dev->page_bits, oob, dev->spare_per_page));
-
-        nand_oob_unpack(dev, 0, 0, ecc_read, oob);
-        nand_ecci_calc_page(dev, bbt_pagebuf, ecc_calc);
-        rv = nand_ecci_repair_page(dev, bbt_pagebuf, ecc_read, ecc_calc);
+        rv = nandi_read_page_raw(dev, pg, bbt_pagebuf, 1<<dev->page_bits, 0, 0);
+        // read_page_raw does the ecc for us, and we don't care about the OOB here as we already know it's one of ours.
         if (rv<0) {
             // This is bad.
             int is_primary = blk == dev->bbt.primary;
             NAND_CHATTER(1,dev, "Reading BBT %s (page %u): uncorrectable error\n", is_primary ? "primary" : "mirror", pg);
             (void) is_primary;
-            EG(-EIO);
+            EG(rv);
         }
         if (rv>0) {
             NAND_CHATTER(2,dev,"Reading BBT page %u: ECC repaired, code %d\n", pg, rv);
@@ -293,24 +287,91 @@ err_exit:
     return rv;
 }
 
+static int nandi_bbt_packing_test(cyg_nand_device *dev)
+{
+    // Startup sanity check: Can we pack the BBT marker and version into the app spare area, do they appear in the right place, and can we extract them?
+    CYG_BYTE appspare[NAND_APPSPARE_PER_PAGE(dev)],
+             packed[NAND_SPARE_PER_PAGE(dev)],
+             testdata[NAND_PATTERN_SIZE > NAND_VERSION_SIZE ? NAND_PATTERN_SIZE : NAND_VERSION_SIZE],
+             ecc[CYG_NAND_ECCPERPAGE(dev)];
+    int i, rv, fail = 0;
+
+#define MAGIC 42
+    memset(ecc, 0xff, sizeof ecc);
+    memset(testdata, 0, sizeof testdata);
+    for (i=0; i<NAND_PATTERN_SIZE; i++)
+        testdata[i] = i+MAGIC;
+
+    i = nand_oob_packed_write(dev, NAND_PATTERN_OFFSET, NAND_PATTERN_SIZE, appspare, testdata);
+    if (i == 0)
+        i = nand_oob_packed_write(dev, NAND_VERSION_OFFSET, NAND_VERSION_SIZE, appspare, testdata);
+
+    if (i != 0) {
+        NAND_ERROR(dev,"BUG: BBT ident/version offset will not fit into this device's spare area\n");
+        /* Read the warning in nand_oob.c by nand_mtd_oob_8.
+         * To make that work, you have to teach this layer how to find
+         * the BBT on such a device. */
+        EG(-ENOSYS);
+    }
+
+    nand_oob_pack(dev, appspare, sizeof appspare, ecc, packed);
+    for (i=0; i<NAND_PATTERN_SIZE; i++)
+        if (packed[NAND_PATTERN_OFFSET + i] != i + MAGIC)
+            ++fail;
+    for (i=0; i<NAND_VERSION_SIZE; i++)
+        if (packed[NAND_PATTERN_OFFSET + i] != i + MAGIC)
+            ++fail;
+
+    if (fail) {
+        NAND_ERROR(dev, "BUG: NAND BBT tag pack did not work");
+        EG(-ENOSYS);
+    }
+
+    memset(appspare, 0xff, sizeof appspare);
+    nand_oob_unpack(dev, appspare, sizeof appspare, ecc, packed);
+
+    memset(testdata, 0, sizeof testdata);
+    i = nand_oob_packed_read(dev, NAND_PATTERN_OFFSET, NAND_PATTERN_SIZE, appspare, testdata);
+    for (i=0; i<NAND_PATTERN_SIZE; i++)
+        if (testdata[i] != i + MAGIC)
+            ++fail;
+
+    memset(testdata, 0, sizeof testdata);
+    i = nand_oob_packed_read(dev, NAND_VERSION_OFFSET, NAND_VERSION_SIZE, appspare, testdata);
+    for (i=0; i<NAND_VERSION_SIZE; i++)
+        if (testdata[i] != i + MAGIC)
+            ++fail;
+
+    for (i=0; i < sizeof ecc; i++)
+        if (ecc[i] != 0xff)
+            ++fail;
+
+    if (fail) {
+        NAND_ERROR(dev, "BUG: NAND BBT tag unpack did not work");
+        EG(-ENOSYS);
+    }
+
+    rv = 0;
+err_exit:
+    return rv;
+}
+
+
 int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
 {
     int rv = 0;
+    CYG_BYTE pri_ver = 0, mir_ver = 0;
+    CYG_BYTE patternbuf[NAND_PATTERN_SIZE];
+    CYG_BYTE versionbuf[NAND_VERSION_SIZE];
+
     NAND_CHATTER(3,dev, "Looking for bad-block table:\n");
     /* TODO: What happens if a BBT block goes bad? Can we put it beyond use?
      * - erasing it _should_ clear the descriptor pattern.
      * Obviously, we should look for further instances of the BBT patterns
      * with fresher version tag(s). */
 
-    CYG_BYTE pri_ver = 0, mir_ver = 0;
+    EG(nandi_bbt_packing_test(dev));
 
-    if (NAND_VERSION_OFFSET > dev->spare_per_page) {
-        NAND_ERROR(dev,"BUG: BBT ident/version offset overrun this device's spare area size\n");
-        /* Read the warning in nand_oob.c by nand_mtd_oob_8.
-         * To make that work, you have to teach this layer how to find
-         * the BBT on such a device. */
-        EG(-ENOSYS);
-    }
     cyg_nand_block_addr start = (1<<dev->blockcount_bits)-1;
     int i;
     for (i=0; i<4; i++) {
@@ -320,15 +381,24 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
         cyg_nand_block_addr blk = start - i;
         cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(dev,blk);
 
-        CYG_BYTE oobbuf[16]; // this covers the pattern and version areas
+        CYG_BYTE oobbuf[NAND_APPSPARE_PER_PAGE(dev)];
 
-        rv = dev->fns->read_page(dev, pg, 0, 0, oobbuf, sizeof oobbuf);
+        rv = nandi_read_page_raw(dev, pg, 0, 0, oobbuf, sizeof oobbuf);
         if (rv<0) {
             NAND_CHATTER(1,dev, "bbti_find_tables: Error %d reading OOB of page %u (block %u)\n", -rv, pg, blk);
             EG(-EIO);
         }
-        if (0==memcmp(&oobbuf[NAND_PATTERN_OFFSET],nand_pattern_primary,NAND_PATTERN_SIZE)) {
-            CYG_BYTE found_ver = oobbuf[NAND_VERSION_OFFSET];
+
+        rv = nand_oob_packed_read(dev, NAND_PATTERN_OFFSET, NAND_PATTERN_SIZE, oobbuf, patternbuf);
+        if (rv != 0) EG(-EIO); // should never fail given the sanity check above
+        rv = nand_oob_packed_read(dev, NAND_VERSION_OFFSET, NAND_VERSION_SIZE, oobbuf, versionbuf);
+        if (rv != 0) EG(-EIO); // should never fail given the sanity check above
+
+        if (0==memcmp(patternbuf, nand_pattern_primary, NAND_PATTERN_SIZE)) {
+            CYG_BYTE found_ver = *versionbuf;
+#if (NAND_VERSION_SIZE != 1)
+#error CT_ASSERT: version handling needs recoded
+#endif
             if (pri_ver) {
                 /* hmm, we've already found one */
                 if (found_ver < pri_ver) continue /* older */;
@@ -338,8 +408,8 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
             dev->bbt.primary = blk;
             continue;
         }
-        if (0==memcmp(&oobbuf[NAND_PATTERN_OFFSET],nand_pattern_mirror,NAND_PATTERN_SIZE)) {
-            CYG_BYTE found_ver = oobbuf[NAND_VERSION_OFFSET];
+        if (0==memcmp(patternbuf, nand_pattern_mirror, NAND_PATTERN_SIZE)) {
+            CYG_BYTE found_ver = *versionbuf;
             if (mir_ver) {
                 /* hmm, we've already found one */
                 if (found_ver < mir_ver) continue /* older */;
@@ -519,16 +589,15 @@ static int bbti_write_one_table(cyg_nand_device *dev,
         }
 
         /* Prep ECC & OOB, then send */
-        CYG_BYTE oob[dev->spare_per_page];
-        memset(oob, 0xff, dev->spare_per_page);
-        memcpy(&oob[NAND_PATTERN_OFFSET], pattern, NAND_PATTERN_SIZE);
-        oob[NAND_VERSION_OFFSET] = dev->bbt.version;
+        CYG_BYTE appspare[NAND_APPSPARE_PER_PAGE(dev)];
+        memset(appspare, 0xff, sizeof appspare);
 
-        CYG_BYTE ecc[CYG_NAND_ECCPERPAGE(dev)];
-        nand_ecci_calc_page(dev, bbt_pagebuf, ecc);
-        nand_oob_pack(dev, 0, 0, ecc, oob);
+        rv = nand_oob_packed_write(dev, NAND_PATTERN_OFFSET, NAND_PATTERN_SIZE, appspare, pattern);
+        if (rv != 0) EG(-EIO); // Should never fail, we've passed the startup sanity check.
+        rv = nand_oob_packed_write(dev, NAND_VERSION_OFFSET, NAND_VERSION_SIZE, appspare, &dev->bbt.version);
+        if (rv != 0) EG(-EIO); // Should never fail, we've passed the startup sanity check.
 
-        rv = dev->fns->write_page(dev, pg, bbt_pagebuf, pagesize, oob, dev->spare_per_page);
+        rv = nandi_write_page_raw(dev, pg, bbt_pagebuf, pagesize, appspare, sizeof appspare);
         if (rv==-EIO) {
             /* Ouch. Our BBT block has failed. We cannot write another, 
              * as we might trample app data. We'll mark bad, and hope
@@ -555,11 +624,6 @@ err_exit:
 static int cyg_nand_bbti_write_tables(cyg_nand_device *dev)
 {
     int rv, retries=-1;
-
-    if (NAND_VERSION_OFFSET > dev->spare_per_page) {
-        NAND_ERROR(dev,"BUG: BBT ident/version offset overrun this device's spare area size\n");
-        return -ENOSYS;
-    }
 
 top:
     ++retries;

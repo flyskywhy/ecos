@@ -91,6 +91,7 @@ typedef struct {
 typedef struct {
     const oobpos_t ecc_size; // total ECC _bytes_
     const oob_vector ecc[CYG_NAND_OOB_MAX_ECC_SLOTS];
+    // CAUTION! Both ecc and app vectors MUST BE IN ORDER!
     const oobpos_t app_size; // total bytes available for app data
     const oob_vector app[CYG_NAND_OOB_MAX_APP_SLOTS];
 } cyg_nand_oob_layout;
@@ -115,6 +116,21 @@ __externC void nand_oob_unpack( struct _cyg_nand_device_t *dev,
                                 CYG_BYTE *app, const unsigned app_max,
                                 CYG_BYTE *ecc, const CYG_BYTE *packed);
 
+/* Writes @len@ bytes of @data@ into an @oobbuf@ such that the data 
+ * will end up at the given @rawpos@ in the packed layout.
+ * Returns 0 for success or -1 if it's not possible. */
+__externC int nand_oob_packed_write(struct _cyg_nand_device_t *dev,
+        size_t rawpos, size_t len,
+        CYG_BYTE *oobbuf, const CYG_BYTE *data);
+
+/* Opposite of nand_oob_packed_write.
+ * Reads @len@ bytes from an application @oobbuf@ such that they
+ * came from the given @rawpos@ in the packed layout; copies them
+ * to @data@.
+ * Returns 0 for success or -1 if it's not possible. */
+__externC int nand_oob_packed_read(struct _cyg_nand_device_t *dev,
+        size_t rawpos, size_t len,
+        const CYG_BYTE *oobbuf, CYG_BYTE *data);
 
 /* And now some layouts from the Linux MTD layer. */
 

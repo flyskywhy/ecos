@@ -100,6 +100,71 @@ void nand_oob_unpack(struct _cyg_nand_device_t *dev,
     unpack(layout->app, CYG_NAND_OOB_MAX_APP_SLOTS, app_o, app_max, oob);
 }
 
+/* Writes @len@ bytes of @data@ into an @oobbuf@ such that the data 
+ * will end up at the given @rawpos@ in the packed layout.
+ * Returns 0 for success or -1 if it's not possible. */
+__externC
+int nand_oob_packed_write(struct _cyg_nand_device_t *dev,
+        size_t rawpos, size_t len,
+        CYG_BYTE *oobbuf, const CYG_BYTE *data)
+{
+    const cyg_nand_oob_layout *layout = dev->oob;
+    int i;
+
+    for (i=0; i<CYG_NAND_OOB_MAX_APP_SLOTS; i++) {
+        const oob_vector *v = &layout->app[i];
+        int offset = rawpos - v->pos; // offset within this vector element (and lower fencepost check)
+        if (offset >= 0) {
+            int avail = v->len - offset; // how many bytes can we put in this element, starting at offset? This gives us an upper fencepost check.
+            if (avail > 0) {
+                // OK, we can do something here.
+                if (avail > len) avail = len;
+                memcpy(&oobbuf[offset], data, len);
+                len -= avail;
+                data += avail;
+                if (!len) return 0;
+            }
+        }
+        oobbuf += v->len;
+    }
+    return -1; // it didn't work...
+}
+
+/* Opposite of nand_oob_packed_write.
+ * Reads @len@ bytes from an application @oobbuf@ such that they
+ * came from the given @rawpos@ in the packed layout; copies them
+ * to @data@.
+ * Returns 0 for success or -1 if it's not possible. */
+__externC
+int nand_oob_packed_read(struct _cyg_nand_device_t *dev,
+        size_t rawpos, size_t len,
+        const CYG_BYTE *oobbuf, CYG_BYTE *data)
+{
+    const cyg_nand_oob_layout *layout = dev->oob;
+    int i;
+
+    for (i=0; i<CYG_NAND_OOB_MAX_APP_SLOTS; i++) {
+        const oob_vector *v = &layout->app[i];
+        int offset = rawpos - v->pos; // offset within this vector element (and lower fencepost check)
+        if (offset >= 0) {
+            int avail = v->len - offset; // how many bytes can we put in this element, starting at offset? This gives us an upper fencepost check.
+            if (avail > 0) {
+                // OK, we can do something here.
+                if (avail > len) avail = len;
+                memcpy(data, &oobbuf[offset], len);
+                len -= avail;
+                data += avail;
+                if (!len) return 0;
+            }
+        }
+        oobbuf += v->len;
+    }
+    return -1; // it didn't work...
+
+}
+
+// FIXME TODO: create a test case / add to unit test: does it cross boundaries correctly?
+
 /* Layouts from the Linux MTD layer. */
 
 #if 0

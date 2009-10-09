@@ -110,10 +110,15 @@ cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno
  * If @dest@ is not NULL, it will be used to store the page contents (the
  * lesser of @size@ bytes and the actual page size).
  * If @spare@ is not NULL, it will be used to store the contents of the 
- * page's spare area (the lesser of @spare_size@ bytes and the actual
- * spare area size).
- * The data read from the chip will be automatically ECC-checked and
- * repaired if necessary.
+ * page's spare area (the lesser of @spare_size@ bytes and
+ * NAND_APPSPARE_PER_PAGE(dev)).
+ *
+ * The data read from the chip will, as far as possible, be ECC-checked
+ * and repaired if necessary.
+ *
+ * It is possible to request less than a whole page, but not all NAND
+ * chips can cope with this; nor do some ECC implementations. In such
+ * a case, this call returns -ENOSYS.
  *
  * Returns 0 for success, otherwise a negative error code.
  * -EIO : The block could not be successfully read due to an I/O error
@@ -125,22 +130,28 @@ cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno
  *
  * -ENOENT : The page address was not valid.
  * -EINVAL : The page address is within a block that is marked bad.
+ * -ENOSYS : You have asked for a part-page read, but this is not
+ *  supported by an underlying layer (the NAND chip, or the ECC
+ *  implementation).
  */
 __externC
 int cyg_nand_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
         void * dest, size_t size, void * spare, size_t spare_size);
 
-/* Writes (at most) a single page and/or its spare area to the device.
- * If less than a whole page worth of data is provided, the rest is
- * assumed to be all-0xFF.
+/* Writes a single page and/or its spare area to the device.
  * ECC will be automatically computed and written.
  *
  * @page@ specifies the page to be written.
  * If @src@ is not NULL, the page contents (the lesser of @size@ bytes
  * and the actual page size) will be read from it.
  * If @spare@ is not NULL, the spare area contents 
- * (the lesser of @spare_size@ bytes and the actual spare area size)
+ * (the lesser of @spare_size@ bytes and NAND_APPSPARE_PER_PAGE(dev))
  * will be read from it.
+ *
+ * It is possible to write less than a whole page, but not all NAND
+ * chips can cope with this; nor do some ECC implementations. In such
+ * a case, this call returns -ENOSYS. (If successful, the write is
+ * made up to a whole page by padding with 0xFF.)
  *
  * Returns 0 for success, otherwise a negative error code.
  * -EIO : The page could not be successfully written due to an I/O error.
@@ -150,6 +161,8 @@ int cyg_nand_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page,
  *
  * -ENOENT : The page address was not valid.
  * -EINVAL : The page address is within a block that is marked bad.
+ * -ENOSYS : You have asked for a part-page write, but this is not
+ *  supported by an underlying layer.
  */
 __externC
 int cyg_nand_write_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 

@@ -1,3 +1,16 @@
+2009-10-08  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc.h, nand.c, nand_ecc_mtd.c: Expand ECC interface
+	to better allow hardware assistance.
+	* nand_device.h, nand.cdl: Change function set ("v2"), add cdl marker
+	* nand.c: Implement v2 read/write, updated devinit
+	* nand.c, nand_bbt.h: Internally expose "raw" page read/write fns
+	* nand_oob.c, nand_oob.h: Create packed_{read,write} fns
+	* nand_bbt.c: Use raw page read/write fns, packed read/write fns
+	- and sanity test them on startup
+	* nand.sgml: Document driver interface change.
+	* rwbenchmark.c: Check that we read the requisite amount of data.
+
 2009-09-28  Ross Younger  <wry@eCosCentric.com>
 
 	* tests: Don't put large arrays on stack.

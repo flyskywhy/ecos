@@ -66,6 +66,17 @@ cdl_package CYGPKG_IO_NAND {
     compile         nand.c nand_bbt.c nand_ecc_mtd.c nand_oob.c util.c
     compile         -library=libextras.a nandinit.cxx
 
+    cdl_option    CYGSEM_IO_NAND_INTERFACE_VERSION {
+        display         "NAND device interface version"
+        flavor          data
+        calculated      2
+        description     "The current compatibility level provided by
+            the NAND layer. As the NAND device interface evolves, this
+            version number will be incremented; devices may require
+            that the infrastructure provide a certain level in order
+            to function correctly."
+    }
+
 	cdl_component CYGPKG_IO_NAND_OPTIONS {
 		display "NAND library build options"
 		flavor  none
