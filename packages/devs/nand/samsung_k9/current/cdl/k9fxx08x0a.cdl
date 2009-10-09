@@ -63,5 +63,6 @@ cdl_package CYGPKG_DEVS_NAND_SAMSUNG_K9 {
 		configure it to talk to the hardware present."
     # This is a 2k page device.
     requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
+    requires        ( CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 )
 }
 

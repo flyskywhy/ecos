@@ -183,21 +183,37 @@ err_exit:
 }
 #undef ER
 
-
-static int k9_read_page(cyg_nand_device *dev, cyg_nand_page_addr page,
-                    void * dest, size_t size, void * spare, size_t spare_size)
+static int k9_read_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
     //k9_priv *priv = dev->priv;
     CYG_BYTE addr[4] = { 0,0, page & 0xff, (page >> 8) & 0xff };
 
     NAND_CHATTER(7,dev,"Reading page %d\n",page);
     LOCK(dev);
+
     write_cmd(dev,0x00);
     write_addrbytes(dev, &addr[0], 4);
     write_cmd(dev,0x30);
     wait_ready_or_time(dev, 1, 25 /* tR */);
-    if (dest && size)
-        read_data_bulk(dev, dest, size);
+    return 0;
+}
+
+static int k9_read_stride(cyg_nand_device *dev, void * dest, size_t size)
+{
+    if (size) {
+        if (dest)
+            read_data_bulk(dev, dest, size);
+        else {
+            // Dummy-sink reads
+            while (size--) read_data_1(dev);
+        }
+    }
+    return 0;
+}
+
+static int k9_read_finish(cyg_nand_device *dev, void * spare, size_t spare_size)
+{
+
     if (spare && spare_size) {
         change_read_column(dev, 1 << dev->page_bits);
         read_data_bulk(dev, spare, spare_size);
@@ -207,35 +223,52 @@ static int k9_read_page(cyg_nand_device *dev, cyg_nand_page_addr page,
     return 0;
 }
 
-static int k9_write_page(cyg_nand_device *dev, cyg_nand_page_addr page,
-    const void * src, size_t size, const void * spare, size_t spare_size)
+static int k9_write_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
-    //k9_priv *priv = dev->priv;
+    k9_priv *priv = dev->priv;
     CYG_BYTE addr[4] = { 0,0, page & 0xff, (page >> 8) & 0xff };
     // NB: Program with random data input takes a _five_ byte address,
     // according to spec p24. This doesn't make sense - everything else
     // about this chip takes a four-byte address - and is contradicted by p32.
-    int rv = 0;
 
     LOCK(dev);
+    priv->pagestash = page;
     write_cmd(dev,0x80);
     write_addrbytes(dev, &addr[0], 4);
-    if (src && size)
-        write_data_bulk(dev, src, size);
+
+    return 0;
+}
+
+static int k9_write_stride(cyg_nand_device *dev, const void * src, size_t size)
+{
+    if (size) {
+        if (src)
+            write_data_bulk(dev, src, size);
+        else {
+            // Dummy-source writes
+            while (size--) write_data_1(dev, 0xff);
+        }
+    }
+    return 0;
+}
+
+static int k9_write_finish(cyg_nand_device *dev, const void * spare, size_t spare_size)
+{
+    k9_priv *priv = dev->priv;
+    int rv = 0;
     if (spare && spare_size) {
-        if (!src || (size != (1<<dev->page_bits)))
-            change_write_column(dev, 1 << dev->page_bits);
+        change_write_column(dev, 1 << dev->page_bits);
         write_data_bulk(dev, spare, spare_size);
     }
     write_cmd(dev,0x10);
     wait_ready_or_status(dev, 1<<6);
 
     if (read_status(dev) & 1) {
-        NAND_ERROR(dev, "NAND: k9fxx08x0x: Programming failed! Page %u, %u bytes, %u spare", page, size, spare_size);
+        NAND_ERROR(dev, "NAND: k9fxx08x0x: Programming failed! Page %u", priv->pagestash);
         rv =-EIO;
         goto done;
     } else {
-        NAND_CHATTER(7,dev, "Programmed %u OK\n", page);
+        NAND_CHATTER(7,dev, "Programmed %u OK\n", priv->pagestash);
     }
 done:
     //k9_reset(dev,5); // Unnecessary.
@@ -297,5 +330,8 @@ static int k9_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
     return rv;
 }
 
-CYG_NAND_FUNS(k9f8_funs, k9_devinit, k9_read_page, k9_write_page, k9_erase_block, k9_factorybad);
+CYG_NAND_FUNS_V2(k9f8_funs, k9_devinit,
+        k9_read_begin, k9_read_stride, k9_read_finish,
+        k9_write_begin, k9_write_stride, k9_write_finish,
+        k9_erase_block, k9_factorybad);
 

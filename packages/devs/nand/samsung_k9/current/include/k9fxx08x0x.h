@@ -73,6 +73,7 @@
 
 struct _k9_priv {
     void *plat_priv; // For use by the platform HAL, if desired.
+    cyg_nand_page_addr pagestash; // Guarded by dev lock.
     unsigned char bbt_data[k9f1g_bbt_datasize];
 };
 

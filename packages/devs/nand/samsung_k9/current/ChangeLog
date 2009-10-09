@@ -1,3 +1,7 @@
+2009-10-02  Ross Younger  <wry@eCosCentric.com>
+
+	* Update driver to expose v2 device functions.
+
 2009-09-02  Ross Younger  <wry@eCosCentric.com>
 
 	* nand_k9.sgml: Created (by breaking up docs in io/nand/)
