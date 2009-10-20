@@ -1360,28 +1360,40 @@ cyg_nand_synth_get_losscount(void)
 }
 #endif
 
-static int
-synth_readpage(cyg_nand_device *dev, cyg_nand_page_addr page, void * dest, size_t size, void * spare, size_t spare_size)
-{
-    size_t offset;
+// Hacky state storage, protected by the dev lock:
+static size_t _offset;
+static size_t _stridden;
+#ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
+static unsigned _lose;
+static unsigned _lose_where;
+static unsigned _lose_bit;
+#endif
+static int _page_going_bad;
+static cyg_nand_page_addr _writepage;
 
+static int
+synth_readbegin(cyg_nand_device *dev, cyg_nand_page_addr page)
+{
     CYG_ASSERTC(image_fd >= 0);
     CYG_ASSERTC(dev != NULL);
     CYG_ASSERTC((page >= 0)     && (page < (PAGES_PER_BLOCK * BLOCK_COUNT)));
-    CYG_ASSERTC((dest == NULL)  || ((size >= 0) && (size <= PAGESIZE)));
-    CYG_ASSERTC((spare == NULL) || ((spare_size >= 0) && (spare_size <= SPARE_PER_PAGE)));
-    CYG_ASSERTC(dest || spare);
 
     cyg_drv_mutex_lock(&lock);
     number_of_calls         += 1;
     number_of_read_calls    += 1;
     
     if (log_read) {
-        int len = diag_sprintf(logfile_data, "r %d %d %d %p %d %p %d\n",
-                               number_of_read_calls, number_of_calls, page, dest, (int)size, spare, (int)spare_size);
+        int len = diag_sprintf(logfile_data, "rb %d %d %d\n",
+                               number_of_read_calls, number_of_calls, page);
         logfile_write(len);
     }
-    
+
+    if (log_READ) {
+        int len = diag_sprintf(logfile_data, "Rdb %d %d %d\n",
+                number_of_read_calls, number_of_calls, page);
+        logfile_write(len);
+    }
+
     if (is_page_bad(page)) {
         // This is actually allowed. After a failed page write, higher-level code
         // may need to recover the data in the other blocks. We use a heuristic
@@ -1394,48 +1406,97 @@ synth_readpage(cyg_nand_device *dev, cyg_nand_page_addr page, void * dest, size_
                         page);
         }
     }
-    
-    offset  = page * (PAGESIZE + SPARE_PER_PAGE);
-    if (dest && (size > 0)) {
-        memcpy(dest, &(image_data[offset]), size);
-    }
-    if (spare && (spare_size > 0)) {
-        memcpy(spare, &(image_data[offset + PAGESIZE]), spare_size);
-    }
-    
-        
+
+    _offset  = page * (PAGESIZE + SPARE_PER_PAGE);
+    _stridden = 0;
+
 #ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
     {
         if (rand()&(1<<13)) { // 50% chance of bitloss..
-            ++losscount;
+            _lose = ++losscount;
             // where (which byte) will we lose: in the page or in its ECC?
 #define ECC_COUNT ((PAGESIZE/256)*3)
             int range = PAGESIZE + SPARE_PER_PAGE;
-            int where=rand()%range; // slightly biased selection but will do
-            int bit = rand()%8;
+            _lose_where=rand()%range; // slightly biased selection but will do
+            _lose_bit = rand()%8;
 
-            if (where < PAGESIZE) {
-                if (dest)
-                    ((unsigned char*)dest)[where] ^= (1<<bit);
-            } else {
-                if (spare)
-                    ((unsigned char*)spare)[where - PAGESIZE] ^= (1<<bit);
+        } else
+            _lose = 0;
+    }
+#endif
+
+    return 0;
+}
+
+static int
+synth_readstride(cyg_nand_device *dev, void * dest, size_t size)
+{
+    CYG_ASSERTC((dest == NULL)  || ((size >= 0) && (size <= PAGESIZE)));
+
+    if (dest && (size > 0)) {
+        memcpy(dest, &(image_data[_offset + _stridden]), size);
+    }
+
+#ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
+    if (_lose && dest) {
+        if (_lose_where < PAGESIZE) {
+            if ((_lose_where >= _stridden) && (_lose_where < _stridden+size)) {
+                ((unsigned char*)dest)[_lose_where - _stridden] ^= (1<<_lose_bit);
+                _lose = 0;
             }
         }
     }
 #endif
 
+    if (log_read) {
+        int len = diag_sprintf(logfile_data, "rs %p %d\n", dest, (int)size);
+        logfile_write(len);
+    }
+
     if (log_READ) {
         if (dest) {
-            int len = diag_sprintf(logfile_data, "Rd %d %d %d %p %d ",
-                                   number_of_read_calls, number_of_calls, page, dest, (int)size);
+            int len = diag_sprintf(logfile_data, "Rdd %p %d ", dest, (int)size);
             len += addhex(&(logfile_data[len]), (unsigned char*)dest, (int) size);
             logfile_data[len++] = '\n';
             logfile_write(len);
         }
+    }
+
+    _stridden += size;
+    return 0;
+}
+
+static int
+synth_readfinish(cyg_nand_device *dev, void * spare, size_t spare_size)
+{
+    CYG_ASSERTC((spare == NULL) || ((spare_size >= 0) && (spare_size <= SPARE_PER_PAGE)));
+    CYG_ASSERTC(_stridden || spare); // No data and no spare probably means an error
+
+    if (spare && (spare_size > 0)) {
+        memcpy(spare, &(image_data[_offset + PAGESIZE]), spare_size);
+    }
+
+#ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
+    if (_lose && spare) {
+        if (_lose_where >= PAGESIZE) {
+            unsigned spare_offset = _lose_where - PAGESIZE;
+            if (spare_offset <= spare_size) {
+                ((unsigned char*)spare)[spare_offset] ^= (1<<_lose_bit);
+                _lose = 0;
+            }
+        }
+    }
+#endif
+
+    if (log_read) {
+        int len = diag_sprintf(logfile_data, "rf t=%d %p %d\n",
+                _stridden, spare, (int)spare_size);
+        logfile_write(len);
+    }
+    if (log_READ) {
         if (spare) {
-            int len = diag_sprintf(logfile_data, "Ro %d %d %d %p %d ",
-                                   number_of_read_calls, number_of_calls, page, spare, (int)spare_size);
+            int len = diag_sprintf(logfile_data, "Rdf %p %d ",
+                    spare, (int)spare_size);
             len += addhex(&(logfile_data[len]), (unsigned char*)spare, (int)spare_size);
             logfile_data[len++] = '\n';
             logfile_write(len);
@@ -1447,121 +1508,154 @@ synth_readpage(cyg_nand_device *dev, cyg_nand_page_addr page, void * dest, size_
 }
 
 static int
-synth_writepage(cyg_nand_device *dev, cyg_nand_page_addr page, const void * src, size_t size, const void * spare, size_t spare_size)
+synth_writebegin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
     int     result  = 0;
-    size_t  offset;
     int     i;
-    int     idx;
-    int     page_gone_bad   = 0;
     int     counter;
-    
     CYG_ASSERTC(image_fd >= 0);
     CYG_ASSERTC(dev != NULL);
     CYG_ASSERTC((page >= 0)     && (page < (PAGES_PER_BLOCK * BLOCK_COUNT)));
-    CYG_ASSERTC((src == NULL)   || ((size >= 0) && (size <= PAGESIZE)));
-    CYG_ASSERTC((spare == NULL) || ((spare_size >= 0) && (spare_size <= SPARE_PER_PAGE)));
-    CYG_ASSERTC(src || spare);
-    
+
     cyg_drv_mutex_lock(&lock);
     number_of_calls         += 1;
     number_of_write_calls   += 1;
-    offset = page * (PAGESIZE + SPARE_PER_PAGE);
+    _offset = page * (PAGESIZE + SPARE_PER_PAGE);
+    _stridden = 0;
+    _writepage = page;
 
     if (log_write) {
-        int len = diag_sprintf(logfile_data, "w %d %d %d %p %d %p %d\n",
-                               number_of_write_calls, number_of_calls, page, src, (int)size, spare, (int)spare_size);
+        int len = diag_sprintf(logfile_data, "wb %d %d %d\n",
+                               number_of_write_calls, number_of_calls, page);
         logfile_write(len);
     }
     if (log_WRITE) {
-        if (src) {
-            int len = diag_sprintf(logfile_data, "Wd %d %d %d %p %d ",
-                                   number_of_write_calls, number_of_calls, page, src, (int)size);
-            len += addhex(&(logfile_data[len]), (unsigned char*)src, (int) size);
-            logfile_data[len++] = '\n';
-            logfile_write(len);
-        }
-        if (spare) {
-            int len = diag_sprintf(logfile_data, "Wo %d %d %d %p %d ",
-                                   number_of_write_calls, number_of_calls, page, spare, (int)spare_size);
-            len += addhex(&(logfile_data[len]), (unsigned char*)spare, (int)spare_size);
-            logfile_data[len++] = '\n';
-            logfile_write(len);
-        }
+        int len = diag_sprintf(logfile_data, "Wb %d %d %d ",
+                number_of_write_calls, number_of_calls, page);
+        logfile_write(len);
     }
 
-    // If we are not actually going to write anything, don't bother with anything else.
-    if ( !src && !spare) {
-        goto done;
-    }
-    
     if (is_page_bad(page)) {
         diag_printf("NAND synth_writepage: attempt to write page %d which is in a block previously marked bad.\n", page);
         result = -EIO;  // Disallow overwrites of a page in a bad block. Arguably this should be permitted.
     }
+
+    // Do we make it bad this time?
+    if (0 == result) _page_going_bad = write_check_injections(page);
+
     // Do not allow multiple writes to a single page, for now.
     if (0 == result) {
         for (i = 0; i < PAGESIZE; i++) {
-            if (0x00FF != image_data[offset + i]) {
+            if (0x00FF != image_data[_offset + i]) {
                 diag_printf("NAND synth_writepage: attempt to write to page %d which is not erased.\n", page);
-                diag_printf("  Value at offset 0x%08x is 0x%02x\n", (int)(offset + i), image_data[offset + i]);
+                diag_printf("  Value at offset 0x%08x is 0x%02x\n", (int)(_offset + i), image_data[_offset + i]);
                 result  = -EIO;
                 break;
             }
         }
     }
+
     if (0 == result) {
         counter                     = CYG_BE32_TO_CPU(image_write_counts[page]);
         counter                    += 1;
         image_write_counts[page]    = CYG_CPU_TO_BE32(counter);
     }
     
-    if (0 == result) {
-        page_gone_bad = write_check_injections(page);
+    if (0 != result) cyg_drv_mutex_unlock(&lock);
+    return result;
+}
 
-        if (src && (size > 0)) {
-            memcpy(&(image_data[offset]), src, size);
-            if (page_gone_bad) {
-                // Fake it so that most of the write has succeeded, but one byte
-                // is stuck at 0xFF. That means looking for a byte in src that
-                // is not 0xFF. A minor improvement would be to affect just one
-                // bit, not all bits.
-                idx = rand() % size;
-                for (i = 0; i < size; i++) {
-                    if (image_data[offset + idx] != 0x00FF) {
-                        image_data[offset + idx] = 0xFF;
-                        page_gone_bad = 0;    // Do not corrupt the OOB data as well.
-                        break;
-                    }
-                    idx = (idx + 1) % size;
+static int
+synth_writestride(cyg_nand_device *dev, const void * src, size_t size)
+{
+    int     idx,i;
+    CYG_ASSERTC((src == NULL)   || ((size >= 0) && (size <= PAGESIZE)));
+
+    if (log_write) {
+        int len = diag_sprintf(logfile_data, "ws %p %d\n",
+                               src, (int)size);
+        logfile_write(len);
+    }
+    if (log_WRITE) {
+        if (src) {
+            int len = diag_sprintf(logfile_data, "Wds %p %d ", src, (int)size);
+            len += addhex(&(logfile_data[len]), (unsigned char*)src, (int) size);
+            logfile_data[len++] = '\n';
+            logfile_write(len);
+        }
+    }
+
+    if (src && (size > 0)) {
+        memcpy(&(image_data[_offset + _stridden]), src, size);
+        if (_page_going_bad) {
+            // Fake it so that most of the write has succeeded, but one byte
+            // is stuck at 0xFF. That means looking for a byte in src that
+            // is not 0xFF. A minor improvement would be to affect just one
+            // bit, not all bits.
+            idx = rand() % size;
+            for (i = 0; i < size; i++) {
+                if (image_data[_offset + _stridden + idx] != 0x00FF) {
+                    image_data[_offset + _stridden + idx] = 0xFF;
+                    _page_going_bad = 0;    // Do not corrupt the OOB data as well.
+                    break;
                 }
+                idx = (idx + 1) % size;
             }
         }
+    }
+    // There is still the possibility where page_gone_bad, but all the data
+    // written was 0xFF. In that scenario all the data in the image is
+    // actually correct but we are still reporting -EIO. Probably not
+    // worth worrying about.
+
+    _stridden += size;
+    return 0;
+}
+
+static int
+synth_writefinish(cyg_nand_device *dev, const void * spare, size_t spare_size)
+{
+    int     result  = 0;
+    int     idx,i;
+    
+    CYG_ASSERTC((spare == NULL) || ((spare_size >= 0) && (spare_size <= SPARE_PER_PAGE)));
+    CYG_ASSERTC(_stridden || spare);
+    
+    if (log_write) {
+        int len = diag_sprintf(logfile_data, "wf %p %d\n",
+                               spare, (int)spare_size);
+        logfile_write(len);
+    }
+    if (log_WRITE) {
+        if (spare) {
+            int len = diag_sprintf(logfile_data, "Wfo %p %d ",
+                                   spare, (int)spare_size);
+            len += addhex(&(logfile_data[len]), (unsigned char*)spare, (int)spare_size);
+            logfile_data[len++] = '\n';
+            logfile_write(len);
+        }
+    }
+
+    if (0 == result) {
         if (spare && (spare_size > 0)) {
-            memcpy(&(image_data[offset + PAGESIZE]), spare, spare_size);
-            if (page_gone_bad) {
+            memcpy(&(image_data[_offset + PAGESIZE]), spare, spare_size);
+            if (_page_going_bad) {
                 idx = rand() % spare_size;
                 for (i = 0; i < spare_size; i++) {
-                    if (image_data[offset + idx] != 0x00FF) {
-                        image_data[offset + PAGESIZE + idx] = 0xFF;
+                    if (image_data[_offset + PAGESIZE + idx] != 0x00FF) {
+                        image_data[_offset + PAGESIZE + idx] = 0xFF;
                         break;
                     }
                     idx = (idx + 1) % spare_size;
                 }
             }
         }
-
-        // There is still the possibility where page_gone_bad, but all the data
-        // written was 0xFF. In that scenario all the data in the image is
-        // actually correct but we are still reporting -EIO. Probably not
-        // worth worrying about.
     }
 
-    if (is_page_bad(page)) {
+    if (is_page_bad(_writepage)) {
         result = -EIO;
     }
     
-done:    
     cyg_drv_mutex_unlock(&lock);
     return result;
 }
@@ -1650,7 +1744,10 @@ synth_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
     return is_bad;
 }
 
-static CYG_NAND_FUNS(nand_synth_funs, synth_devinit, synth_readpage, synth_writepage, synth_eraseblock, synth_factorybad);
+static CYG_NAND_FUNS_V2(nand_synth_funs, synth_devinit,
+        synth_readbegin, synth_readstride, synth_readfinish,
+        synth_writebegin, synth_writestride, synth_writefinish,
+        synth_eraseblock, synth_factorybad);
 
 CYG_NAND_DEVICE(nand_synth, "synth", &nand_synth_funs, NULL, &linux_mtd_ecc, 0);
 

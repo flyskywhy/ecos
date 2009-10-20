@@ -55,6 +55,7 @@ cdl_package CYGPKG_DEVS_NAND_SYNTH {
     requires        CYGINT_ISO_RAND
     requires        CYGINT_ISO_ERRNO_CODES
     requires        CYGINT_ISO_STRING_STRFUNCS
+    requires        { CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 }
 
     description     "
         This package provides support for a synthetic NAND device.
