@@ -373,4 +373,17 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
             script manual_partition.cdl
         }
     }
+
+    cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_TESTS {
+        display "STM3210E tests"
+        flavor  data
+        no_define
+        calculated {
+             ( CYGHWR_HAL_CORTEXM_STM3210E_EVAL_NAND ? "tests/eccwalk "  : "")
+       }
+
+        description   "
+            This option specifies the set of tests for the STM3210E HAL."
+   }
+
 }

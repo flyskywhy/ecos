@@ -263,7 +263,8 @@ static int nandxxxx3a_plf_init(cyg_nand_device *dev)
           CYGHWR_HAL_STM32_FSMC_PCR_PTYP_NAND |
           CYGHWR_HAL_STM32_FSMC_PCR_PWID_8 |
           CYGHWR_HAL_STM32_FSMC_PCR_TCLR(0) |
-          CYGHWR_HAL_STM32_FSMC_PCR_TAR(0);
+          CYGHWR_HAL_STM32_FSMC_PCR_TAR(0) |
+          CYGHWR_HAL_STM32_FSMC_PCR_ECCPS_512;
     HAL_WRITE_UINT32(base + CYGHWR_HAL_STM32_FSMC_PCR2, reg);
     reg |= CYGHWR_HAL_STM32_FSMC_PCR_PBKEN;
     HAL_WRITE_UINT32(base + CYGHWR_HAL_STM32_FSMC_PCR2, reg);
@@ -341,9 +342,124 @@ static inline void nandxxxx3a_devunlock(cyg_nand_device *dev)
 {
 }
 
+/* Hardware ECC ======================================================== */
+// TODO This could live in the variant HAL?
+
+static void stm3210e_ecc_init(cyg_nand_device *dev)
+{
+    cyg_uint32 cur;
+    CYG_ADDRWORD reg = CYGHWR_HAL_STM32_FSMC + CYGHWR_HAL_STM32_FSMC_PCR2;
+
+    HAL_READ_UINT32(reg, cur);
+    cur |= CYGHWR_HAL_STM32_FSMC_PCR_ECCEN;
+    HAL_WRITE_UINT32(reg, cur);
+}
+
+static void stm3210e_ecc_calc(cyg_nand_device *dev, const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc)
+{
+    cyg_uint32 code,set;
+    CYG_ADDRWORD eccr= CYGHWR_HAL_STM32_FSMC + CYGHWR_HAL_STM32_FSMC_ECCR2,
+                 ctrr= CYGHWR_HAL_STM32_FSMC + CYGHWR_HAL_STM32_FSMC_PCR2;
+    HAL_READ_UINT32(eccr, code);
+    code = ~code; // So an all-0xFF page has an ECC of 0xFF
+
+    ecc[0] = code & 0xFF;
+    ecc[1] = (code >> 8) & 0xFF;
+    ecc[2] = (code >>16) & 0xFF;
+    // The resultant ordering is therefore:
+    // byte 0: P8, P4, P2, P1 pairs (P1 at LSB)
+    // byte 1: P128, P64, P32, P16
+    // byte 2: P2048, P1024, P512, P256
+
+    HAL_READ_UINT32(ctrr, set);
+    set &= ~CYGHWR_HAL_STM32_FSMC_PCR_ECCEN;
+    HAL_WRITE_UINT32(ctrr, set);
+}
+
+static int stm3210e_ecc_repair(cyg_nand_device *dev,
+                            CYG_BYTE *dat, size_t nbytes,
+                            CYG_BYTE *read_ecc, const CYG_BYTE *calc_ecc)
+{
+    unsigned d1, d2, d3;
+
+    d1 = calc_ecc[0] ^ read_ecc[0];
+    d2 = calc_ecc[1] ^ read_ecc[1];
+    d3 = calc_ecc[2] ^ read_ecc[2];
+
+    if((d1|d2|d3) == 0)
+        return 0; // Nothing to do.
+
+    // Can we fix it? 12 bits should be set, and as they're stored
+    // in adjacent pairs within each byte we can use this neat XOR
+    // trick to make sure that precisely one bit of each pair is set.
+    unsigned a, b, c;
+    a = (d1 ^ (d1 >> 1)) & 0x55;
+    b = (d2 ^ (d2 >> 1)) & 0x55;
+    c = (d3 ^ (d3 >> 1)) & 0x55;
+
+    if ((a==b)&&(b==c)&&(c==0x55)) {
+        // Yes we can ! Figure out the offset.
+        unsigned byte, bit; 
+
+        bit = ( (d1 >> 1) & 1) |        // P1
+              ( (d1 >> 2) & 2) |        // P2
+              ( (d1 >> 3) & 4);         // and P4.
+
+        byte = ( (d1 >> 7) & 1) |       // P8
+               ( (d2 >> 0) & 2) |       // P16
+               ( (d2 >> 1) & 4) |       // P32
+               ( (d2 >> 2) & 8) |       // P64
+               ( (d2 >> 3) &16) |       // P128
+               ( (d3 << 4) &32) |       // P256
+               ( (d3 << 3) &64) |       // P512
+               ( (d3 << 2)&128) |       // P1024
+               ( (d3 << 1)&256);        // P2048
+
+        if (byte < nbytes)
+            dat[byte] ^= (1<<bit);
+
+        return 1;
+    }
+
+    // No? Is it an ECC dropout? Count the bits...
+    unsigned i=0;
+    while (d1) {
+        if (d1 & 1) ++i;
+        d1 >>= 1;
+    }
+    while (d2) {
+        if (d2 & 1) ++i;
+        d2 >>= 1;
+    }
+    while (d3) {
+        if (d3 & 1) ++i;
+        d3 >>= 1;
+    }
+    if (i==1) {
+        read_ecc[0] = calc_ecc[0];
+        read_ecc[1] = calc_ecc[1];
+        read_ecc[2] = calc_ecc[2];
+        return 2;
+    }
+    // Alas, it is uncorrectable.
+    return -1;
+}
+
+static CYG_NAND_ECC_ALG_HW(stm3210e_ecc, 512, 3, stm3210e_ecc_init, stm3210e_ecc_calc, stm3210e_ecc_repair);
+
+// Need to use a slightly modified OOB layout to satisfy nand_lookup's paranoia checks
+static const cyg_nand_oob_layout stm3210e_oob = {
+    .ecc_size = 3,
+    .ecc = { { .pos=0, .len=3 } },
+    /* 3, 6, 7 would be ECC in the Linux MTD world. 4/5 are avoided. */
+    .app_size = 8,
+    .app = { { .pos=3, .len=1 }, { .pos=6, .len=10} },
+};
+
 /* Putting it all together ... ========================================= */
 
 #include <cyg/devs/nand/nandxxxx3a.inl>
 
 NANDXXXX3A_DEVICE(stm3210e_nand, "onboard", 512, &_stm3210_nand_priv,
-                  &linux_mtd_ecc, &nand_mtd_oob_16);
+                  &stm3210e_ecc, &stm3210e_oob);
+

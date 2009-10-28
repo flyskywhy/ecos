@@ -1,7 +1,9 @@
-2009-10-23  Ross Younger  <wry@ecoscentric.com>
+2009-10-26  Ross Younger  <wry@ecoscentric.com>
 
-	* src/stm3210e_eval_nand.c: Add a nop to work around an apparent
-	timing issue in the NAND-specific FSMC setup.
+	* src/stm3210e_eval_nand.c: Implement hardware ECC.
+	Create eccwalk test to test it.
+	Add a nop to work around an apparent timing issue in the
+	NAND-specific FSMC setup when optimised.
 
 2009-08-26  Ross Younger  <wry@ecoscentric.com>
 
