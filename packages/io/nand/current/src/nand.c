@@ -109,7 +109,10 @@ __externC void cyg_nand_initx(cyg_nand_printf pf)
 {
     if (pf) CYG_CHECK_FUNC_PTRC(pf);
     cyg_drv_mutex_init(&devinit_lock);
+#ifdef CYGSEM_IO_NAND_USE_BBT
+    // XXX XYZY Move me to a cons in nand_bbt !
     cyg_drv_mutex_init(&nand_bbt_pagebuf_lock);
+#endif
     nand_default_pf = pf;
 }
 
@@ -207,6 +210,7 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
 
             // NOW we are ready to read from the device !
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
             rv = cyg_nand_bbti_find_tables(dev);
             if (rv == -ENOENT) {
                 NAND_CHATTER(1,dev, "Creating initial bad block table on device %s\n", devname);
@@ -216,6 +220,7 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
                 NAND_ERROR(dev,"Cannot find or build BBT (%d)\n", -rv);
                 goto done;
             }
+#endif
 
             cyg_drv_mutex_init(&dev->devlock);
             dev->is_inited = 1;
@@ -271,11 +276,13 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
 
     EG(valid_page_addr(prt, page));
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
     cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev,page);
     if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
         NAND_CHATTER(1,dev,"Asked to read page %u in bad block %u\n", page, blk);
         EG(-EINVAL);
     }
+#endif
 
     EG(nandi_read_page_raw(dev, page, dest, size, spare, spare_size));
 
@@ -435,11 +442,13 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
 
     EG(valid_page_addr(prt, page));
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
     cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev,page);
     if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
         NAND_CHATTER(1,dev,"Asked to write page %u in bad block %u\n", page, blk);
         EG(-EINVAL);
     }
+#endif
     EG(nandi_write_page_raw(dev, page, src, size, spare, spare_size));
 
 err_exit:
@@ -546,14 +555,18 @@ int cyg_nand_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr blk)
     LOCK_DEV(dev);
 
     EG(valid_block_addr(prt, blk));
+#ifdef CYGSEM_IO_NAND_USE_BBT
     if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
         NAND_CHATTER(1,dev,"Asked to erase bad block %u\n", blk);
         EG(-EINVAL);
     }
+#endif
     NAND_CHATTER(8,dev,"Erasing block %u\n", blk);
     rv = dev->fns->erase_block(dev, blk);
     if (rv==-EIO) {
+#ifdef CYGSEM_IO_NAND_USE_BBT
         cyg_nand_bbti_markbad(dev, blk); // deliberate ignore
+#endif
         EG(rv);
     }
 err_exit:
@@ -565,6 +578,7 @@ err_exit:
 __externC
 int cyg_nand_bbt_query(cyg_nand_partition *prt, cyg_nand_block_addr blk)
 {
+#ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
@@ -575,11 +589,15 @@ int cyg_nand_bbt_query(cyg_nand_partition *prt, cyg_nand_block_addr blk)
 err_exit:
     UNLOCK_DEV(dev);
     return rv;
+#else
+    return -ENOSYS;
+#endif
 }
 
 __externC
 int cyg_nand_bbt_markbad(cyg_nand_partition *prt, cyg_nand_block_addr blk)
 {
+#ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
@@ -590,11 +608,15 @@ int cyg_nand_bbt_markbad(cyg_nand_partition *prt, cyg_nand_block_addr blk)
 err_exit:
     UNLOCK_DEV(dev);
     return rv;
+#else
+    return -ENOSYS;
+#endif
 }
 
 __externC
 int cyg_nand_bbt_markbad_pageaddr(cyg_nand_partition *prt, cyg_nand_page_addr pg)
 {
+#ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
@@ -606,6 +628,9 @@ int cyg_nand_bbt_markbad_pageaddr(cyg_nand_partition *prt, cyg_nand_page_addr pg
 err_exit:
     UNLOCK_DEV(dev);
     return rv;
+#else
+    return -ENOSYS;
+#endif
 }
 
 /* Computes the ECC for a whole device page.

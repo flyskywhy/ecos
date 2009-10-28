@@ -1,3 +1,8 @@
+2009-10-27  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.cdl, nand.c, nand_bbt.[ch]: CYGSEM_IO_NAND_USE_BBT
+	implemented (default on).  Updated tests and utils to suit.
+
 2009-10-08  Ross Younger  <wry@eCosCentric.com>
 
 	* nand_ecc.h, nand.c, nand_ecc_mtd.c: Expand ECC interface

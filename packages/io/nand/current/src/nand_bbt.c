@@ -59,6 +59,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
+
 #ifndef CYGSEM_IO_NAND_READONLY
 static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
 #endif
@@ -443,7 +445,7 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
     rv = bbti_incorporate_one(dev, dev->bbt.primary);
     int rv2 = bbti_incorporate_one(dev, dev->bbt.mirror);
     if ( (rv < 0) && (rv2 < 0) ) {
-        NAND_ERROR(dev, "No BBT usable - disabling device");
+        NAND_ERROR(dev, "No BBT usable - disabling device\n");
         EG(-EIO);
     }
 
@@ -647,3 +649,4 @@ top:
 }
 #endif
 
+#endif

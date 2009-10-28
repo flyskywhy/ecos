@@ -116,8 +116,12 @@ int cyg_user_start(void)
     /* Check we can read the last page of the partition (allowing for
      * the BBT perhaps getting in the way) */
     cyg_nand_block_addr blk = prt->last;
+#ifdef CYGSEM_IO_NAND_USE_BBT
     while (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK)
         blk--;
+#else
+    CYG_TEST_INFO("Caution, CYGSEM_IO_NAND_USE_BBT disabled - this may go wrong if we hit a bad block.");
+#endif
     pg = CYG_NAND_BLOCK2PAGEADDR(dev, blk+1) - 1;
     TRYREAD(prt, pg, 1);
 

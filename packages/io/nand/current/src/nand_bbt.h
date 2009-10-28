@@ -60,6 +60,7 @@
  */
 
 /* Bad block table =================================================== */
+#ifdef CYGSEM_IO_NAND_USE_BBT
 
 /* On-chip values (in a 2-bit wide field).
  * Each byte on-chip maps its _least_ significant bits to the _first_
@@ -111,6 +112,7 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev);
  * offsets of the signature and version byte within the OOB area of the
  * first page of the eraseblock.
  */
+#endif
 
 /* Raw unchecked NAND access, for use by the BBT ===================== */
 

@@ -163,6 +163,17 @@ cdl_package CYGPKG_IO_NAND {
 			writes to NAND devices."
 	}
 
+	cdl_option CYGSEM_IO_NAND_USE_BBT {
+		display			"NAND layer uses bad-block tables"
+		flavor			bool
+		default_value	1
+		description		"
+            Select this option to instruct the NAND library to use
+            a Bad Block Table to keep track of blocks marked bad
+            at the factory and any bad blocks which may develop during
+            the life of the device.  This is strongly recommended."
+	}
+
     cdl_option CYGNUM_NAND_PAGEBUFFER {
         display         "Largest page size to support"
         flavor          data

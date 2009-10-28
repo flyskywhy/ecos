@@ -64,12 +64,11 @@
 #define DEVICE "onboard"
 #define PARTITION 0
 
-int main(void)
+void cyg_user_start(void)
 {
     cyg_nand_device *dev;
     cyg_nand_partition *prt;
     cyg_nand_block_addr blk;
-    cyg_nand_page_addr pg;
     int rv;
 
     cyg_nand_lookup(DEVICE, &dev);
@@ -82,10 +81,14 @@ int main(void)
     int progmod = (prt->last - prt->first + 1) / 73 + 1;
 
     for (blk=prt->first; blk < prt->last; blk++) {
+#ifdef CYGSEM_IO_NAND_USE_BBT
         int st = cyg_nand_bbt_query(prt, blk);
         if (st<0) {
             diag_printf("Block %d BBTI error %d\n", blk, -st);
         }
+#else
+        int st = 0;
+#endif
         const char *msg = 0;
         switch(st) {
             case CYG_NAND_BBT_OK:
@@ -109,7 +112,5 @@ int main(void)
             diag_printf(".");
     }
     diag_printf("\nErase complete.\n");
-
-    return 0;
 }
 

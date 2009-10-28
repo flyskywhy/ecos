@@ -51,18 +51,20 @@
 
 #include <cyg/nand/nand.h>
 #include <cyg/infra/diag.h>
+#include <cyg/infra/testcase.h>
 #include <stdio.h>
 
 /* Utility code to erase the BBT on a device.
  * This is DANGEROUS, do not run unless you understand the consequences!
  */
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
 void rawerase(cyg_nand_device *dev, cyg_nand_block_addr blk)
 {
-    printf("Erasing block %d on %s\n", blk, dev->devname);
+    diag_printf("Erasing block %d on %s\n", blk, dev->devname);
     int rv = dev->fns->erase_block(dev, blk);
     if (rv != 0) {
-        printf("Error erasing: %s (%d)\n", strerror(-rv), rv);
+        diag_printf("Error erasing: %s (%d)\n", strerror(-rv), rv);
     }
 }
 
@@ -77,4 +79,11 @@ int main(void)
     diag_printf("BBT should now be erased.\n");
     return 0;
 }
+
+#else
+void cyg_user_start(void)
+{
+    diag_printf("This utility doesn't make sense unless the BBT is enabled.\n");
+}
+#endif
 
