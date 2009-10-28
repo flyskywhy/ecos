@@ -82,15 +82,6 @@ static struct _mypriv _stm3210_nand_priv;
 # define GPIO_NAND_RB_PIN CYGHWR_HAL_STM32_GPIO(D, 6, IN, PULLUP) // if JP7 1-2
 #endif
 
-static inline void tweak_pin_register(CYG_ADDRWORD reg, cyg_uint32 clearbits, cyg_uint32 setbits)
-{
-    cyg_uint32 val;
-    HAL_READ_UINT32(reg, val);
-    val &= ~clearbits;
-    val |= setbits;
-    HAL_WRITE_UINT32(reg, val);
-}
-
 /* CHIP OPERATIONS ================================================= */
 
 /* On this board, the memory controller is well set up, so we don't need
@@ -210,11 +201,6 @@ static void wait_ready_polled(cyg_nand_device *ctx)
 {
     int polls=0;
     GET_MYPRIV(ctx, priv);
-    // Clear the flag:
-    tweak_pin_register(
-            CYGHWR_HAL_STM32_FSMC + CYGHWR_HAL_STM32_FSMC_SR2,
-            CYGHWR_HAL_STM32_FSMC_SR_IRS, 0);
-    st_nand_wait_for_BUSY();
     while (0==is_chip_ready(priv)) {
         HAL_DELAY_US(POLL_INTERVAL);
         ++polls;
@@ -281,6 +267,14 @@ static int nandxxxx3a_plf_init(cyg_nand_device *dev)
     HAL_WRITE_UINT32(base + CYGHWR_HAL_STM32_FSMC_PCR2, reg);
     reg |= CYGHWR_HAL_STM32_FSMC_PCR_PBKEN;
     HAL_WRITE_UINT32(base + CYGHWR_HAL_STM32_FSMC_PCR2, reg);
+
+    /* Having just twiddled the FSMC, if we immediately try to talk to
+     * the NAND we sometimes (pretty reliably via certain code paths
+     * when compiled with -O2, it seems) die with a SIGBUS.
+     * This seemingly ineffectual talisman (which, incidentally,
+     * first manifested itself as "volatile int i = 42;" is all that's
+     * needed to perturb it away. */
+    asm("nop");
 
 #ifdef INITHOOK
     INITHOOK(dev);
