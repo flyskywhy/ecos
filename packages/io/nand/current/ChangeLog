@@ -4,6 +4,8 @@
 	implemented (default on).  Updated tests and utils to suit.
 	* nand.cdl: Add convenience options to build the utils as well
 	as the tests.
+	* tests/sweccwalk.c: Created (software ECC bit-walker and repair
+	consistency checks)
 
 2009-10-08  Ross Younger  <wry@eCosCentric.com>
 

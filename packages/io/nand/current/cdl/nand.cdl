@@ -249,7 +249,7 @@ cdl_package CYGPKG_IO_NAND {
 		flavor data
 		no_define
 		calculated { "tests/nandunit tests/readlimits tests/readwrite"
-                     . " tests/rwbenchmark"
+                     . " tests/rwbenchmark tests/sweccwalk"
                      . (CYGBLD_IO_NAND_BUILD_UTILS ? CYGBLD_IO_NAND_UTILS : "")
         }
 		description "This special option specifies the set of NAND
