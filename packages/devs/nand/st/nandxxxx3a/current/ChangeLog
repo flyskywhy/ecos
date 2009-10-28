@@ -1,3 +1,7 @@
+2009-10-19  Ross Younger  <wry@ecoscentric.com>
+
+	* Update to driver v2. Require CYGSEM_IO_NAND_INTERFACE_VERSION >= 2.
+
 2009-08-11  Ross Younger  <wry@ecoscentric.com>
 
 	* Improve driver timings, sundry tidyups

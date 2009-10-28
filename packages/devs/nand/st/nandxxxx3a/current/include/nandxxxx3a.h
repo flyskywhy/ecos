@@ -67,6 +67,8 @@ struct nandxxxx3a_priv {
     void *plat_priv; // For use by the platform HAL, if desired.
     int mbit;
     unsigned char *bbt_data;
+    cyg_nand_page_addr pageop; // Protected by device lock
+    size_t written; // Protected by device lock
 };
 
 // Macro to instantiate a ST NANDxxxx3A device

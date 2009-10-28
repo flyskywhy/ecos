@@ -62,4 +62,5 @@ cdl_package CYGPKG_DEVS_NAND_ST_NANDXXXX3A {
         in and properly configure it to talk to the hardware present."
     # This is a 512 byte page device.
     requires        ( CYGNUM_NAND_PAGEBUFFER >= 512 )
+    requires        ( CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 )
 }

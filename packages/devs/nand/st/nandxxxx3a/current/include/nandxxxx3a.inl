@@ -182,23 +182,34 @@ err_exit:
 #undef ER
 
 
-static int nandxxxx3a_read_page(cyg_nand_device *dev, cyg_nand_page_addr page,
-                    void *dest, size_t size, void *spare, size_t spare_size)
+static int nandxxxx3a_read_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
-    //struct nandxxxx3a_priv *priv = dev->priv;
-
+    struct nandxxxx3a_priv *priv = dev->priv;
     NAND_CHATTER(7, dev, "Reading page %d\n",page);
     LOCK(dev);
-    
-    if (dest && size) {
-        write_cmd(dev, 0x00);
-        write_addr(dev, page, 0);
-        wait_ready_or_time(dev, 1, 12);
+    priv->pageop = page;
+
+    write_cmd(dev, 0x00);
+    write_addr(dev, priv->pageop, 0);
+    wait_ready_or_time(dev, 1, 12);
+    return 0;
+}
+
+static int nandxxxx3a_read_stride(cyg_nand_device *dev, void *dest, size_t size)
+{
+    //struct nandxxxx3a_priv *priv = dev->priv;
+    if (dest && size)
         read_data_bulk(dev, dest, size);
-    }
+    return 0;
+}
+
+static int nandxxxx3a_read_finish(cyg_nand_device *dev,
+                                  void *spare, size_t spare_size)
+{
+    struct nandxxxx3a_priv *priv = dev->priv;
     if (spare && spare_size) {
         write_cmd(dev, 0x50);
-        write_addr(dev, page, 0);
+        write_addr(dev, priv->pageop, 0);
         wait_ready_or_time(dev, 1, 12);
         read_data_bulk(dev, spare, spare_size);
     }
@@ -207,29 +218,47 @@ static int nandxxxx3a_read_page(cyg_nand_device *dev, cyg_nand_page_addr page,
     return 0;
 }
 
-static int nandxxxx3a_write_page(cyg_nand_device *dev, cyg_nand_page_addr page,
-    const void *src, size_t size, const void *spare, size_t spare_size)
+static int nandxxxx3a_write_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
-    //struct nandxxxx3a_priv *priv = dev->priv;
+    struct nandxxxx3a_priv *priv = dev->priv;
+    LOCK(dev);
+    priv->pageop = page;
+    priv->written = 0;
+
+    write_cmd(dev, 0x00);
+    write_cmd(dev, 0x80);
+    write_addr(dev, page, 0);
+    return 0;
+}
+
+static int nandxxxx3a_write_stride(cyg_nand_device *dev,
+                                   const void *src, size_t size)
+{
+    struct nandxxxx3a_priv *priv = dev->priv;
+    if (src && size) {
+        write_data_bulk(dev, src, size);
+        priv->written += size;
+    }
+    return 0;
+}
+
+static int nandxxxx3a_write_finish(cyg_nand_device *dev, 
+                                   const void *spare, size_t spare_size)
+{
+    struct nandxxxx3a_priv *priv = dev->priv;
     int rv = 0;
 
-    LOCK(dev);
-    
-    if (src && size) {
-        write_cmd(dev, 0x00);
-        write_cmd(dev, 0x80);
-        write_addr(dev, page, 0);
-        write_data_bulk(dev, src, size);
+    if (priv->written) {
         write_cmd(dev, 0x10);
         wait_ready_or_status(dev, 1 << 6);
+        if (read_status(dev) & 1)
+            goto fail;
     }
-    if (read_status(dev) & 1)
-        goto fail;
 
     if (spare && spare_size) {
         write_cmd(dev, 0x50);
         write_cmd(dev, 0x80);
-        write_addr(dev, page, 0);
+        write_addr(dev, priv->pageop, 0);
         write_data_bulk(dev, spare, spare_size);
         write_cmd(dev, 0x10);
         wait_ready_or_status(dev, 1 << 6);
@@ -237,11 +266,11 @@ static int nandxxxx3a_write_page(cyg_nand_device *dev, cyg_nand_page_addr page,
     
     if (read_status(dev) & 1) {
 fail:
-        NAND_ERROR(dev, "NAND: Programming failed! Page %u, %u bytes, %u spare", page, size, spare_size);
+        NAND_ERROR(dev, "NAND: Programming page %u failed!", priv->pageop);
         rv = -EIO;
         goto done;
     } else {
-        NAND_CHATTER(7, dev, "Programmed %u OK\n", page);
+        NAND_CHATTER(7, dev, "Programmed %u OK\n", priv->pageop);
     }
 
 done:
@@ -303,6 +332,9 @@ static int nandxxxx3a_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
     return rv;
 }
 
-CYG_NAND_FUNS(nandxxxx3a_funs, nandxxxx3a_devinit, nandxxxx3a_read_page,
-              nandxxxx3a_write_page, nandxxxx3a_erase_block,
-              nandxxxx3a_factorybad);
+CYG_NAND_FUNS_V2(nandxxxx3a_funs, nandxxxx3a_devinit,
+                 nandxxxx3a_read_begin, nandxxxx3a_read_stride,
+                 nandxxxx3a_read_finish, nandxxxx3a_write_begin,
+                 nandxxxx3a_write_stride, nandxxxx3a_write_finish,
+                 nandxxxx3a_erase_block,
+                 nandxxxx3a_factorybad);
