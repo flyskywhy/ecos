@@ -8,6 +8,8 @@
 	consistency checks)
 	* nand.sgml: Updated for the above. Documented ECC algorithm
 	interface.
+	* tests/rwbenchmark.c: Have rwbenchmark use randomised test data
+	and check its work for better validity.
 
 2009-10-08  Ross Younger  <wry@eCosCentric.com>
 

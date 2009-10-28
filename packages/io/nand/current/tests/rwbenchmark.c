@@ -80,6 +80,13 @@ void cyg_user_start(void)
 
 #include <cyg/kernel/kapi.h>
 
+#include "ar4prng.inl"
+ar4ctx rnd;
+/* we'll use our text segment as seed to the prng; not crypto-secure but
+ * pretty good for running tests */
+extern unsigned char _stext[], _etext[];
+
+
 #ifdef CYGPKG_DEVS_NAND_SYNTH
 #define DEVICE "synth"
 #else
@@ -327,41 +334,60 @@ next:
     CYG_TEST_FAIL_EXIT("can't find an untagged block");
 }
 
-unsigned char pagebuffer[CYGNUM_NAND_PAGEBUFFER];
+CYG_BYTE databuf[CYGNUM_NAND_PAGEBUFFER], testbuf[CYGNUM_NAND_PAGEBUFFER];
 timing ft_read[NREADS];
 timing ft_write[NWRITES];
 timing ft_erase[NERASES];
 
-static void check_ff(const CYG_BYTE * buf, size_t size)
-{
-    while (size--) {
-        if (*buf != 0xFF) {
-            CYG_TEST_FAIL("readback check failed");
-        }
-    }
-}
+int fails = 0;
 
 void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
 {
     cyg_nand_page_addr pgstart = CYG_NAND_BLOCK2PAGEADDR(part->dev, b),
                        pgend = CYG_NAND_BLOCK2PAGEADDR(part->dev, b+1)-1,
                        pg = pgstart;
-    int i;
+    int i, rv;
     const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
 #define ft ft_read
 
-    // TODO: Rather than reading 0xff, read back a test pattern that we've just put in there.
-#define CLEARDATA() memset(pagebuffer, 0, sizeof pagebuffer)
-#define CHECKDATA() check_ff(pagebuffer, sizeof pagebuffer)
+    /* First, set up the block the way we want it ... */
+    cyg_nand_erase_block(part, b);
+    memcpy(oob, databuf, oobz);
+    for (i=pgstart; i <= pgend; i++) {
+        rv = cyg_nand_write_page(part, i, databuf, sizeof databuf, oob, oobz);
+        switch (rv) {
+            case 0: break;
+            case -EIO:
+                    cyg_nand_bbt_markbad(part, b);
+                    CYG_TEST_FAIL_FINISH("Write failed; block now marked as bad. This run can't continue but should be OK to repeat.");
+
+            default:
+                    diag_printf("Unexpected write failure: %d\n", rv);
+                    CYG_TEST_FAIL_FINISH("Pre-write failed");
+        }
+    }
+
+#define CLEARDATA() memset(testbuf, 0, sizeof testbuf)
+#define CHECKDATA() do { if (0 != memcmp(testbuf, databuf, sizeof testbuf)) { \
+    CYG_TEST_FAIL("readback check failed");                                   \
+    ++fails;                                                                  \
+    break;                                                                    \
+} } while(0)
+
 #define CLEAROOB() memset(oob, 0, oobz)
-#define CHECKOOB() check_ff(oob, oobz)
+#define CHECKOOB() do { if (0 != memcmp(oob, databuf, oobz)) {  \
+    CYG_TEST_FAIL("readback OOB check failed");                 \
+    ++fails;                                                    \
+    break;                                                      \
+} } while(0)
+
 
     for (i=0; i < NREADS; i++) {
         CLEARDATA();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, pagebuffer, sizeof pagebuffer, 0, 0);
+        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, 0, 0);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         ++pg;
@@ -386,13 +412,14 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, pagebuffer, sizeof pagebuffer, oob, oobz);
+        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         CHECKOOB();
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
+    cyg_nand_erase_block(part, b);
     show_times(ft, NREADS, "NAND page reads (page + OOB)");
 #undef ft
 }
@@ -408,14 +435,20 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
     unsigned char oob[oobz];
 #define ft ft_write
 
-    memset(pagebuffer, 0xFF, sizeof pagebuffer);
-    memset(oob, 0xFF, oobz);
-
+    cyg_nand_erase_block(part, b);
     for (i=0; i < NWRITES; i++) {
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_write_page(part, pg, pagebuffer, sizeof pagebuffer, oob, oobz);
+        cyg_nand_write_page(part, pg, databuf, sizeof databuf, databuf, oobz);
         get_timestamp(&ft[i].end);
+
+        // Read it back to confirm
+        CLEARDATA();
+        CLEAROOB();
+        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
+        CHECKDATA();
+        CHECKOOB();
+
         ++pg;
         if (pg > pgend) {
             cyg_nand_erase_block(part, b);
@@ -438,6 +471,32 @@ void test_erases(cyg_nand_partition *part, cyg_nand_block_addr b)
         get_timestamp(&ft[i].start);
         cyg_nand_erase_block(part, b);
         get_timestamp(&ft[i].end);
+
+        if (i==0) {
+            cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(part->dev, b);
+            const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
+            unsigned char oob[oobz];
+            int j;
+            // TODO: It only makes sense to check the one, unless we want 
+            // to try writing out more dummy data each time.
+            CLEARDATA();
+            CLEAROOB();
+            cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
+            for (j=0; j < sizeof testbuf; j++) {
+                if (testbuf[j] != 0xff) {
+                    CYG_TEST_FAIL("readback check failed");
+                    ++fails;
+                    break;
+                }
+            }
+            for (j=0; j < oobz; j++) {
+                if (oob[j] != 0xff) {
+                    CYG_TEST_FAIL("readback OOB check failed");
+                    ++fails;
+                    break;
+                }
+            }
+        }
     }
     show_times(ft, NERASES, "NAND block erases");
 #undef ft
@@ -464,9 +523,13 @@ void rwbenchmark_main(void)
     show_test_parameters();
     show_times_hdr();
 
-    cyg_nand_erase_block(part, block);
+    // TODO: For speed, refactor test_reads and test_writes into each other.
     test_reads(part, block);
+
+    // Freshen our test data for the second phase
+    ar4prng_many(&rnd, databuf, sizeof databuf);
     test_writes(part,block);
+
     test_erases(part,block);
 
 }
@@ -475,12 +538,21 @@ int main(void)
 {
     CYG_TEST_INIT();
     init_timing();
+
+    ar4prng_init(&rnd,_stext, _etext-_stext);
+    ar4prng_many(&rnd, databuf, sizeof databuf);
+
+
 #if defined(CYGVAR_KERNEL_COUNTERS_CLOCK_LATENCY) || defined(CYGVAR_KERNEL_COUNTERS_CLOCK_DSR_LATENCY)
     CYG_TEST_INFO("WARNING: Clock or DSR latency instrumentation can mess with the results, recommend you turn it off.");
 #endif
 
 
     rwbenchmark_main();
+
+    if (fails)
+        CYG_TEST_FAIL_FINISH("something went wrong, THESE RESULTS ARE INVALID");
+
     CYG_TEST_EXIT("Run complete");
 }
 
