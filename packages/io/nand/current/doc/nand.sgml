@@ -279,6 +279,14 @@ This may be useful during driver development.</para></listitem></varlistentry>
 <listitem><para>Sets a compile-time limit on the number of partitions 
 any NAND device may have. The default is 4, which should be enough for
 most purposes; unnecessarily setting this higher wastes RAM.</para></listitem></varlistentry>
+<varlistentry><term><constant>CYGSEM_IO_NAND_USE_BBT</constant></term>
+<listitem><para>Globally enables and disables the use of Bad Block Table.
+ <warning><para>This setting should not be disabled lightly!
+ It is strongly recommended that you leave this setting enabled unless
+ you have a very good reason to not use it. It is provided really as a 
+ convenience for allowing developers to recover their NAND from a
+ confused state.  </para></warning>
+</para></listitem></varlistentry>
 </variablelist>
 </sect1>
 
@@ -1023,9 +1031,12 @@ CYG_NAND_DEVICE(my_nand, "onboard", &amp;mydev_funs, &amp;my_priv_struct, &amp;l
 normally set up by the CYG_NAND_FUNS macro;</para></listitem>
 <listitem><para>the <structfield>priv</structfield> member to include
 in the struct;</para></listitem>
-<listitem><para>a pointer to the ECC semantics block to use (see
-<filename>nand_ecc.h</filename> - at the time of writing, only
-linux_mtd_ecc is defined);</para></listitem>
+<listitem><para>a pointer to the ECC semantics block to use.
+<filename>linux_mtd_ecc</filename> provides software ECC compatible
+with the Linux MTD layer, but it is strongly recommended to use
+onboard hardware ecc support if this is present as it gives a huge
+speed boost. See <xref linkend="nand-ecc"> for more details.
+</para></listitem>
 <listitem><para>a pointer to the OOB-area layout descriptor to use (see
 <filename>nand_oob.h</filename> : nand_mtd_oob_16 and nand_mtd_oob_64
 are Linux-compatible layouts for devices with 16 and 64 bytes of spare
@@ -1039,6 +1050,148 @@ find them.</para>
 </sect2>
 
 </sect1>
+
+<sect1 id="nand-ecc"><title>ECC implementation</title>
+
+<para>
+The use of ECC is strongly recommended with NAND flash parts owing to their
+tendency to occasionally bit-flip. This is usually done with a variant of 
+a Hamming code which calculates column and line parity.
+The computed ECC is stored in the spare area of the page to which it relates.
+</para>
+
+<para>
+The NAND library automatically computes and stores the ECC of data as it
+is written to the chip. On read, the code is calculated for the data
+actually read; this is compared with the stored code and the data
+repaired if necessary.
+</para>
+
+<para>
+The NAND library comes with a software ECC implementation named 
+<filename>linux_mtd_ecc</filename>. This is compatible with the
+ECC used in the Linux MTD layer, hence its name. It calculates
+a 3-byte ECC on a 256-byte data block.
+This algorithm is adequate for most circumstances, but it is
+strongly recommended to use any hardware ECC support which may
+be available because of the performance gains it yields.
+(In testing, we observed that up to two thirds of the time
+taken by every page read and program call was used in computing
+ECC in software.)
+
+</para>
+
+<sect2 id="nand-ecc-interface"><title>The ECC interface</title>
+<para>
+This library draws a semantic distinction between
+<emphasis>hardware</emphasis> and
+<emphasis>software</emphasis>
+ECC implementations.
+</para>
+
+<itemizedlist>
+<listitem><para>
+A software ECC implementation will typically not require an
+initialisation step. The calculation function will always be
+called with a pointer to the data bytes to compute.
+</para></listitem>
+<listitem><para>
+A hardware implementation is assumed to read and act upon the data
+<emphasis>as it goes past</emphasis>.
+Therefore, it will not be passed a pointer to the data 
+when its <filename>calculate</filename> step is invoked.
+</para></listitem>
+</itemizedlist>
+
+<para>
+An ECC is defined by the following parameters:
+<itemizedlist>
+<listitem><para>The size of data block it handles, in bytes.
+</para></listitem>
+<listitem><para>The size of ECC it calculates on those blocks, in bytes.
+</para></listitem>
+<listitem><para>Whether the algorithm is hardware or software.
+</para></listitem>
+</itemizedlist>
+</para>
+
+<para>An ECC algorithm must provide the following functions:
+</para>
+
+<programlisting>
+/* Initialises an ECC computation. May be NULL if not required. */
+void my_ecc_init(struct _cyg_nand_device_t *dev);
+
+
+/* Returns the ECC for the given data block.
+ * If IS_HARDWARE:
+ *  - dat and nbytes are ignored
+ * If ! IS_HARDWARE:
+ *  - dat and nbytes are required
+ *  - if nbytes is less than the chunk size, the remainder are
+ *    assumed to be 0xff.
+ */
+void my_ecc_calc(struct _cyg_nand_device_t *dev, 
+                 const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc);
+
+
+/* Repairs the ECC for the given data block, if needed.
+ * Call this if your read-from-chip ECC doesn't match what you computed
+ * over the data block. Both *dat and *ecc_read may be corrected.
+ *
+ * `nbytes' is the number of bytes we're interested in; if a correction
+ * is indicated outside of that range, it will be ignored.
+ *
+ * Returns: 
+ *       0 for no errors
+ *       1 for a corrected single bit error in the data
+ *       2 for a corrected single bit error in the ECC
+ *      -1 for an uncorrectable error (more than one bit)
+ */
+int my_ecc_repair(struct _cyg_nand_device_t *dev,
+                  CYG_BYTE *dat, size_t nbytes, 
+                  CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
+</programlisting>
+
+<para>The algorithm parameters and functions are then tied together
+with one of the following macros:
+</para>
+
+<programlisting>
+CYG_NAND_ECC_ALG_SW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
+
+CYG_NAND_ECC_ALG_HW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
+</programlisting>
+
+<tip><para>
+It's OK to use software ECC while getting things going, but if you do
+then switch to a hardware implementation, you probably need to erase
+your entire NAND chip including its Bad Block Table. The
+<filename>nanderase</filename> utility may come in handy for this.)
+</para></tip>
+
+<warning><para>You must be sure that your ECC repair algorithm is correct.
+This can be quite tricky to test. 
+However, it is often possible to hoodwink the controller into computing
+ECCs for you even if the data is not going to affect the data stored
+on the NAND chip, for example if you send it data but haven't told it to
+program a page.
+A variant of the <filename>sweccwalk</filename> test may come in handy
+for this purpose.
+</para></warning>
+
+<para>
+An example implementation, including an ECC calculation and repair test
+named <filename>eccwalk</filename>, may be found in the STM3210E
+evaluation board platform HAL, 
+<filename>packages/hal/cortexm/stm32/stm3210e_eval</filename>.
+The chip NAND controller has on-board ECC calculation, but does not 
+undertake to repair data; a repair function was written specially.
+</para>
+
+</sect2>
+</sect1>
+
 </chapter>
 
 <chapter id="nand-tests-utils">
@@ -1047,7 +1200,10 @@ find them.</para>
 
 <sect1 id="nand-tests"><title>Unit and functional tests</title>
 <para> The NAND library includes a number of tests. The most useful to
-driver writers are <filename>readwrite</filename> and <filename>rwbenchmark</filename>;
+driver writers are <filename>readwrite</filename>,
+<filename>rwbenchmark</filename>
+and
+<filename>sweccwalk</filename>;
 the others are only likely to be of interest to library maintainers.</para>
 
 <glosslist>
@@ -1066,6 +1222,16 @@ applies statistical techniques to the results in the same way that
 This is a potentially destructive test; do not run it on a device containing
 data you care about!</emphasis>
 </para></glossdef></glossentry>
+<glossentry><glossterm>sweccwalk</glossterm><glossdef><para>
+Repeatedly makes single-bit changes to a data buffer and checks that the
+software ECC implementation correctly repairs them.
+<tip><para>
+This test can be adapted to test out hardware ECC implementations.
+The test outputs the raw ECC codes as it goes, which is useful in
+confirming that the bits in the computed ECC are what you think they are.
+</para></tip>
+</para></glossdef></glossentry>
+
 <glossentry><glossterm>nandunit</glossterm><glossdef><para>Some unit tests
 which do not require any NAND device: ECC known answer vectors, and OOB
 area packing/unpacking correctness. </para></glossdef></glossentry>
@@ -1082,7 +1248,11 @@ require the synthetic NAND device. They are described in
 <sect1 id="nand-utils">
 <title>Ancillary NAND utilities</title>
 <para> The following utilities are included with the NAND library.
-They are standalone eCos applications and should be built in the normal way. </para>
+They are standalone eCos applications; for convenience, you can set
+<constant>CYGBLD_IO_NAND_BUILD_UTILS</constant> in your eCos configuration
+and they will be built and placed into
+<filename>install/tests/io/nand/current/utils</filename>.
+</para>
 
 <glosslist>
 <glossentry><glossterm>erasenand.c</glossterm><glossdef><para>

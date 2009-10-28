@@ -1,4 +1,4 @@
-2009-10-27  Ross Younger  <wry@eCosCentric.com>
+2009-10-28  Ross Younger  <wry@eCosCentric.com>
 
 	* nand.cdl, nand.c, nand_bbt.[ch]: CYGSEM_IO_NAND_USE_BBT
 	implemented (default on).  Updated tests and utils to suit.
@@ -6,6 +6,8 @@
 	as the tests.
 	* tests/sweccwalk.c: Created (software ECC bit-walker and repair
 	consistency checks)
+	* nand.sgml: Updated for the above. Documented ECC algorithm
+	interface.
 
 2009-10-08  Ross Younger  <wry@eCosCentric.com>
 
