@@ -111,12 +111,16 @@ int cyg_user_start(void)
 
     /* Now select a usable block in the partition to base ourselves around. */
     blk = prt->first+5;
+#ifdef CYGSEM_IO_NAND_USE_BBT
     while ( (cyg_nand_bbt_query(prt, blk) != CYG_NAND_BBT_OK)
             && (cyg_nand_bbt_query(prt, blk+1) != CYG_NAND_BBT_OK) ) {
         blk++;
         if (blk+3 > prt->last)
             CYG_TEST_NA("Cannot find a usable block to test");
     }
+#else
+    CYG_TEST_INFO("Caution, CYGSEM_IO_NAND_USE_BBT disabled - this may go wrong if we hit a bad block.");
+#endif
     pg = CYG_NAND_BLOCK2PAGEADDR(dev,blk);
 
     diag_printf("Erasing block %d\n", blk);

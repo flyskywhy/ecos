@@ -57,8 +57,6 @@
 #include CYGBLD_ISO_ERRNO_CODES_HEADER
 #include <string.h>
 
-extern cyg_drv_mutex_t nand_bbt_pagebuf_lock; // Lives in nand_bbt.c
-
 /* ============================================================ */
 
 /* We have a global ("devinit") lock, protects the nanddevtab and all 
@@ -101,6 +99,7 @@ static cyg_drv_mutex_t devinit_lock;
 /* ============================================================ */
 /* Initialisation and lookup */
 
+__externC void cyg_nand_bbt_initx(void);
 static cyg_nand_printf nand_default_pf;
 
 // This is called only by the C++ static constructor. Applications
@@ -109,10 +108,7 @@ __externC void cyg_nand_initx(cyg_nand_printf pf)
 {
     if (pf) CYG_CHECK_FUNC_PTRC(pf);
     cyg_drv_mutex_init(&devinit_lock);
-#ifdef CYGSEM_IO_NAND_USE_BBT
-    // XXX XYZY Move me to a cons in nand_bbt !
-    cyg_drv_mutex_init(&nand_bbt_pagebuf_lock);
-#endif
+    cyg_nand_bbt_initx();
     nand_default_pf = pf;
 }
 

@@ -83,7 +83,13 @@ static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
 
 static unsigned char bbt_pagebuf[CYGNUM_NAND_PAGEBUFFER];
 
+
 cyg_drv_mutex_t nand_bbt_pagebuf_lock; // Init'ed in nand.c
+
+__externC void cyg_nand_bbt_initx(void)
+{
+    cyg_drv_mutex_init(&nand_bbt_pagebuf_lock);
+}
 
 #define LOCK_PAGEBUF()   do {                       \
     cyg_drv_mutex_lock(&nand_bbt_pagebuf_lock);     \
@@ -649,4 +655,8 @@ top:
 }
 #endif
 
+#else
+__externC void cyg_nand_bbt_initx(void)
+{
+}
 #endif

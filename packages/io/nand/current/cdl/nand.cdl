@@ -227,13 +227,33 @@ cdl_package CYGPKG_IO_NAND {
 	# of multiple devices with different requirements), so there may
 	# well not be a need for a top-level switch.
 
+    cdl_option CYGBLD_IO_NAND_BUILD_UTILS {
+        display "Build NAND library utilities"
+        default_value 0
+        no_define
+        description "If set, builds the NAND library utilities at the
+            same time as the tests. Beware that misuse of these utilities
+            can seriously mess up your NAND chip; they should not be
+            played with lightly."
+    }
+
+    cdl_option CYGBLD_IO_NAND_UTILS {
+        display "The list of utilities to build."
+		flavor data
+        calculated { " utils/erasenand utils/erase_bbt_dangerous" }
+        no_define
+    }
+
 	cdl_option CYGPKG_IO_NAND_TESTS {
 		display "NAND library tests"
 		flavor data
 		no_define
-		calculated { "tests/nandunit tests/readlimits tests/readwrite tests/rwbenchmark" }
-		description "
-		This option specifies the set of tests for the NAND library."
+		calculated { "tests/nandunit tests/readlimits tests/readwrite"
+                     . " tests/rwbenchmark"
+                     . (CYGBLD_IO_NAND_BUILD_UTILS ? CYGBLD_IO_NAND_UTILS : "")
+        }
+		description "This special option specifies the set of NAND
+                    library tests (and utilities, if enabled) to build."
 	}
 
 }

@@ -68,16 +68,15 @@ void rawerase(cyg_nand_device *dev, cyg_nand_block_addr blk)
     }
 }
 
-#define MUST(a,b) do { if (!(a)) { diag_printf(b); return 1; } } while(0)
+#define MUST(a,b) do { if (!(a)) { diag_printf(b); return; } } while(0)
 
-int main(void)
+void cyg_user_start(void)
 {
     cyg_nand_device *dev;
     MUST(0==cyg_nand_lookup(DEVICE, &dev),"lookup failed\n");
     rawerase(dev,dev->bbt.primary);
     rawerase(dev,dev->bbt.mirror);
     diag_printf("BBT should now be erased.\n");
-    return 0;
 }
 
 #else

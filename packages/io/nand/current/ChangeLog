@@ -2,6 +2,8 @@
 
 	* nand.cdl, nand.c, nand_bbt.[ch]: CYGSEM_IO_NAND_USE_BBT
 	implemented (default on).  Updated tests and utils to suit.
+	* nand.cdl: Add convenience options to build the utils as well
+	as the tests.
 
 2009-10-08  Ross Younger  <wry@eCosCentric.com>
 
