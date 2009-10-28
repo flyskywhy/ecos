@@ -137,8 +137,6 @@ static void wait_ready_or_time(cyg_nand_device *ctx,
  * and waits for (response & mask) to be non-zero. */
 static void wait_ready_or_status(cyg_nand_device *ctx, CYG_BYTE mask);
 
-#define POLL_INTERVAL 10 /* us */
-
 /* Case 1: The NAND_RDY line is not connected. ---------------------- */
 #ifndef CYGHWR_HAL_CORTEXM_STM3210E_EVAL_RB_ON_INT2
 
@@ -177,7 +175,7 @@ static void wait_ready_or_status(cyg_nand_device *ctx, CYG_BYTE mask)
     int sta;
     do {
         sta = read_status(ctx);
-        HAL_DELAY_US(POLL_INTERVAL);
+        HAL_DELAY_US(10);
         ++polls;
     } while (!(sta & mask));
     NAND_CHATTER(8, ctx, "wait_status: pollcount %d status 0x%02x\n", polls, sta);
@@ -202,7 +200,7 @@ static void wait_ready_polled(cyg_nand_device *ctx)
     int polls=0;
     GET_MYPRIV(ctx, priv);
     while (0==is_chip_ready(priv)) {
-        HAL_DELAY_US(POLL_INTERVAL);
+        HAL_DELAY_US(CYGNUM_HAL_CORTEXM_STM3210E_EVAL_POLL_INTERVAL);
         ++polls;
     }
     NAND_CHATTER(8, ctx, "!BUSY: pollcount %d\n",polls);

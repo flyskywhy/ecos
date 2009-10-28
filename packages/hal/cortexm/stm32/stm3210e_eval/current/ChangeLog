@@ -1,9 +1,10 @@
-2009-10-26  Ross Younger  <wry@ecoscentric.com>
+2009-10-28  Ross Younger  <wry@ecoscentric.com>
 
 	* src/stm3210e_eval_nand.c: Implement hardware ECC.
 	Create eccwalk test to test it.
 	Add a nop to work around an apparent timing issue in the
 	NAND-specific FSMC setup when optimised.
+	Implement CYGNUM_HAL_CORTEXM_STM3210E_EVAL_POLL_INTERVAL.
 
 2009-08-26  Ross Younger  <wry@ecoscentric.com>
 

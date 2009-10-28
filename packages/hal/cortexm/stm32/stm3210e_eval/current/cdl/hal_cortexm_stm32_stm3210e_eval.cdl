@@ -358,6 +358,23 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
                 "
         }
 
+        cdl_option CYGNUM_HAL_CORTEXM_STM3210E_EVAL_POLL_INTERVAL {
+            display         "Chip polling interval (us)"
+            flavor          data
+            active_if       CYGHWR_HAL_CORTEXM_STM3210E_EVAL_RB_ON_INT2
+            default_value   10
+            legal_values    1 to 1000
+            description     "
+                If the NAND_RB line is routed to INT2, the driver polls
+                that line whilst waiting for the chip to signal
+                that it has completed an operation.
+                This setting is the interval - in microseconds - the
+                NAND driver will sleep for during each wait cycle.
+                Lower values improve responsiveness slightly, at the cost
+                of stealing CPU time from any other threads which may be
+                running."
+        }
+
         # Manual configuration of NAND partitions.
         # We currently only provide manual config.
 
