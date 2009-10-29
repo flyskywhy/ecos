@@ -401,7 +401,7 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
         }
 
         if (rv==-1 && (tries < CYGNUM_NAND_MAX_READ_RETRIES) ) {
-            NAND_CHATTER(4, dev, "NAND: ECC uncorrectable error on read, retrying\n");
+            NAND_CHATTER(4, dev, "ECC uncorrectable error on read, retrying\n");
         }
     } while (rv==-1 && (tries < CYGNUM_NAND_MAX_READ_RETRIES) );
 
@@ -417,7 +417,7 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             break;
         case -1:
         default:
-            NAND_ERROR(dev,"NAND: Page %u read gave ECC uncorrectable error\n", page);
+            NAND_ERROR(dev,"Page %u read gave ECC uncorrectable error\n", page);
             rv=-EIO;
             break;
     }
