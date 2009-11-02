@@ -1,0 +1,90 @@
+2009-07-28  Ross Younger  <wry@eCosCentric.com>
+
+	* utils: Add erasenand.c; build fix erase_bbt_dangerous.c
+
+2009-07-21  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_bbt.c: Fix BBT initialisation bug
+
+2009-07-17  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.sgml: Prep for inclusion in docbuilds
+
+2009-07-09 Ross Younger  <wry@eCosCentric.com>
+
+	* nand_bbt.c: Fix corner case arising from a write failure on a BBT block.
+
+2009-07-02 Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Add rwbenchmark.c
+
+2009-06-17 Ross Younger  <wry@eCosCentric.com>
+	* Global: Create a per-device lock to remove this burden from drivers.
+	Retab for consistency with the rest of eCos.
+	* cdl: Create CYGNUM_NAND_PAGEBUFFER; NAND drivers must impose
+	requirements on this according to the largest device they support.
+	Add dependency on stdlib.
+	* nand.c, util.c: Add more assertions.
+	* nand_app.h: Renamed to nand.h for consistency with other packages
+	* nand_bbt.c: Refactor to use the pagebuffer to not be so stack-greedy.
+	Properly incorporate both on-chip BBTs in case we were interrupted
+	when writing out. Add more assertions.
+	* nand_bbt.h: Move BLOCK2PAGEADDR and PAGE2BLOCKADDR to util.h.
+	Header made internal.
+	* nand_ecc.h: Rename ECCPERPAGE to CYG_NAND_ECCPERPAGE.
+	* nand_oob.h: Rename NAND_APPLICATION_OOB to CYG_NAND_APPLICATION_OOB,
+	similarly for OOB_MAX_ECC_SLOTS and OOB_MAX_APP_SLOTS.
+	* doc: Linewrap for consistency
+	* tests: Tweak to make more likely to work in a minimal config.
+	Move mkvector.c and ar4test.c into misc/.
+	bbt doesn't mandate synth.
+	eccdamage moved to synth.
+
+2009-06-02 Ross Younger  <wry@eCosCentric.com>
+
+	* cyg_nand_init: Removed in toto, in favour of a static constructor.
+	* Global: Replaced all use of diag_printf with new NAND_ERROR macro.
+
+2009-06-01 Ross Younger  <wry@eCosCentric.com>
+
+	* src/util.c include/util.h: Created
+
+2009-03-02 Ross Younger  <wry@eCosCentric.com>
+
+	* New package. NAND flash access library.
+
+//===========================================================================
+// ####ECOSGPLCOPYRIGHTBEGIN####                                            
+// -------------------------------------------                              
+// This file is part of eCos, the Embedded Configurable Operating System.   
+// Copyright (C) 2009 eCosCentric Limited.
+//
+// eCos is free software; you can redistribute it and/or modify it under    
+// the terms of the GNU General Public License as published by the Free     
+// Software Foundation; either version 2 or (at your option) any later      
+// version.                                                                 
+//
+// eCos is distributed in the hope that it will be useful, but WITHOUT      
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+// for more details.                                                        
+//
+// You should have received a copy of the GNU General Public License        
+// along with eCos; if not, write to the Free Software Foundation, Inc.,    
+// 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+//
+// As a special exception, if other files instantiate templates or use      
+// macros or inline functions from this file, or you compile this file      
+// and link it with other works to produce a work based on this file,       
+// this file does not by itself cause the resulting work to be covered by   
+// the GNU General Public License. However the source code for this file    
+// must still be made available in accordance with section (3) of the GNU   
+// General Public License v2.                                               
+//
+// This exception does not invalidate any other reasons why a work based    
+// on this file might be covered by the GNU General Public License.         
+// -------------------------------------------                              
+// ####ECOSGPLCOPYRIGHTEND####                                              
+//===========================================================================
+	
+
