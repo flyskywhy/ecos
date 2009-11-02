@@ -1,3 +1,8 @@
+2009-08-26  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Added support for onboard NAND chip.
+	Based on work by Simon Kallweit.
+
 2009-02-04  Nick Garnett  <nickg@ecoscentric.com>
 
 	* include/pkgconf/mlt_cortexm_stm3210e_eval_rom.ldi:

@@ -328,4 +328,49 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
                      files."
     }
     
+    cdl_component CYGHWR_HAL_CORTEXM_STM3210E_EVAL_NAND {
+        display       "STM3210E EVAL NAND support"
+        parent        CYGPKG_IO_NAND
+        active_if     CYGPKG_IO_NAND
+        implements    CYGHWR_IO_NAND_DEVICE
+        requires      CYGPKG_DEVS_NAND_ST_NANDXXXX3A
+        requires      { (CYGPKG_REDBOOT && CYGPKG_FS_YAFFS) implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x20000) }
+
+        compile       -library=libextras.a stm3210e_eval_nand.c
+        description   "
+            This option enables support for the on-board ST NAND flash chip."
+
+        cdl_option CYGHWR_HAL_CORTEXM_STM3210E_EVAL_RB_ON_INT2 {
+            display       "Use NAND_RB line"
+            flavor        bool
+            default_value 0
+            description   "
+                The STM3210E board provides a jumper, JP7, which
+                routes the NAND ready/busy signal to either the
+                WAIT line (pins 1-2, the default as shipped), or to
+                FSMC_INT2 (pins 2-3). You must set
+                this option if the jumper is in the FSMC_INT2 position;
+                if you do not, the results are undefined.
+                (In WAIT mode, the FSMC automatically stalls further
+                accesses until the NAND signals it is ready: this is
+                code-size-efficient, but may cause problems with a
+                multi-threaded application.)
+                "
+        }
+
+        # Manual configuration of NAND partitions.
+        # We currently only provide manual config.
+
+        cdl_component CYGSEM_DEVS_NAND_STM3210E_EVAL_PARTITION_MANUAL_CONFIG {
+            display "Manual partition configuration"
+            flavor  bool
+            default_value   1
+            description "
+                Set in order to use CDL to manually configure the
+                partitions of the ST STM3210E EVAL on-board NAND."
+
+            set ::partition_device "STM3210E_EVAL"
+            script manual_partition.cdl
+        }
+    }
 }
