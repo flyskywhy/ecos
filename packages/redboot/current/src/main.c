@@ -53,6 +53,7 @@
 
 #define  DEFINE_VARS
 #include <redboot.h>
+#include <stdlib.h>
 #include <cyg/hal/hal_arch.h>
 #include <cyg/hal/hal_intr.h>
 #include <cyg/hal/hal_if.h>
@@ -74,6 +75,11 @@
 #endif
 // GDB interfaces
 extern void breakpoint(void);
+#endif
+
+#if defined(CYGMEM_REDBOOT_WORKSPACE_HEAP)
+# include <stdlib.h>
+static unsigned char* heap_base;
 #endif
 
 // Builtin Self Test (BIST)
@@ -170,6 +176,9 @@ do_version(int argc, char *argv[])
 #ifdef CYGPKG_REDBOOT_FLASH
     externC void _flash_info(void);
 #endif
+#ifdef CYGPKG_REDBOOT_NAND
+    externC void _nand_info(void);
+#endif
     char *version = CYGACC_CALL_IF_MONITOR_VERSION();
 
     diag_printf(version);
@@ -196,8 +205,15 @@ do_version(int argc, char *argv[])
         }
     }
 #endif
+#ifdef CYGMEM_REDBOOT_WORKSPACE_HEAP
+    struct mallinfo mi = mallinfo();
+    diag_printf("  Arena: base 0x%x, size 0x%x, %u%% free, maxfree 0x%x\n", heap_base, mi.arena, (unsigned)(100 * ((double)mi.fordblks / mi.arena)), mi.maxfree);
+#endif
 #ifdef CYGPKG_REDBOOT_FLASH
     _flash_info();
+#endif
+#ifdef CYGPKG_REDBOOT_NAND
+    _nand_info();
 #endif
 }
 
@@ -306,6 +322,7 @@ cyg_start(void)
         extern cyg_bool cyg_memalloc_heap_reinit( cyg_uint8 *base, cyg_uint32 size );
 
         workspace_end -= CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE;
+        heap_base = workspace_end;
 
         if( !cyg_memalloc_heap_reinit( (cyg_uint8 *)workspace_end, CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE ) )
             diag_printf("Heap reinitialization failed\n");

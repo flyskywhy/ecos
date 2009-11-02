@@ -233,7 +233,12 @@ do_mount(int argc, char *argv[])
 
     if (err)
     {
-        err_printf("fs mount: mount(%s,%s,%s) failed %d\n", dev_str, mp_str, type_str, errno);
+        const char *msg = "";
+        switch(errno) {
+            case ENOENT: msg="(No such entity)"; break;
+            case ENODEV: msg="(No such device)"; break;
+        }
+        err_printf("fs mount: mount(%s,%s,%s) failed %d %s\n", dev_str, mp_str, type_str, errno, msg);
         mounts[m].mp_str[0] = '\0'; // mount failed so don't let it appear mounted
     }
     else
