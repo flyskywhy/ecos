@@ -5667,6 +5667,7 @@ target linux {
                       CYGPKG_DEVS_WALLCLOCK_SYNTH      
                       CYGPKG_DEVS_FRAMEBUF_SYNTH
                       CYGPKG_DEVS_ADC_SYNTH
+                      CYGPKG_DEVS_NAND_SYNTH
         }
         description "
     	    The linux target provides the 
