@@ -453,5 +453,5 @@ static inline void k9_devunlock(cyg_nand_device *dev)
 #include <cyg/devs/nand/k9fxx08x0x.inl>
 
 CYG_NAND_DEVICE(ea_nand, "onboard", &k9f8_funs, &_k9_ea_lpc2468_priv,
-                &linux_mtd_ecc, &nand_mtd_oob_64);
+                &mtd_ecc256_fast, &nand_mtd_oob_64);
 
