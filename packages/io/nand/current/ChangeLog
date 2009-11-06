@@ -6,6 +6,7 @@
 	rewrote the ecc repair function to drop the dependency on the
 	previous (imported) code.
 	* tests: Update to suit the above.
+	* tests/eccequiv.c: Created (used to test new ECC implementation).
 
 2009-10-28  Ross Younger  <wry@eCosCentric.com>
 
