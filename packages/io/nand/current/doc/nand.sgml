@@ -818,17 +818,17 @@ not currently provided, though one may be in future.</para>
 
 <sect2 id="nand-devs-readwrite">
 <title>Reading, writing and erasing data</title>
-The read and write operations are divided into three phases, with the following flow:
+<para>The read and write operations are divided into three phases, with the following flow:</para>
 <itemizedlist>
 <listitem><para>Begin. This is called once; the driver should lock any
-platform-level mutex and send the command and address.</para>
+platform-level mutex and send the command and address.</para></listitem>
 <listitem><para>Stride. This is called one or more times to read the page
 data from the device. <note><para>The reason for this is if the platform
 provides a NAND controller with hardware ECC: it is often necessary to
-read out the ECC registers every so often.</para></note></para>
+read out the ECC registers every so often.</para></note></para></listitem>
 <listitem><para>Finish. This is called once; it should read or write
 the spare area, (on programming) send a "program confirm" command and
-check its status, and unlock any platform-level mutex.</para>
+check its status, and unlock any platform-level mutex.</para></listitem>
 </itemizedlist>
 
 <para>Erasing is a single-shot call which should lock any
@@ -846,6 +846,7 @@ static int my_write_finish(cyg_nand_device *dev, const void * spare, size_t spar
 
 static int my_erase_block(cyg_nand_device *dev, cyg_nand_block_addr blk);
 </programlisting>
+</sect2>
 
 <sect2 id="nand-devs-isfactorybad">
 <title>Searching for factory-bad blocks</title>
@@ -1241,8 +1242,8 @@ work.</para></glossdef></glossentry>
 </glosslist>
 
 <para>There are some further tests of the library which
-require the synthetic NAND device. They are described in 
-<xref linkend="devs-nand-synth-tests">.</para>
+require the <link linkend="devs-nand-synth-tests">synthetic NAND device</link>. 
+</para>
 </sect1>
 
 <sect1 id="nand-utils">

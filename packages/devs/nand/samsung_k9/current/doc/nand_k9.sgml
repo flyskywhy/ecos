@@ -88,7 +88,7 @@ with the following steps:</para>
 For more details about the infrastructure provided by the NAND layer
 and the semantics it expects of the chip driver, refer to 
 <xref linkend="io-nand-overview">. An example driver instantiation can be
-found in <xref linkend="nanddev-ea-lpc2468">.</para>
+found in <link linkend="nanddev-ea-lpc2468">the NAND driver for the EA LPC2468 platform</link>.</para>
 
 <sect2 id="nanddev-samsung-k9-memory-note">
 <title>Memory usage</title>
