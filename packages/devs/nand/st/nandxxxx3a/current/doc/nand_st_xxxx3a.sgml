@@ -76,7 +76,7 @@ A platform HAL would typically make use of this driver in a single source file w
 For more details about the infrastructure provided by the NAND layer
 and the semantics it expects of the chip driver, refer to
 <xref linkend="io-nand-overview">. An example driver instantiation can be
-found in <xref linkend="cortexm-stm3210e-part">.
+found in the platform HAL for the STM3210E-EVAL board.
 </para></sect2>
 
 <sect2 id="devs-nand-st-xxxx3a-memory-note">
