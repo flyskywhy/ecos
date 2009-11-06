@@ -1,3 +1,12 @@
+2009-11-06  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc_mtd_fast.c: Created. Complete rewrite of software 
+	ECC for massive performance boost. In summary, use all 32 bits
+	of a register at once, and part-unroll the operation. (Also
+	rewrote the ecc repair function to drop the dependency on the
+	previous (imported) code.
+	* tests: Update to suit the above.
+
 2009-10-28  Ross Younger  <wry@eCosCentric.com>
 
 	* nand.cdl, nand.c, nand_bbt.[ch]: CYGSEM_IO_NAND_USE_BBT

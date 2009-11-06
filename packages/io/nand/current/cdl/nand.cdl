@@ -63,7 +63,9 @@ cdl_package CYGPKG_IO_NAND {
 	requires		CYGINT_ISO_STRING_MEMFUNCS
     requires        CYGPKG_LIBC_STDLIB
 
-    compile         nand.c nand_bbt.c nand_ecc_mtd.c nand_oob.c util.c
+    compile         nand.c nand_bbt.c nand_oob.c util.c
+    compile         nand_ecc_mtd.c
+    compile         nand_ecc_mtd_fast.c
     compile         -library=libextras.a nandinit.cxx
 
     cdl_option    CYGSEM_IO_NAND_INTERFACE_VERSION {

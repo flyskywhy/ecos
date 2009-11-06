@@ -151,7 +151,9 @@ int nand_ecci_repair_page(struct _cyg_nand_device_t *dev,
 /* Implementations ================================================ */
 // TODO: Hide by CDL, when more than one is added.
 
-/* The ECC algorithm used by the Linux MTD layer. See nand_ecc_mtd.c. */
+/* A compatible ECC algorithm with that used by the Linux MTD layer.
+ * See nand_ecc_mtd.c and nand_ecc_mtd_fast.c. */
 __externC cyg_nand_ecc_t linux_mtd_ecc;
+__externC cyg_nand_ecc_t mtd_ecc256_fast;
 
 #endif

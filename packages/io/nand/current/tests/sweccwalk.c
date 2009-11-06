@@ -57,7 +57,7 @@
 
 #define MUST(what) do { CYG_TEST_CHECK((what), #what); } while(0)
 
-static CYG_NAND_DEVICE(fakenand, 0, 0, 0, &linux_mtd_ecc, 0);
+static CYG_NAND_DEVICE(fakenand, 0, 0, 0, &mtd_ecc256_fast, 0);
 
 void init_fakenand(void)
 {

@@ -57,7 +57,7 @@
  * any NAND device. So we'll construct a fake plastic cyg_nand_device
  * out of whole cloth. */
 
-static CYG_NAND_DEVICE(fakenand, 0, 0, 0, &linux_mtd_ecc, 0);
+static CYG_NAND_DEVICE(fakenand, 0, 0, 0, &mtd_ecc256_fast, 0);
 void init_fakenand(void)
 {
     if (fakenand.is_inited)
