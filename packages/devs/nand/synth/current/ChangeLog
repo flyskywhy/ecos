@@ -1,3 +1,7 @@
+2009-11-06  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c: Use new fast ECC implementation.
+
 2009-10-19  Ross Younger  <wry@ecoscentric.com>
 
 	* nand_synth.c: Update to interface v2.

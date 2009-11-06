@@ -1749,5 +1749,5 @@ static CYG_NAND_FUNS_V2(nand_synth_funs, synth_devinit,
         synth_writebegin, synth_writestride, synth_writefinish,
         synth_eraseblock, synth_factorybad);
 
-CYG_NAND_DEVICE(nand_synth, "synth", &nand_synth_funs, NULL, &linux_mtd_ecc, 0);
+CYG_NAND_DEVICE(nand_synth, "synth", &nand_synth_funs, NULL, &mtd_ecc256_fast, 0);
 
