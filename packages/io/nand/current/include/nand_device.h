@@ -161,6 +161,22 @@ struct cyg_nand_dev_fns_v2 {
     int (*read_finish)(cyg_nand_device *dev,
                        void * spare, size_t spare_size);
 
+    /* Sub-page reading. This is a strictly OPTIONAL operation and
+     * may be given as NULL in the device struct.
+     * If not present, the NAND layer will emulate it by reading the
+     * whole page into a temporary buffer and copying out to the client,
+     * which impacts on performance.
+     *
+     * @offset@ is in bytes relative to the start of the page;
+     * @length@ is the number of bytes to read.
+     *
+     * N.B. This is a "standalone" call, i.e. will NOT be punctuated
+     * by calls to read_begin and read_finish.
+     */
+    int (*read_part_page)(cyg_nand_device *dev, void *dest, 
+                          cyg_nand_page_addr page,
+                          size_t offset, size_t length);
+
     /* Initialises a write operation, but does not actually write any data. */
     int (*write_begin)(cyg_nand_device *dev, cyg_nand_page_addr page);
 
@@ -243,6 +259,7 @@ struct _cyg_nand_device_t {
 
 #define CYG_NAND_FUNS_V2(_funsv2_, _devinit_,   \
         _rdbegin_, _rdstride_, _rdfin_,         \
+        _rdpart_,                               \
         _wrbegin_, _wrstride_, _wrfin_,         \
         _erasebl_, _factorybad_ )               \
 struct cyg_nand_dev_fns_v2 _funsv2_ = { \
@@ -250,13 +267,13 @@ struct cyg_nand_dev_fns_v2 _funsv2_ = { \
     .read_begin = _rdbegin_,            \
     .read_stride = _rdstride_,          \
     .read_finish = _rdfin_,             \
+    .read_part_page = _rdpart_,         \
     .write_begin = _wrbegin_,           \
     .write_stride = _wrstride_,         \
     .write_finish = _wrfin_,            \
     .erase_block = _erasebl_,           \
     .is_factory_bad = _factorybad_,     \
 }
-
 
 #define CYG_NAND_DEVICE(_structname_, _devname_, _funs_, _priv_, _ecc_, _oob_)\
 struct _cyg_nand_device_t _structname_ CYG_HAL_TABLE_ENTRY(cyg_nand_dev) =    \

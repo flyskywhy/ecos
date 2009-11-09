@@ -297,6 +297,7 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
     CYG_BYTE *pagebuffer;
+    int got_pagebuf = 0;
 
     if (offset + length > NAND_BYTES_PER_PAGE(dev)) return -EFBIG;
 
@@ -310,14 +311,18 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     }
 #endif
 
-    // XXX TODO: use device support.
-    pagebuffer = nandi_grab_pagebuf();
-    EG(nandi_read_whole_page_raw(dev, page, pagebuffer, 0, 0, check_ecc));
-    if (dest)
-        memcpy(dest, &pagebuffer[offset], length);
+    if (dev->fns->read_part_page && !check_ecc) {
+        EG(dev->fns->read_part_page(dev, dest, page, offset, length));
+    } else {
+        pagebuffer = nandi_grab_pagebuf();
+        got_pagebuf = 1;
+        EG(nandi_read_whole_page_raw(dev, page, pagebuffer, 0, 0, check_ecc));
+        if (dest)
+            memcpy(dest, &pagebuffer[offset], length);
+    }
 
 err_exit:
-    nandi_release_pagebuf();
+    if (got_pagebuf) nandi_release_pagebuf();
     return rv;
 }
 

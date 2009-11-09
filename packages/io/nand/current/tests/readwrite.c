@@ -151,9 +151,14 @@ int cyg_user_start(void)
     TEST(0, 99, 1);
     TEST(42, 99, 0);
     TEST(42, 99, 1);
+    // make sure we can address the upper half of small-page devices:
+    TEST(258, 99, 1);
+    TEST(258, 99, 0);
     // Read right up to the end:
     TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 0);
     TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 1);
+    TEST(258, NAND_BYTES_PER_PAGE(dev)-258, 0);
+    TEST(258, NAND_BYTES_PER_PAGE(dev)-258, 1);
     // ... but we should not be able to read off the end of the page:
     TESTFAIL(0, NAND_BYTES_PER_PAGE(dev)+1, 0);
     TESTFAIL(43, NAND_BYTES_PER_PAGE(dev)-42, 1);
