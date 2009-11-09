@@ -198,8 +198,7 @@ static int nandxxxx3a_read_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 static int nandxxxx3a_read_stride(cyg_nand_device *dev, void *dest, size_t size)
 {
     //struct nandxxxx3a_priv *priv = dev->priv;
-    if (dest && size)
-        read_data_bulk(dev, dest, size);
+    read_data_bulk(dev, dest, size);
     return 0;
 }
 
@@ -218,6 +217,29 @@ static int nandxxxx3a_read_finish(cyg_nand_device *dev,
     return 0;
 }
 
+static int nandxxxx3a_read_part(cyg_nand_device *dev, void *dest,
+                        cyg_nand_page_addr page, size_t offset, size_t length)
+{
+    //struct nandxxxx3a_priv *priv = dev->priv;
+
+    NAND_CHATTER(7,dev,"Reading page %d (partial; offset %d, length %d)\n",
+                 page, offset, length);
+
+    cyg_nand_column_addr col = offset & 0xff;
+    CYG_BYTE cmd = offset & 256 ? 1 /* READ_B */ : 0 /* READ_A */;
+    LOCK(dev);
+
+    write_cmd(dev, cmd);
+    write_addr(dev, page, col);
+    wait_ready_or_time(dev, 1, 12);
+    read_data_bulk(dev, dest, length);
+
+    // read A? read B?
+    UNLOCK(dev);
+    return 0;
+}
+
+
 static int nandxxxx3a_write_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
     struct nandxxxx3a_priv *priv = dev->priv;
@@ -235,10 +257,8 @@ static int nandxxxx3a_write_stride(cyg_nand_device *dev,
                                    const void *src, size_t size)
 {
     struct nandxxxx3a_priv *priv = dev->priv;
-    if (src && size) {
-        write_data_bulk(dev, src, size);
-        priv->written += size;
-    }
+    write_data_bulk(dev, src, size);
+    priv->written += size;
     return 0;
 }
 
@@ -334,7 +354,9 @@ static int nandxxxx3a_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
 
 CYG_NAND_FUNS_V2(nandxxxx3a_funs, nandxxxx3a_devinit,
                  nandxxxx3a_read_begin, nandxxxx3a_read_stride,
-                 nandxxxx3a_read_finish, nandxxxx3a_write_begin,
+                 nandxxxx3a_read_finish,
+                 nandxxxx3a_read_part,
+                 nandxxxx3a_write_begin,
                  nandxxxx3a_write_stride, nandxxxx3a_write_finish,
                  nandxxxx3a_erase_block,
                  nandxxxx3a_factorybad);
