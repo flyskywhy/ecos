@@ -1507,6 +1507,58 @@ synth_readfinish(cyg_nand_device *dev, void * spare, size_t spare_size)
     return 0;
 }
 
+static int synth_readpart(cyg_nand_device *dev, void *dest,
+                          cyg_nand_page_addr page,
+                          size_t offset, size_t length)
+{
+    size_t page_offset  = page * (PAGESIZE + SPARE_PER_PAGE);
+
+    cyg_drv_mutex_lock(&lock);
+    number_of_calls         += 1;
+    number_of_read_calls    += 1;
+
+    memcpy(dest, &image_data[page_offset + offset], length);
+
+#ifdef CYGSEM_NAND_SYNTH_RANDOMLY_LOSE
+    {
+        if (rand()&(1<<13)) { // 50% chance of bitloss..
+            _lose = ++losscount;
+            // where (which byte) will we lose: we might be lucky and
+            // choose something outside of the read range.
+
+            int range = PAGESIZE;
+            int _lose_where=rand()%range; // slightly biased selection but will do
+
+            if ( (_lose_where >= offset) && (_lose_where < offset+length) ) {
+                CYG_BYTE *b = (CYG_BYTE*) dest;
+                int _lose_bit = rand()%8;
+                b[_lose_where - offset] ^= 1<< _lose_bit;
+            }
+
+        } else
+            _lose = 0;
+    }
+#endif
+
+    if (log_read) {
+        int len = diag_sprintf(logfile_data, "rpp %d %d %d %d %d\n",
+                               number_of_read_calls, number_of_calls,
+                               page, offset, length);
+        logfile_write(len);
+    }
+
+    if (log_READ) {
+        int len = diag_sprintf(logfile_data, "Rpp %d %d %d %d %d ",
+                number_of_read_calls, number_of_calls, page, offset, length);
+        len += addhex(&(logfile_data[len]), (unsigned char*)dest, (int) length);
+        logfile_data[len++] = '\n';
+        logfile_write(len);
+    }
+
+    cyg_drv_mutex_unlock(&lock);
+    return 0;
+}
+
 static int
 synth_writebegin(cyg_nand_device *dev, cyg_nand_page_addr page)
 {
@@ -1746,6 +1798,7 @@ synth_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
 
 static CYG_NAND_FUNS_V2(nand_synth_funs, synth_devinit,
         synth_readbegin, synth_readstride, synth_readfinish,
+        synth_readpart,
         synth_writebegin, synth_writestride, synth_writefinish,
         synth_eraseblock, synth_factorybad);
 
