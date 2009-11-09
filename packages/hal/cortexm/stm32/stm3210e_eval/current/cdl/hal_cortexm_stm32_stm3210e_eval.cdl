@@ -233,6 +233,36 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
         }
     }
 
+    cdl_component CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_OPTIONS {
+        display "stm3210e HAL build options"
+                flavor  none
+                description   "
+                        Package specific build options including control over
+                        compiler flags used only in building this HAL."
+
+                cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_ADD {
+                        display "Additional compiler flags"
+                        flavor  data
+                        no_define
+                        default_value { "-Werror" }
+                        description   "
+                                This option modifies the set of compiler flags
+                                for building this HAL. These flags are used
+                                in addition to the set of global flags."
+                        }
+                cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_REMOVE {
+                        display "Suppressed compiler flags"
+                        flavor  data
+                        no_define
+                        default_value { "" }
+                        description   "
+                                This option modifies the set of compiler flags
+                                for building this HAL. These flags are
+                                removed from the set of global flags if
+                                present."
+                }
+        }
+
     cdl_option CYGSEM_HAL_ROM_MONITOR {
         display       "Behave as a ROM monitor"
         flavor        bool

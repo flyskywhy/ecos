@@ -353,7 +353,7 @@ static void stm3210e_ecc_init(cyg_nand_device *dev)
     HAL_WRITE_UINT32(reg, cur);
 }
 
-static void stm3210e_ecc_calc(cyg_nand_device *dev, const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc)
+static void stm3210e_ecc_calc(cyg_nand_device *dev, const CYG_BYTE *dat, CYG_BYTE *ecc)
 {
     cyg_uint32 code,set;
     CYG_ADDRWORD eccr= CYGHWR_HAL_STM32_FSMC + CYGHWR_HAL_STM32_FSMC_ECCR2,

@@ -1,3 +1,10 @@
+2009-11-09  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Update for nand interface changes.
+	* cdl/hal_cortexm_stm32_stm3210e_eval.cdl: Add 
+	  CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_{ADD,REMOVE},
+	  default to -Werror.
+
 2009-10-28  Ross Younger  <wry@ecoscentric.com>
 
 	* src/stm3210e_eval_nand.c: Implement hardware ECC.
