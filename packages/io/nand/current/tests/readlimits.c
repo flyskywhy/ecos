@@ -81,7 +81,7 @@ int tryread(cyg_nand_partition *prt, cyg_nand_page_addr pg, int shouldwork)
 #if 0
     printf("Trying %d...\n",pg);
 #endif
-    int rv = cyg_nand_read_page(prt, pg, buf, sizeof(buf), NULL, 0);
+    int rv = cyg_nand_read_page(prt, pg, buf, NULL, 0);
 
     if (!shouldwork) ++tried_bad;
     if (rv==0)

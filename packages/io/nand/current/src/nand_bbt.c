@@ -59,12 +59,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef CYGSEM_IO_NAND_USE_BBT
-
-#ifndef CYGSEM_IO_NAND_READONLY
-static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
-#endif
-
 /* ============================================================ */
 // We need a global page buffer so we can manipulate the
 // Bad Block Table. This has to be big enough for the largest
@@ -84,7 +78,7 @@ static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
 static unsigned char bbt_pagebuf[CYGNUM_NAND_PAGEBUFFER];
 
 
-cyg_drv_mutex_t nand_bbt_pagebuf_lock; // Init'ed in nand.c
+cyg_drv_mutex_t nand_bbt_pagebuf_lock;
 
 __externC void cyg_nand_bbt_initx(void)
 {
@@ -100,6 +94,23 @@ __externC void cyg_nand_bbt_initx(void)
     cyg_drv_mutex_unlock(&nand_bbt_pagebuf_lock);   \
     i_locked = 0;                                   \
 } while(0)
+
+CYG_BYTE* nandi_grab_pagebuf(void)
+{
+    cyg_drv_mutex_lock(&nand_bbt_pagebuf_lock);
+    return &bbt_pagebuf[0];
+}
+
+void nandi_release_pagebuf(void)
+{
+    cyg_drv_mutex_unlock(&nand_bbt_pagebuf_lock);
+}
+
+#ifdef CYGSEM_IO_NAND_USE_BBT
+
+#ifndef CYGSEM_IO_NAND_READONLY
+static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
+#endif
 
 /* Mapping between on-chip and in-ram statuses ===================== */
 static inline cyg_nand_bbt_status_t chip_2_ram(nand_bbti_onchip_status_t in)
@@ -248,7 +259,7 @@ static int bbti_incorporate_one(cyg_nand_device *dev, cyg_nand_block_addr blk)
 
     int blks_to_read = 1 << dev->blockcount_bits;
     while (blks_to_read>0) {
-        rv = nandi_read_page_raw(dev, pg, bbt_pagebuf, 1<<dev->page_bits, 0, 0);
+        rv = nandi_read_whole_page_raw(dev, pg, bbt_pagebuf, 0, 0, 1);
         // read_page_raw does the ecc for us, and we don't care about the OOB here as we already know it's one of ours.
         if (rv<0) {
             // This is bad.
@@ -391,7 +402,7 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
 
         CYG_BYTE oobbuf[NAND_APPSPARE_PER_PAGE(dev)];
 
-        rv = nandi_read_page_raw(dev, pg, 0, 0, oobbuf, sizeof oobbuf);
+        rv = nandi_read_whole_page_raw(dev, pg, 0, oobbuf, sizeof oobbuf, 1);
         if (rv<0) {
             NAND_CHATTER(1,dev, "bbti_find_tables: Error %d reading OOB of page %u (block %u)\n", -rv, pg, blk);
             EG(-EIO);
@@ -605,7 +616,7 @@ static int bbti_write_one_table(cyg_nand_device *dev,
         rv = nand_oob_packed_write(dev, NAND_VERSION_OFFSET, NAND_VERSION_SIZE, appspare, &dev->bbt.version);
         if (rv != 0) EG(-EIO); // Should never fail, we've passed the startup sanity check.
 
-        rv = nandi_write_page_raw(dev, pg, bbt_pagebuf, pagesize, appspare, sizeof appspare);
+        rv = nandi_write_page_raw(dev, pg, bbt_pagebuf, appspare, sizeof appspare);
         if (rv==-EIO) {
             /* Ouch. Our BBT block has failed. We cannot write another, 
              * as we might trample app data. We'll mark bad, and hope
@@ -655,8 +666,4 @@ top:
 }
 #endif
 
-#else
-__externC void cyg_nand_bbt_initx(void)
-{
-}
 #endif

@@ -260,14 +260,13 @@ static int valid_page_addr(cyg_nand_partition *part, cyg_nand_page_addr page)
 
 __externC
 int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
-                void * dest, size_t size, void * spare, size_t spare_size)
+                void * dest, void * spare, size_t spare_size)
 {
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
 
-    if (size > (1<<dev->page_bits)) return -EFBIG;
     if (spare_size > dev->spare_per_page) return -EFBIG;
 
     EG(valid_page_addr(prt, page));
@@ -280,16 +279,53 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     }
 #endif
 
-    EG(nandi_read_page_raw(dev, page, dest, size, spare, spare_size));
+    EG(nandi_read_whole_page_raw(dev, page, dest, spare, spare_size, 1));
 
 err_exit:
     return rv;
 }
 
 
+
+__externC
+int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
+                void * dest, size_t offset, size_t length, int check_ecc)
+
+{
+    int rv;
+    PARTITION_CHECK(prt);
+    cyg_nand_device *dev = prt->dev;
+    DEV_INIT_CHECK(dev);
+    CYG_BYTE *pagebuffer;
+
+    if (offset + length > NAND_BYTES_PER_PAGE(dev)) return -EFBIG;
+
+    EG(valid_page_addr(prt, page));
+
+#ifdef CYGSEM_IO_NAND_USE_BBT
+    cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev,page);
+    if (cyg_nand_bbti_query(dev, blk) != CYG_NAND_BBT_OK) {
+        NAND_CHATTER(1,dev,"Asked to read page %u in bad block %u\n", page, blk);
+        EG(-EINVAL);
+    }
+#endif
+
+    // XXX TODO: use device support.
+    pagebuffer = nandi_grab_pagebuf();
+    EG(nandi_read_whole_page_raw(dev, page, pagebuffer, 0, 0, check_ecc));
+    if (dest)
+        memcpy(dest, &pagebuffer[offset], length);
+
+err_exit:
+    nandi_release_pagebuf();
+    return rv;
+}
+
+
 /* Internal, mostly-unchecked interface to read a page. */
-int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
-            CYG_BYTE * dest, const size_t sizex, CYG_BYTE * spare, size_t spare_size)
+int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
+            CYG_BYTE * dest, CYG_BYTE * spare, size_t spare_size,
+            int check_ecc)
 {
     CYG_BYTE ecc_read[CYG_NAND_ECCPERPAGE(dev)],
              ecc_calc[CYG_NAND_ECCPERPAGE(dev)];
@@ -298,10 +334,10 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     CYG_BYTE oob_buf[dev->spare_per_page];
     int rv=0,tries=0;
     size_t remain;
-    const int ecc_is_hw = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
+    const int do_hw_ecc = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE) && check_ecc;
 
     // Stride for reading from device:
-    const unsigned read_data_stride = ecc_is_hw ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    const unsigned read_data_stride = do_hw_ecc ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
     // Stride for calculating/checking/repairing ECC:
     const unsigned ecc_data_stride = dev->ecc->data_size;
     // Stride within the ECC data
@@ -310,11 +346,7 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     if (dest)  CYG_CHECK_DATA_PTRC(dest);
     if (spare) CYG_CHECK_DATA_PTRC(spare);
 
-    if (!ecc_is_hw) {
-        // if s/w ecc, part-stride reads are not yet supported
-        if (sizex % ecc_data_stride != 0)
-            EG(-ENOSYS);
-    }
+    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
 
     LOCK_DEV(dev);
 
@@ -323,7 +355,7 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
         CYG_BYTE *ecc_dest = ecc_calc;
 
         ++tries;
-        remain = sizex;
+        remain = NAND_BYTES_PER_PAGE(dev);
 
         EG(dev->fns->read_begin(dev, page));
 
@@ -331,73 +363,70 @@ int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             int step;
             while (remain) {
                 step = read_data_stride;
+                CYG_ASSERTC(remain >= read_data_stride);
 
-                if (ecc_is_hw && dev->ecc->init) dev->ecc->init(dev);
+                if (do_hw_ecc && dev->ecc->init) dev->ecc->init(dev);
+                EG(dev->fns->read_stride(dev, data_dest, read_data_stride));
 
-                if (step > remain) {
-                    step = remain;
-                    EG(dev->fns->read_stride(dev, data_dest, step));
-                    EG(dev->fns->read_stride(dev, 0, read_data_stride - step));
-                } else {
-                    EG(dev->fns->read_stride(dev, data_dest, step));
-                }
-                if (ecc_is_hw) {
+                if (do_hw_ecc) {
                     dev->ecc->calc(dev, 0, 0, ecc_dest);
                     ecc_dest += ecc_stride;
                 }
-                data_dest += step;
-                remain -= step;
+
+                data_dest += read_data_stride;
+                remain -= read_data_stride;
             }
-        }
 
-        EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
+            EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
+            nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
 
-        nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
+            if (check_ecc) {
+                if (!do_hw_ecc) {
+                    // Calculate software ECC in one go to try and take
+                    // advantage of the cache.
+                    data_dest = dest;
+                    remain = NAND_BYTES_PER_PAGE(dev);
+                    ecc_calc_p = ecc_calc;
 
-        if (dest && !ecc_is_hw) {
-            // Calculate software ECC in one go to try and take advantage
-            // of the instruction cache.
-            int step = ecc_data_stride;
-            data_dest = dest;
-            remain = sizex;
-            ecc_calc_p = ecc_calc;
+                    while (remain) {
+                        if (dev->ecc->init) dev->ecc->init(dev);
+                        dev->ecc->calc(dev, data_dest, ecc_data_stride, ecc_calc_p);
 
-            while (remain) {
-                // We have already checked above that we're not doing any part-strides.
-                if (dev->ecc->init) dev->ecc->init(dev);
-                dev->ecc->calc(dev, data_dest, step, ecc_calc_p);
-
-                remain -= step;
-                data_dest += step;
-                ecc_calc_p += ecc_stride;
-            }
-        }
-
-        rv = 0;
-        if (dest) {
-            int step = ecc_data_stride;
-            int step_rv;
-            remain = sizex;
-            data_dest = dest;
-
-            ecc_calc_p = ecc_calc;
-            ecc_read_p = ecc_read;
-
-            while (remain) {
-                if (step > remain) step = remain;
-
-                step_rv = dev->ecc->repair(dev,data_dest,step,ecc_read_p,ecc_calc_p);
-                if (step_rv == -1) {
-                    rv = -1;
-                    break;
+                        remain -= ecc_data_stride;
+                        data_dest += ecc_data_stride;
+                        ecc_calc_p += ecc_stride;
+                    }
                 }
-                rv |= step_rv;
 
-                data_dest += step;
-                ecc_read_p += ecc_stride;
-                ecc_calc_p += ecc_stride;
-                remain -= step;
+                // Now repair ...
+                rv = 0;
+                int step_rv;
+                remain = NAND_BYTES_PER_PAGE(dev);
+                data_dest = dest;
+
+                ecc_calc_p = ecc_calc;
+                ecc_read_p = ecc_read;
+
+                while (remain) {
+                    CYG_ASSERTC(remain >= ecc_data_stride);
+
+                    step_rv = dev->ecc->repair(dev,data_dest,ecc_data_stride,ecc_read_p,ecc_calc_p);
+                    if (step_rv == -1) {
+                        rv = -1;
+                        break;
+                    }
+                    rv |= step_rv;
+
+                    data_dest += ecc_data_stride;
+                    ecc_read_p += ecc_stride;
+                    ecc_calc_p += ecc_stride;
+                    remain -= ecc_data_stride;
+                }
             }
+        } else { // !dest: very simple case
+            EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
+            rv = 0;
+            nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
         }
 
         if (rv==-1 && (tries < CYGNUM_NAND_MAX_READ_RETRIES) ) {
@@ -429,7 +458,7 @@ err_exit:
 /* Internal, mostly-unchecked interface to write a page. */
 __externC
 int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
-        const void * src, size_t size, const void * spare, size_t spare_size)
+        const void * src, const void * spare, size_t spare_size)
 {
     int rv;
     PARTITION_CHECK(prt);
@@ -445,7 +474,7 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         EG(-EINVAL);
     }
 #endif
-    EG(nandi_write_page_raw(dev, page, src, size, spare, spare_size));
+    EG(nandi_write_page_raw(dev, page, src, spare, spare_size));
 
 err_exit:
     return rv;
@@ -453,7 +482,7 @@ err_exit:
 
 __externC
 int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
-        const CYG_BYTE * src, const size_t sizex, const CYG_BYTE * spare, size_t spare_size)
+        const CYG_BYTE * src, const CYG_BYTE * spare, size_t spare_size)
 {
 #ifdef CYGSEM_IO_NAND_READONLY
     return -EROFS;
@@ -462,8 +491,8 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     CYG_BYTE oob_packed[dev->spare_per_page];
     CYG_BYTE ecc[CYG_NAND_ECCPERPAGE(dev)];
 
-    const int ecc_is_hw = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
-    const unsigned write_data_stride = ecc_is_hw ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    const int do_hw_ecc = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
+    const unsigned write_data_stride = do_hw_ecc ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
     const unsigned ecc_data_stride = dev->ecc->data_size;
     const unsigned ecc_stride = dev->ecc->ecc_size;
     size_t remain;
@@ -473,19 +502,16 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
 
     if (src)   CYG_CHECK_DATA_PTRC(src);
     if (spare) CYG_CHECK_DATA_PTRC(spare);
+    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
 
     // If we're doing software ECC, do it all in one go now.
-    if (src && !ecc_is_hw) {
+    if (src && !do_hw_ecc) {
         int step = ecc_data_stride;
         const CYG_BYTE *data_src = src;
-        remain = sizex;
-
-        // if s/w ecc, part-stride writes are not yet supported
-        if (remain % ecc_data_stride != 0)
-            EG(-ENOSYS);
+        remain = NAND_BYTES_PER_PAGE(dev);
 
         while (remain) {
-            //if (step > remain) step = remain; // NYI
+            CYG_ASSERTC(remain >= step);
             if (dev->ecc->init) dev->ecc->init(dev);
             dev->ecc->calc(dev, data_src, step, ecc_dest);
 
@@ -499,21 +525,13 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     EG(dev->fns->write_begin(dev, page));
     if (src) {
         int step = write_data_stride;
-        remain = sizex;
+        remain = NAND_BYTES_PER_PAGE(dev);
         while (remain) {
-            if (ecc_is_hw && dev->ecc->init) dev->ecc->init(dev);
+            CYG_ASSERTC(remain >= step);
+            if (do_hw_ecc && dev->ecc->init) dev->ecc->init(dev);
 
-            if (step > remain) {
-                step = remain;
-                // We can only support part-stride writes by assuming
-                // that the rest of the stride is 0xFF.
-                // (Woe betide the caller if it isn't.)
-                EG(dev->fns->write_stride(dev, src, step));
-                EG(dev->fns->write_stride(dev, 0, write_data_stride - step));
-            } else {
-                EG(dev->fns->write_stride(dev, src, step));
-            }
-            if (ecc_is_hw) {
+            EG(dev->fns->write_stride(dev, src, step));
+            if (do_hw_ecc) {
                 dev->ecc->calc(dev, 0, 0, ecc_dest);
                 ecc_dest += ecc_stride;
             }

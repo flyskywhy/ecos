@@ -82,8 +82,8 @@ static const CYG_BYTE ParityTable256[256] =
 };
 #define BYTEPAR(i) ParityTable256[(unsigned char)(i)]
 
-#ifdef SUPPORT_SUB_BLOCK
-// TODO decide whether we need sub-block support.
+#ifdef SUBSTRIDE_SUPPORT
+// This is not needed?
 #define BLOCKSIZE 256
 static CYG_BYTE databuf[BLOCKSIZE];
 #endif
@@ -100,7 +100,7 @@ static void ecc256_fast(struct _cyg_nand_device_t *dev, const CYG_BYTE *data,
     unsigned i;
     cyg_uint32 *d = (cyg_uint32*)data;
 
-#ifdef SUPPORT_SUB_BLOCK
+#ifdef SUBSTRIDE_SUPPORT
     if (nbytes < BLOCKSIZE) {
         // Slightly horrid kludge to support sub-block reads. This might be removed later.
         memcpy(databuf, data, nbytes);

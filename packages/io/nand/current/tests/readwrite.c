@@ -130,20 +130,20 @@ int cyg_user_start(void)
     ar4prng_many(&rnd, buf, datasize);
 
     diag_printf("Read/write to page %d (block %d)\n", pg, blk);
-    MUST(0==cyg_nand_write_page(prt, pg, buf, datasize, 0, 0));
-    MUST(0==cyg_nand_read_page (prt, pg, buf2,datasize, 0, 0));
+    MUST(0==cyg_nand_write_page(prt, pg, buf, 0, 0));
+    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
 
     diag_printf("Erasing adjacent block %d\n", blk+1);
     MUST(0==cyg_nand_erase_block(prt, blk+1));
     diag_printf("Re-read check..\n");
-    MUST(0==cyg_nand_read_page (prt, pg, buf2,datasize, 0, 0));
+    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
 
     diag_printf("Re-erase %d\n", blk);
     MUST(0==cyg_nand_erase_block(prt, blk));
     diag_printf("Read-back page %d to confirm erase\n", pg);
-    MUST(0==cyg_nand_read_page (prt, pg, buf2,datasize, 0, 0));
+    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
     for (i=0; i<datasize; i++)
         MUST(buf2[i]==0xff);
 

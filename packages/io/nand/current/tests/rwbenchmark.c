@@ -318,7 +318,7 @@ cyg_nand_block_addr find_spare_block(cyg_nand_partition *part)
 
     for (b=part->last; b>=part->first; b--) {
         cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(part->dev, b);
-        rv = cyg_nand_read_page(part, pg, 0, 0, oob, oobz);
+        rv = cyg_nand_read_page(part, pg, 0, oob, oobz);
         if (rv != 0) continue; // bad block?
 
         for (i=0; i<oobz; i++)
@@ -355,7 +355,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
     cyg_nand_erase_block(part, b);
     memcpy(oob, databuf, oobz);
     for (i=pgstart; i <= pgend; i++) {
-        rv = cyg_nand_write_page(part, i, databuf, sizeof databuf, oob, oobz);
+        rv = cyg_nand_write_page(part, i, databuf, oob, oobz);
         switch (rv) {
             case 0: break;
             case -EIO:
@@ -387,7 +387,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEARDATA();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, 0, 0);
+        cyg_nand_read_page(part, pg, testbuf, 0, 0);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         ++pg;
@@ -399,7 +399,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, 0, 0, oob, oobz);
+        cyg_nand_read_page(part, pg, 0, oob, oobz);
         get_timestamp(&ft[i].end);
         CHECKOOB();
         ++pg;
@@ -412,7 +412,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
+        cyg_nand_read_page(part, pg, testbuf, oob, oobz);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         CHECKOOB();
@@ -439,13 +439,13 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
     for (i=0; i < NWRITES; i++) {
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_write_page(part, pg, databuf, sizeof databuf, databuf, oobz);
+        cyg_nand_write_page(part, pg, databuf, databuf, oobz);
         get_timestamp(&ft[i].end);
 
         // Read it back to confirm
         CLEARDATA();
         CLEAROOB();
-        cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
+        cyg_nand_read_page(part, pg, testbuf, oob, oobz);
         CHECKDATA();
         CHECKOOB();
 
@@ -481,7 +481,7 @@ void test_erases(cyg_nand_partition *part, cyg_nand_block_addr b)
             // to try writing out more dummy data each time.
             CLEARDATA();
             CLEAROOB();
-            cyg_nand_read_page(part, pg, testbuf, sizeof testbuf, oob, oobz);
+            cyg_nand_read_page(part, pg, testbuf, oob, oobz);
             for (j=0; j < sizeof testbuf; j++) {
                 if (testbuf[j] != 0xff) {
                     CYG_TEST_FAIL("readback check failed");

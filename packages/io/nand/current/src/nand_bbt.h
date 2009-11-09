@@ -116,13 +116,18 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev);
 
 /* Raw unchecked NAND access, for use by the BBT ===================== */
 
-int nandi_read_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
-                        CYG_BYTE * dest, size_t size,
-                        CYG_BYTE * spare, size_t spare_size);
+int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
+                              CYG_BYTE * dest,
+                              CYG_BYTE * spare, size_t spare_size,
+                              int check_ecc);
 
 int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
-                         const CYG_BYTE * src, size_t size,
+                         const CYG_BYTE * src,
                          const CYG_BYTE * spare, size_t spare_size);
+
+/* Code outside of the BBT can use the pagebuffer ==================== */
+CYG_BYTE* nandi_grab_pagebuf(void);
+void nandi_release_pagebuf(void);
 
 /* =================================================================== */
 
