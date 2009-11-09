@@ -82,14 +82,8 @@ static const CYG_BYTE ParityTable256[256] =
 };
 #define BYTEPAR(i) ParityTable256[(unsigned char)(i)]
 
-#ifdef SUBSTRIDE_SUPPORT
-// This is not needed?
-#define BLOCKSIZE 256
-static CYG_BYTE databuf[BLOCKSIZE];
-#endif
-
 static void ecc256_fast(struct _cyg_nand_device_t *dev, const CYG_BYTE *data,
-                        size_t nbytes, CYG_BYTE *ecc)
+                        CYG_BYTE *ecc)
 {
     cyg_uint32 c; // current data word
     cyg_uint32 cp,tp; // column and loop-temporary accumulators
@@ -99,15 +93,6 @@ static void ecc256_fast(struct _cyg_nand_device_t *dev, const CYG_BYTE *data,
     cyg_uint32 p8p, p16p, p32p, p64p, p128p, p256p, p512p, p1024p;
     unsigned i;
     cyg_uint32 *d = (cyg_uint32*)data;
-
-#ifdef SUBSTRIDE_SUPPORT
-    if (nbytes < BLOCKSIZE) {
-        // Slightly horrid kludge to support sub-block reads. This might be removed later.
-        memcpy(databuf, data, nbytes);
-        memset(&databuf[nbytes], 0xff, BLOCKSIZE - nbytes);
-        d = (cyg_uint32*) databuf;
-    }
-#endif
 
     cp=p8=p16=p32=p64=p128=p256=p512=p1024=0;
 

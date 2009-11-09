@@ -74,14 +74,12 @@ typedef struct {
 
     /* Returns the ECC for the given data block.
      * If IS_HARDWARE:
-     *  - dat and nbytes are ignored
+     *  - dat is ignored
      * If ! IS_HARDWARE:
-     *  - dat and nbytes are required
-     *  - if nbytes is less than the chunk size, the remainder are
-     *    assumed to be 0xff.
+     *  - dat is required, and @data_size@ bytes will be read from it
      */
     void (*calc)(struct _cyg_nand_device_t *dev, 
-                 const CYG_BYTE *dat, size_t nbytes, CYG_BYTE *ecc);
+                 const CYG_BYTE *dat, CYG_BYTE *ecc);
 
     /* Repairs the ECC for the given data block, if needed.
      * Call this if your read-from-chip ECC doesn't match what you computed

@@ -75,7 +75,7 @@ void ecc(cyg_nand_device *dev, const CYG_BYTE *data, const char *msg, CYG_BYTE *
 {
     if (dev->ecc->init)
         dev->ecc->init(dev);
-    dev->ecc->calc(dev, data, dev->ecc->data_size, out);
+    dev->ecc->calc(dev, data, out);
     diag_printf("%s: ecc=%02x%02x%02x\n", msg, out[0], out[1], out[2]);
     // TODO adapt this display for ECCs longer than 3 bytes
 }

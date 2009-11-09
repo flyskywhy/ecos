@@ -5,6 +5,7 @@
 	  * read_part_page: Created.  Allows part-pages and optionally
 	    not checking ECC.
 	  * write_page: now only writes a whole page and/or its spare.
+	  + nand_ecc.h: Drop earlier attempt to support sub-page ECC.
 	* tests/readwrite.c: Test out cyg_nand_read_part_page().
 	* tests: Update for interface tweak.
 

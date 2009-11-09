@@ -135,7 +135,7 @@ void nand_trans_result(u_char reg2, u_char reg3,
  * Calculate 3 byte ECC code for 256 byte block
  */
 static void mtd_calculate_ecc(struct _cyg_nand_device_t *dev,
-        const u_char *dat, size_t nbytes, u_char *ecc_code)
+        const u_char *dat, u_char *ecc_code)
 {
     u_char idx, reg1, reg2, reg3;
     int j;
@@ -146,8 +146,7 @@ static void mtd_calculate_ecc(struct _cyg_nand_device_t *dev,
     
     /* Build up column parity */ 
     for(j = 0; j < 256; j++) {
-        u_char d = 0xff;
-        if (j < nbytes) d = dat[j];
+        u_char d = dat[j];
         
         /* Get CP0 - CP5 from table */
         idx = nand_ecc_precalc_table[d];

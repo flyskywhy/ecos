@@ -83,7 +83,7 @@ void ecc(cyg_nand_device *dev, const CYG_BYTE *data, CYG_BYTE *out)
 {
     if (dev->ecc->init)
         dev->ecc->init(dev);
-    dev->ecc->calc(dev, data, dev->ecc->data_size, out);
+    dev->ecc->calc(dev, data, out);
 }
 
 const char msg[]="ECC equivalence check";

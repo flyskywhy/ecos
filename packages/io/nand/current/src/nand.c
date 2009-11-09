@@ -369,7 +369,7 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                 EG(dev->fns->read_stride(dev, data_dest, read_data_stride));
 
                 if (do_hw_ecc) {
-                    dev->ecc->calc(dev, 0, 0, ecc_dest);
+                    dev->ecc->calc(dev, 0, ecc_dest);
                     ecc_dest += ecc_stride;
                 }
 
@@ -390,7 +390,7 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
 
                     while (remain) {
                         if (dev->ecc->init) dev->ecc->init(dev);
-                        dev->ecc->calc(dev, data_dest, ecc_data_stride, ecc_calc_p);
+                        dev->ecc->calc(dev, data_dest, ecc_calc_p);
 
                         remain -= ecc_data_stride;
                         data_dest += ecc_data_stride;
@@ -506,17 +506,16 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
 
     // If we're doing software ECC, do it all in one go now.
     if (src && !do_hw_ecc) {
-        int step = ecc_data_stride;
         const CYG_BYTE *data_src = src;
         remain = NAND_BYTES_PER_PAGE(dev);
 
         while (remain) {
-            CYG_ASSERTC(remain >= step);
+            CYG_ASSERTC(remain >= ecc_data_stride);
             if (dev->ecc->init) dev->ecc->init(dev);
-            dev->ecc->calc(dev, data_src, step, ecc_dest);
+            dev->ecc->calc(dev, data_src, ecc_dest);
 
-            remain -= step;
-            data_src += step;
+            remain -= ecc_data_stride;
+            data_src += ecc_data_stride;
             ecc_dest += ecc_stride;
         }
     }
@@ -524,19 +523,18 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     LOCK_DEV(dev);
     EG(dev->fns->write_begin(dev, page));
     if (src) {
-        int step = write_data_stride;
         remain = NAND_BYTES_PER_PAGE(dev);
         while (remain) {
-            CYG_ASSERTC(remain >= step);
+            CYG_ASSERTC(remain >= write_data_stride);
             if (do_hw_ecc && dev->ecc->init) dev->ecc->init(dev);
 
-            EG(dev->fns->write_stride(dev, src, step));
+            EG(dev->fns->write_stride(dev, src, write_data_stride));
             if (do_hw_ecc) {
-                dev->ecc->calc(dev, 0, 0, ecc_dest);
+                dev->ecc->calc(dev, 0, ecc_dest);
                 ecc_dest += ecc_stride;
             }
-            src += step;
-            remain -= step;
+            src += write_data_stride;
+            remain -= write_data_stride;
         }
     }
 
@@ -662,7 +660,7 @@ void nand_ecci_calc_page(cyg_nand_device *dev, const CYG_BYTE *page, CYG_BYTE *e
     for (i=0; i<nblocks; i++) {
         if (dev->ecc->init)
             dev->ecc->init(dev);
-        dev->ecc->calc(dev,page,dev->ecc->data_size,ecc_o);
+        dev->ecc->calc(dev,page,ecc_o);
         page += dev->ecc->data_size;
         ecc_o += dev->ecc->ecc_size;
     }

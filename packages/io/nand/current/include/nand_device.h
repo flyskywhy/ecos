@@ -149,8 +149,6 @@ struct cyg_nand_dev_fns_v2 {
      *
      * The number of bytes to read - up to a stride - is given as `size'.
      * Only that many bytes will be written to dest.
-     * If dest is NULL then the driver should read the data anyway
-     * but throw it away: this may be required for hardware ECC logic.
      *
      * The size of a stride is implicit from the ECC algorithm used.
      */
@@ -170,8 +168,6 @@ struct cyg_nand_dev_fns_v2 {
      *
      * The number of bytes to written - up to a stride - is given as `size'.
      * Only that many bytes will be written to the chip.
-     * If called with src==NULL, the driver should write `size' 0xFF bytes;
-     * this may be necessary for hardware ECC calculation.
      *
      * The size of a stride is implicit from the ECC algorithm used. */
     int (*write_stride)(cyg_nand_device *dev, const void * src, size_t size);
