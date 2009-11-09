@@ -109,7 +109,7 @@ void nandi_release_pagebuf(void)
 #ifdef CYGSEM_IO_NAND_USE_BBT
 
 #ifndef CYGSEM_IO_NAND_READONLY
-static int cyg_nand_bbti_write_tables(cyg_nand_device *dev);
+static int cyg_nand_bbti_write_tables(cyg_nand_device *dev, int is_initial);
 #endif
 
 /* Mapping between on-chip and in-ram statuses ===================== */
@@ -166,7 +166,7 @@ int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk,
     NAND_CHATTER(2,dev,"ignoring mark request on read-only config\n");
     return -ENOSYS;
 #else
-    int rv = cyg_nand_bbti_write_tables(dev);
+    int rv = cyg_nand_bbti_write_tables(dev,0);
     if (rv) 
         NAND_ERROR(dev,"nand_bbti_mark %d as %d: %d (%s)\n", blk, st, -rv, strerror(-rv));
     return rv;
@@ -249,7 +249,7 @@ static inline CYG_BYTE worst_of_the_two(CYG_BYTE current, CYG_BYTE onchip)
     return current; // least bad alternative if asserts disabled
 }
 
-static int bbti_incorporate_one(cyg_nand_device *dev, cyg_nand_block_addr blk)
+static int bbti_incorporate_one(cyg_nand_device *dev, cyg_nand_block_addr blk, CYG_BYTE version)
 {
     int rv = 0, i_locked = 0;
     LOCK_PAGEBUF();
@@ -257,6 +257,8 @@ static int bbti_incorporate_one(cyg_nand_device *dev, cyg_nand_block_addr blk)
     cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(dev,blk);
     unsigned char *optr = dev->bbt.data;
 
+    if (version > dev->bbt.version) dev->bbt.version = version;
+    
     int blks_to_read = 1 << dev->blockcount_bits;
     while (blks_to_read>0) {
         rv = nandi_read_whole_page_raw(dev, pg, bbt_pagebuf, 0, 0, 1);
@@ -305,6 +307,8 @@ err_exit:
     if (i_locked) UNLOCK_PAGEBUF();
     return rv;
 }
+
+/* ============================================================= */
 
 static int nandi_bbt_packing_test(cyg_nand_device *dev)
 {
@@ -375,36 +379,46 @@ err_exit:
     return rv;
 }
 
+/* ============================================================= */
 
-int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
+#if (NAND_VERSION_SIZE != 1)
+#error CT_ASSERT: BBT version handling needs recoded
+#endif
+
+/* Looks for the BBT copies, or for plausible places to put them.
+ * If @find_only@: outputs are set to 0xFFFFFFFF where the respective
+ *   ident patterns are not found.
+ * Else: outputs are set to plausible-looking places to write BBTs;
+ *   where the ident patterns are found, those block IDs are used.
+ *   Only if there is nowhere plausible to go (blocks marked bad) then
+ *   the relevant output(s) are set to 0xFFFFFFFF.
+ * If live BBTs were found, their version identifiers will be stored
+ * in *pri_ver and *mir_ver. If not, they will be untouched.
+ */
+static int nandi_find_bbt_locations(cyg_nand_device *dev,
+        cyg_nand_block_addr *pri_o, CYG_BYTE*pri_ver, 
+        cyg_nand_block_addr *mir_o, CYG_BYTE*mir_ver, int find_only)
 {
-    int rv = 0;
-    CYG_BYTE pri_ver = 0, mir_ver = 0;
+    cyg_nand_block_addr start = (1<<dev->blockcount_bits) - 1;
+    CYG_BYTE oobbuf[NAND_APPSPARE_PER_PAGE(dev)];
     CYG_BYTE patternbuf[NAND_PATTERN_SIZE];
     CYG_BYTE versionbuf[NAND_VERSION_SIZE];
+    int i, rv=0;
+    cyg_nand_block_addr pri, mir, maybepri, maybemir;
+    pri = mir = maybepri = maybemir = 0xFFFFFFFF;
 
-    NAND_CHATTER(3,dev, "Looking for bad-block table:\n");
-    /* TODO: What happens if a BBT block goes bad? Can we put it beyond use?
-     * - erasing it _should_ clear the descriptor pattern.
-     * Obviously, we should look for further instances of the BBT patterns
-     * with fresher version tag(s). */
-
-    EG(nandi_bbt_packing_test(dev));
-
-    cyg_nand_block_addr start = (1<<dev->blockcount_bits)-1;
-    int i;
     for (i=0; i<4; i++) {
-        /* WARNING: Logic about how the BBT is addressed is hard-coded
-         * both here and below (build_tables). If you edit one, you
-         * must edit the other. */
-        cyg_nand_block_addr blk = start - i;
+        cyg_nand_block_addr blk = start-i;
         cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(dev,blk);
 
-        CYG_BYTE oobbuf[NAND_APPSPARE_PER_PAGE(dev)];
+#define BAD(b) ((cyg_nand_bbti_query(dev,b) != CYG_NAND_BBT_OK) && (cyg_nand_bbti_query(dev,b) != CYG_NAND_BBT_RESERVED))
+        if (BAD(blk)) continue;
 
+        // look for the pattern
+        memset(oobbuf, 0xff, sizeof oobbuf);
         rv = nandi_read_whole_page_raw(dev, pg, 0, oobbuf, sizeof oobbuf, 1);
         if (rv<0) {
-            NAND_CHATTER(1,dev, "bbti_find_tables: Error %d reading OOB of page %u (block %u)\n", -rv, pg, blk);
+            NAND_CHATTER(1,dev, "find_bbt_locations: Error %d reading OOB of page %u (block %u)\n", -rv, pg, blk);
             EG(-EIO);
         }
 
@@ -415,42 +429,57 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
 
         if (0==memcmp(patternbuf, nand_pattern_primary, NAND_PATTERN_SIZE)) {
             CYG_BYTE found_ver = *versionbuf;
-#if (NAND_VERSION_SIZE != 1)
-#error CT_ASSERT: version handling needs recoded
-#endif
-            if (pri_ver) {
-                /* hmm, we've already found one */
-                if (found_ver < pri_ver) continue /* older */;
+            if (found_ver > *pri_ver) {
+                *pri_ver = found_ver;
+                pri = blk;
+                continue;
             }
-            /* either this is the first primary we've seen, or it's newer */
-            pri_ver = found_ver;
-            dev->bbt.primary = blk;
-            continue;
         }
-        if (0==memcmp(patternbuf, nand_pattern_mirror, NAND_PATTERN_SIZE)) {
+        if (0==memcmp(patternbuf, nand_pattern_mirror,  NAND_PATTERN_SIZE)) {
             CYG_BYTE found_ver = *versionbuf;
-            if (mir_ver) {
-                /* hmm, we've already found one */
-                if (found_ver < mir_ver) continue /* older */;
+            if (found_ver > *mir_ver) {
+                *mir_ver = found_ver;
+                mir = blk;
+                continue;
             }
-            /* either this is the first mirror we've seen, or it's newer */
-            mir_ver = found_ver;
-            dev->bbt.mirror = blk;
+        }
+        if (find_only) continue;
+
+        // It's not an existing table, and it's not bad, so it might be
+        // a plausible place to put one.
+
+        if (maybepri == 0xFFFFFFFF) {
+            maybepri = blk;
             continue;
         }
-    } // end for the searching loop.
 
-    if (pri_ver) {
-        NAND_CHATTER(3,dev, "Found primary BBT in block %u, version %u\n", dev->bbt.primary, pri_ver);
+        if (maybemir == 0xFFFFFFFF) {
+            maybemir = blk;
+            continue;
+        }
+#undef BAD
     }
-    if (mir_ver) {
-        NAND_CHATTER(3,dev, "Found mirror BBT in block %u, version %u\n", dev->bbt.mirror, mir_ver);
-    }
+    *pri_o = (pri == 0xFFFFFFFF) ? maybepri : pri;
+    *mir_o = (mir == 0xFFFFFFFF) ? maybemir : mir;
 
-    if (!pri_ver && !mir_ver) {
-        NAND_CHATTER(3,dev,"Found no BBTs on chip\n");
-        EG(-ENOENT);
-    }
+err_exit:
+    return rv;
+}
+
+
+int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
+{
+    int rv = 0, got = 0;
+    CYG_BYTE pri_ver = 0, mir_ver = 0;
+
+    NAND_CHATTER(3,dev, "Looking for bad-block table:\n");
+    /* TODO: What happens if a BBT block goes bad? Can we put it beyond use?
+     * - erasing it _should_ clear the descriptor pattern.
+     * Obviously, we should look for further instances of the BBT patterns
+     * with fresher version tag(s). */
+
+    EG(nandi_bbt_packing_test(dev));
+    EG(nandi_find_bbt_locations(dev, &dev->bbt.primary, &pri_ver, &dev->bbt.mirror, &mir_ver, 1));
 
     /* OK, we found one or both, so read them in.
      * We must read both, if available, and OR them together. */
@@ -459,19 +488,32 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev)
 #define all_ok_pattern ( CYG_NAND_BBT_OK       | (CYG_NAND_BBT_OK << 2) | \
                         (CYG_NAND_BBT_OK << 4) | (CYG_NAND_BBT_OK << 6)  )
     memset(dev->bbt.data, all_ok_pattern, dev->bbt.datasize);
-    rv = bbti_incorporate_one(dev, dev->bbt.primary);
-    int rv2 = bbti_incorporate_one(dev, dev->bbt.mirror);
+
+    if (dev->bbt.primary != 0xFFFFFFFF) {
+        ++got;
+        NAND_CHATTER(3,dev, "Found primary BBT in block %u\n", dev->bbt.primary);
+        rv = bbti_incorporate_one(dev, dev->bbt.primary, pri_ver);
+        bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
+    }
+
+    int rv2 = 0;
+    if (dev->bbt.mirror != 0xFFFFFFFF) {
+        ++got;
+        NAND_CHATTER(3,dev, "Found mirror BBT in block %u\n", dev->bbt.mirror);
+        rv2 = bbti_incorporate_one(dev, dev->bbt.mirror, mir_ver);
+        bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
+    }
+
+    if (!got) {
+        NAND_CHATTER(3,dev,"Found no BBTs on chip\n");
+        EG(-ENOENT);
+    }
+
     if ( (rv < 0) && (rv2 < 0) ) {
         NAND_ERROR(dev, "No BBT usable - disabling device\n");
         EG(-EIO);
     }
 
-
-    bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
-    bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
-
-    dev->bbt.version = (pri_ver > mir_ver) ? pri_ver : mir_ver;
-    
     /* TODO: The choice of BBT location and behaviour (BBT versioning;
      * on-chip format) could in future be affected by CDL options or by
      * device-specific settings.
@@ -507,46 +549,21 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev)
     return 0;
 #else
     /* This is a virgin device, so we have free choice. 
-     * We'll take the two blocks nearest the end, within our limit of
-     * four, which aren't marked as factory bad. */
+     * write_tables() takes care of choosing where.
+     */
 
-    /* WARNING: Logic about how the BBT is addressed is hard-coded
-     * both here and above (find_tables). If you edit one, you
-     * must edit the other. */
-
-    cyg_nand_block_addr start = (1<<dev->blockcount_bits) - 1;
-    int got_pri=0, got_mir=0, i;
-    for (i=0; i<4; i++) {
-#define BAD(b) (cyg_nand_bbti_query(dev,b) != CYG_NAND_BBT_OK)
-        if (!got_pri && !BAD(start-i)) {
-            dev->bbt.primary = start - i;
-            got_pri=1;
-            continue;
-        }
-        if (!got_mir && !BAD(start-i)) {
-            dev->bbt.mirror = start - i;
-            got_mir=1;
-            break;
-        }
-#undef BAD
-    }
-    if (!got_pri) {
-        NAND_ERROR(dev,"Cannot find a location to write initial BBT!\n");
-        return -EIO;
-    }
-    if (!got_mir) {
-        NAND_ERROR(dev,"Cannot find a location to write mirror BBT!\n");
-        return -EIO;
-    }
-    NAND_CHATTER(3,dev, "Chosen BBT locations: primary %u, mirror %u\n", dev->bbt.primary, dev->bbt.mirror);
-
-    bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
-    bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
+    if (dev->bbt.primary != 0xFFFFFFFF)
+        bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
+    if (dev->bbt.mirror != 0xFFFFFFFF)
+        bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
     dev->bbt.version = 0; /* write_tables() will bump to 1, which is correct */
-    int rv = cyg_nand_bbti_write_tables(dev);
-    if (rv<0) {
+
+    int rv = cyg_nand_bbti_write_tables(dev, 1);
+    if (rv<0)
         NAND_ERROR(dev,"Error %d writing out initial BBT: %s\n", -rv, strerror(-rv));
-    }
+    else
+        NAND_CHATTER(3,dev, "Chosen BBT locations: primary %u, mirror %u\n", dev->bbt.primary, dev->bbt.mirror);
+
     return rv;
 #endif
 }
@@ -640,7 +657,7 @@ err_exit:
 
 
 /* Increments the BBT version, then writes out _both_ tables*/
-static int cyg_nand_bbti_write_tables(cyg_nand_device *dev)
+static int cyg_nand_bbti_write_tables(cyg_nand_device *dev, int is_initial)
 {
     int rv, retries=-1;
 
@@ -652,12 +669,26 @@ top:
     else
         dev->bbt.version ++;
 
+    CYG_BYTE pri_ver, mir_ver;
+    rv = nandi_find_bbt_locations(dev, &dev->bbt.primary, &pri_ver,
+            &dev->bbt.mirror, &mir_ver, is_initial ? 0 : 1);
+
 #define RETRY_LIMIT 3
 
-    rv = bbti_write_one_table(dev, dev->bbt.primary, nand_pattern_primary);
-    if (rv == -EIO && retries < RETRY_LIMIT) goto top;
-    rv = bbti_write_one_table(dev, dev->bbt.mirror, nand_pattern_mirror);
-    if (rv == -EIO && retries < RETRY_LIMIT) goto top;
+    if (dev->bbt.primary == 0xFFFFFFFF) {
+        NAND_ERROR(dev,"Cannot find a location to write primary BBT!\n");
+        return -EIO;
+    } else {
+        rv = bbti_write_one_table(dev, dev->bbt.primary, nand_pattern_primary);
+        if (rv == -EIO && retries < RETRY_LIMIT) goto top;
+    }
+    if (dev->bbt.mirror == 0xFFFFFFFF) {
+        NAND_ERROR(dev,"Cannot find a location to write mirror BBT!\n");
+        return -EIO;
+    } else {
+        rv = bbti_write_one_table(dev, dev->bbt.mirror, nand_pattern_mirror);
+        if (rv == -EIO && retries < RETRY_LIMIT) goto top;
+    }
 
     if (retries >= RETRY_LIMIT) 
         NAND_ERROR(dev, "Warning! Retry limit on BBT writes reached, this shouldn't happen...\n");

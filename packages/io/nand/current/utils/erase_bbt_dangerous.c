@@ -74,7 +74,9 @@ void cyg_user_start(void)
 {
     cyg_nand_device *dev;
     MUST(0==cyg_nand_lookup(DEVICE, &dev),"lookup failed\n");
-    rawerase(dev,dev->bbt.primary);
+    if (dev->bbt.primary != 0xFFFFFFFF)
+        rawerase(dev,dev->bbt.primary);
+    if (dev->bbt.mirror != 0xFFFFFFFF)
     rawerase(dev,dev->bbt.mirror);
     diag_printf("BBT should now be erased.\n");
 }
