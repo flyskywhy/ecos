@@ -134,6 +134,36 @@ int cyg_user_start(void)
     MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
 
+    diag_printf("Partial-reads of page %d (block %d)\n", pg, blk);
+#define TEST(_m,_n,_ecc) do {       \
+    memset(buf2, 0, sizeof buf2);   \
+    MUST(0==cyg_nand_read_part_page(prt, pg, buf2, _m, _n, _ecc));  \
+    MUST(0==memcmp(&buf[_m], buf2, _n));    \
+} while(0)
+#define TESTFAIL(_m,_n,_ecc) do {   \
+    MUST(0!=cyg_nand_read_part_page(prt, pg, buf2, _m, _n, _ecc)); \
+} while(0)
+    // Ordinary whole-page reads:
+    TEST(0, NAND_BYTES_PER_PAGE(dev), 0);
+    TEST(0, NAND_BYTES_PER_PAGE(dev), 1);
+    // Partial reads:
+    TEST(0, 99, 0);
+    TEST(0, 99, 1);
+    TEST(42, 99, 0);
+    TEST(42, 99, 1);
+    // Read right up to the end:
+    TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 0);
+    TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 1);
+    // ... but we should not be able to read off the end of the page:
+    TESTFAIL(0, NAND_BYTES_PER_PAGE(dev)+1, 0);
+    TESTFAIL(43, NAND_BYTES_PER_PAGE(dev)-42, 1);
+    // Zero-length reads should work:
+    TEST(0, 0, 0);
+    TEST(0, 0, 1);
+    // Silly offsets should fail:
+    TESTFAIL(NAND_BYTES_PER_PAGE(dev)+1, 1, 0);
+    TESTFAIL(NAND_BYTES_PER_PAGE(dev)+1, 0, 1);
+
     diag_printf("Erasing adjacent block %d\n", blk+1);
     MUST(0==cyg_nand_erase_block(prt, blk+1));
     diag_printf("Re-read check..\n");

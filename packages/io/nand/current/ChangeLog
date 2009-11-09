@@ -5,6 +5,7 @@
 	  * read_part_page: Created.  Allows part-pages and optionally
 	    not checking ECC.
 	  * write_page: now only writes a whole page and/or its spare.
+	* tests/readwrite.c: Test out cyg_nand_read_part_page().
 	* tests: Update for interface tweak.
 
 2009-11-06  Ross Younger  <wry@eCosCentric.com>
