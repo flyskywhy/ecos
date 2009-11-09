@@ -200,14 +200,7 @@ static int k9_read_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 
 static int k9_read_stride(cyg_nand_device *dev, void * dest, size_t size)
 {
-    if (size) {
-        if (dest)
-            read_data_bulk(dev, dest, size);
-        else {
-            // Dummy-sink reads
-            while (size--) read_data_1(dev);
-        }
-    }
+    read_data_bulk(dev, dest, size);
     return 0;
 }
 
@@ -219,6 +212,28 @@ static int k9_read_finish(cyg_nand_device *dev, void * spare, size_t spare_size)
         read_data_bulk(dev, spare, spare_size);
     }
     //k9_reset(dev,5); // Unnecessary.
+    UNLOCK(dev);
+    return 0;
+}
+
+static int k9_read_part(cyg_nand_device *dev, void *dest,
+                        cyg_nand_page_addr page, size_t offset, size_t length)
+{
+    //k9_priv *priv = dev->priv;
+    CYG_BYTE addr[4] = { offset & 0xff, (offset >> 8) & 0xff,
+                         page & 0xff, (page >> 8) & 0xff };
+
+    NAND_CHATTER(7,dev,"Reading page %d (partial; offset %d, length %d)\n",
+                 page, offset, length);
+    LOCK(dev);
+
+    write_cmd(dev,0x00);
+    write_addrbytes(dev, &addr[0], 4);
+    write_cmd(dev,0x30);
+    wait_ready_or_time(dev, 1, 25 /* tR */);
+
+    read_data_bulk(dev, dest, length);
+
     UNLOCK(dev);
     return 0;
 }
@@ -241,14 +256,7 @@ static int k9_write_begin(cyg_nand_device *dev, cyg_nand_page_addr page)
 
 static int k9_write_stride(cyg_nand_device *dev, const void * src, size_t size)
 {
-    if (size) {
-        if (src)
-            write_data_bulk(dev, src, size);
-        else {
-            // Dummy-source writes
-            while (size--) write_data_1(dev, 0xff);
-        }
-    }
+    write_data_bulk(dev, src, size);
     return 0;
 }
 
@@ -264,7 +272,7 @@ static int k9_write_finish(cyg_nand_device *dev, const void * spare, size_t spar
     wait_ready_or_status(dev, 1<<6);
 
     if (read_status(dev) & 1) {
-        NAND_ERROR(dev, "NAND: k9fxx08x0x: Programming failed! Page %u", priv->pagestash);
+        NAND_ERROR(dev, "k9fxx08x0x: Programming failed! Page %u", priv->pagestash);
         rv =-EIO;
         goto done;
     } else {
@@ -290,7 +298,7 @@ static int k9_erase_block(cyg_nand_device *dev, cyg_nand_block_addr blk)
     wait_ready_or_status(dev, 1<<6);
     if (read_status(dev) & 1) {
         rv = -EIO;
-        NAND_ERROR(dev, "NAND: k9fxx08x0x: Erasing block %u failed.\n",blk);
+        NAND_ERROR(dev, "k9fxx08x0x: Erasing block %u failed.\n",blk);
         goto done;
     }
     NAND_CHATTER(7,dev, "Erased block %u OK\n", blk);
@@ -332,6 +340,7 @@ static int k9_factorybad(cyg_nand_device *dev, cyg_nand_block_addr blk)
 
 CYG_NAND_FUNS_V2(k9f8_funs, k9_devinit,
         k9_read_begin, k9_read_stride, k9_read_finish,
+        k9_read_part,
         k9_write_begin, k9_write_stride, k9_write_finish,
         k9_erase_block, k9_factorybad);
 

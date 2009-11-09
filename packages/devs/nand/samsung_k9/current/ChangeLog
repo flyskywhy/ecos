@@ -1,3 +1,7 @@
+2009-11-09  Ross Younger  <wry@eCosCentric.com>
+
+	* Add read_part_page function.
+
 2009-10-02  Ross Younger  <wry@eCosCentric.com>
 
 	* Update driver to expose v2 device functions.
