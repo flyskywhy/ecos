@@ -425,6 +425,32 @@ static void wait_ready_polled(cyg_nand_device *ctx)
 static int k9_plf_init(cyg_nand_device *dev)
 {
     //GET_MYPRIV(dev,priv);
+
+    // Default platform EMC timings on this board are a bit off for
+    // efficient use of the NAND.
+
+    unsigned ns_per_cclk = 1 + 1000000000 / CYGNUM_HAL_ARM_LPC24XX_CLOCK_SPEED;
+
+    // NB! These figures are interpreted from the K9 datasheet.
+    // WaitOEN: No delay required
+    HAL_WRITE_UINT32(CYGARC_HAL_LPC24XX_REG_EMC_BASE + CYGARC_HAL_LPC24XX_REG_EMCS_WAITO_EN1, 0);
+
+    // WaitRead: 25ns (EMC delays for CCLK * (1+n) )
+    unsigned waitread = 25 / ns_per_cclk; // +1 to round up, -1 to account for the implicit CCLK
+    HAL_WRITE_UINT32(CYGARC_HAL_LPC24XX_REG_EMC_BASE + CYGARC_HAL_LPC24XX_REG_EMCS_WAITRD1, waitread);
+
+    // WaitWEN: No delay required, use the shortest that the EMC allows
+    HAL_WRITE_UINT32(CYGARC_HAL_LPC24XX_REG_EMC_BASE + CYGARC_HAL_LPC24XX_REG_EMCS_WAITW_EN1, 0);
+    // WaitWrite: 25ns (EMC delays for CCLK * (2+n) )
+    unsigned waitwrite = 25 / ns_per_cclk; // +1 to round up, -2 to account for the implicit 2CCLK, but don't underflow...
+    if (waitwrite != 0) --waitwrite;
+    HAL_WRITE_UINT32(CYGARC_HAL_LPC24XX_REG_EMC_BASE + CYGARC_HAL_LPC24XX_REG_EMCS_WAITWR1, waitwrite);
+
+    // WaitTurn: 10ns (EMC delays for CCLK * (1+n) )
+    unsigned waitturn = 10 / ns_per_cclk; // +1 to round up, -1 to account for the implicit CCLK
+    HAL_WRITE_UINT32(CYGARC_HAL_LPC24XX_REG_EMC_BASE + CYGARC_HAL_LPC24XX_REG_EMCS_WAITTURN1, waitturn);
+
+
 #ifdef INITHOOK
     return INITHOOK(dev);
 #else
