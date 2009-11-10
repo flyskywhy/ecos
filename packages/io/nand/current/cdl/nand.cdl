@@ -239,6 +239,15 @@ cdl_package CYGPKG_IO_NAND {
             played with lightly."
     }
 
+    cdl_option CYGSEM_IO_NAND_INSTRUMENT_TIMING {
+        display     "Instrument NAND call timings"
+        default_value 0
+        description "This option enables timing instrumentation within
+            the NAND library. It is intended only to assist driver
+            authors during development.
+            Normal users should not set this option."
+    }
+
     cdl_option CYGBLD_IO_NAND_UTILS {
         display "The list of utilities to build."
 		flavor data

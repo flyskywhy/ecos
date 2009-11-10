@@ -58,6 +58,58 @@
 #include <string.h>
 
 /* ============================================================ */
+// Timing instrumentation hooks; or "where is all the time going?"
+// timetag_to_csv.pl will turn gdb output ("p tagslist") into CSV,
+// for ease of analysis.
+
+#ifdef CYGSEM_IO_NAND_INSTRUMENT_TIMING
+# ifndef HAL_CLOCK_READ
+#  error HAL_CLOCK_READ required
+# endif
+# define TAGSIZE 1024
+cyg_uint32 tagslist[TAGSIZE];
+cyg_uint32 tags_next;
+static cyg_int64        rtc_resolution[] = CYGNUM_KERNEL_COUNTERS_RTC_RESOLUTION;
+static cyg_int64        rtc_period = CYGNUM_KERNEL_COUNTERS_RTC_PERIOD;
+
+# define TAG(_x) do {                           \
+    tagslist[tags_next++] = _x;                 \
+    if (tags_next >= TAGSIZE) tags_next = 0;    \
+} while(0)
+
+# define TIMETAG() do {     \
+    cyg_uint64 tick;        \
+    cyg_uint32 haltick;     \
+    tick=cyg_current_time();\
+    HAL_CLOCK_READ(&haltick);\
+    TAG(__LINE__);          \
+    TAG(tick&0xFFFFFFFF);   \
+    TAG(haltick);           \
+} while(0)
+
+# define TIMETAG_INIT() do {        \
+    int _i;                         \
+    for (_i=0; _i<TAGSIZE; _i++)    \
+        tagslist[_i]=0;             \
+    tags_next = 0;                  \
+    cyg_uint32 _tt, _tu;            \
+    HAL_CLOCK_READ(&_tt);           \
+    _tu = _tt;                      \
+    while (_tt == _tu)              \
+        HAL_CLOCK_READ(&_tu);       \
+    TIMETAG();                      \
+    (void) rtc_period;              \
+    (void) rtc_resolution;          \
+} while(0)
+
+#else // ! CYGSEM_IO_NAND_INSTRUMENT_TIMING
+
+# define TIMETAG_INIT() CYG_EMPTY_STATEMENT
+# define TIMETAG() CYG_EMPTY_STATEMENT
+
+#endif
+
+/* ============================================================ */
 
 /* We have a global ("devinit") lock, protects the nanddevtab and all 
  * writes to device->isInited.
@@ -263,6 +315,7 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
                 void * dest, void * spare, size_t spare_size)
 {
     int rv, locked=0;
+    TIMETAG_INIT();
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
@@ -285,6 +338,7 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
 
 err_exit:
     if (locked) UNLOCK_DEV(dev);
+    TIMETAG();
     return rv;
 }
 
@@ -368,7 +422,9 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
         ++tries;
         remain = NAND_BYTES_PER_PAGE(dev);
 
+        TIMETAG();
         EG(dev->fns->read_begin(dev, page));
+        TIMETAG();
 
         if (dest) {
             int step;
@@ -376,22 +432,28 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                 step = read_data_stride;
                 CYG_ASSERTC(remain >= read_data_stride);
 
+                TIMETAG();
                 if (do_hw_ecc && dev->ecc->init) dev->ecc->init(dev);
                 EG(dev->fns->read_stride(dev, data_dest, read_data_stride));
+                TIMETAG();
 
                 if (do_hw_ecc) {
                     dev->ecc->calc(dev, 0, ecc_dest);
                     ecc_dest += ecc_stride;
+                    TIMETAG();
                 }
 
                 data_dest += read_data_stride;
                 remain -= read_data_stride;
             }
 
+            TIMETAG();
             EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
+            TIMETAG();
             nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
 
             if (check_ecc) {
+                TIMETAG();
                 if (!do_hw_ecc) {
                     // Calculate software ECC in one go to try and take
                     // advantage of the cache.
@@ -433,9 +495,12 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                     ecc_calc_p += ecc_stride;
                     remain -= ecc_data_stride;
                 }
+                TIMETAG();
             }
         } else { // !dest: very simple case
+            TIMETAG();
             EG(dev->fns->read_finish(dev, oob_buf, dev->spare_per_page));
+            TIMETAG();
             rv = 0;
             nand_oob_unpack(dev, spare, spare_size, ecc_read, oob_buf);
         }
@@ -471,6 +536,7 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         const void * src, const void * spare, size_t spare_size)
 {
     int rv, locked = 0;
+    TIMETAG_INIT();
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
@@ -490,6 +556,7 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
 
 err_exit:
     if (locked) UNLOCK_DEV(dev);
+    TIMETAG();
     return rv;
 }
 
@@ -517,6 +584,7 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     if (spare) CYG_CHECK_DATA_PTRC(spare);
     CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
 
+    TIMETAG();
     // If we're doing software ECC, do it all in one go now.
     if (src && !do_hw_ecc) {
         const CYG_BYTE *data_src = src;
@@ -532,15 +600,18 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             ecc_dest += ecc_stride;
         }
     }
+    TIMETAG();
 
     EG(dev->fns->write_begin(dev, page));
+    TIMETAG();
     if (src) {
         remain = NAND_BYTES_PER_PAGE(dev);
         while (remain) {
             CYG_ASSERTC(remain >= write_data_stride);
+            TIMETAG();
             if (do_hw_ecc && dev->ecc->init) dev->ecc->init(dev);
-
             EG(dev->fns->write_stride(dev, src, write_data_stride));
+            TIMETAG();
             if (do_hw_ecc) {
                 dev->ecc->calc(dev, 0, ecc_dest);
                 ecc_dest += ecc_stride;
@@ -549,10 +620,12 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             remain -= write_data_stride;
         }
     }
+    TIMETAG();
 
     nand_oob_pack(dev, spare, spare_size, ecc, oob_packed);
     NAND_CHATTER(8,dev,"Write page %u\n", page);
     EG(dev->fns->write_finish(dev, oob_packed, dev->spare_per_page));
+    TIMETAG();
 
     /* N.B. We don't read-back to verify; drivers may do so themselves if
      * they wish. Typically the spec sheet says that a read-back test
@@ -575,7 +648,9 @@ int cyg_nand_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr blk)
     int rv;
     DEV_INIT_CHECK(dev);
 
+    TIMETAG();
     LOCK_DEV(dev);
+    TIMETAG();
 
     EG(valid_block_addr(prt, blk));
 #ifdef CYGSEM_IO_NAND_USE_BBT
@@ -593,7 +668,9 @@ int cyg_nand_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr blk)
         EG(rv);
     }
 err_exit:
+    TIMETAG();
     UNLOCK_DEV(dev);
+    TIMETAG();
     return rv;
 #endif
 }
