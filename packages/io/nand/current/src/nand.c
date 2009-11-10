@@ -262,7 +262,7 @@ __externC
 int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
                 void * dest, void * spare, size_t spare_size)
 {
-    int rv;
+    int rv, locked=0;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
@@ -279,9 +279,12 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     }
 #endif
 
+    LOCK_DEV(dev);
+    locked = 1;
     EG(nandi_read_whole_page_raw(dev, page, dest, spare, spare_size, 1));
 
 err_exit:
+    if (locked) UNLOCK_DEV(dev);
     return rv;
 }
 
@@ -297,7 +300,7 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
     CYG_BYTE *pagebuffer;
-    int got_pagebuf = 0;
+    int got_pagebuf = 0, locked = 0;
 
     if (offset + length > NAND_BYTES_PER_PAGE(dev)) return -EFBIG;
 
@@ -311,6 +314,9 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     }
 #endif
 
+    LOCK_DEV(dev);
+    locked = 1;
+
     if (dev->fns->read_part_page && !check_ecc) {
         EG(dev->fns->read_part_page(dev, dest, page, offset, length));
     } else {
@@ -323,11 +329,13 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
 
 err_exit:
     if (got_pagebuf) nandi_release_pagebuf();
+    if (locked) UNLOCK_DEV(dev);
     return rv;
 }
 
 
-/* Internal, mostly-unchecked interface to read a page. */
+/* Internal, mostly-unchecked interface to read a page. 
+ * Caller must hold the devlock! */
 int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             CYG_BYTE * dest, CYG_BYTE * spare, size_t spare_size,
             int check_ecc)
@@ -352,8 +360,6 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     if (spare) CYG_CHECK_DATA_PTRC(spare);
 
     CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
-
-    LOCK_DEV(dev);
 
     do {
         CYG_BYTE *data_dest = dest;
@@ -456,7 +462,6 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             break;
     }
 err_exit:
-    UNLOCK_DEV(dev);
     return rv;
 }
 
@@ -465,7 +470,7 @@ __externC
 int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         const void * src, const void * spare, size_t spare_size)
 {
-    int rv;
+    int rv, locked = 0;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
@@ -479,9 +484,12 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
         EG(-EINVAL);
     }
 #endif
+    LOCK_DEV(dev);
+    locked = 1;
     EG(nandi_write_page_raw(dev, page, src, spare, spare_size));
 
 err_exit:
+    if (locked) UNLOCK_DEV(dev);
     return rv;
 }
 
@@ -525,7 +533,6 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
         }
     }
 
-    LOCK_DEV(dev);
     EG(dev->fns->write_begin(dev, page));
     if (src) {
         remain = NAND_BYTES_PER_PAGE(dev);
@@ -553,7 +560,6 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
      * if ECC is being used. */
 
 err_exit:
-    UNLOCK_DEV(dev);
     return rv;
 #endif
 }

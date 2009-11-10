@@ -80,16 +80,20 @@ typedef enum {
  * or -ve error code. */
 int cyg_nand_bbti_query(cyg_nand_device *dev, cyg_nand_block_addr blk);
 
-/* Marks a block as bad. Returns 0 for success, or -ve error code. */
+/* Marks a block as bad. Returns 0 for success, or -ve error code.
+ * Caller must have locked the devlock. */
 int cyg_nand_bbti_markbad(cyg_nand_device *dev, cyg_nand_block_addr blk);
 
 /* Marks a block arbitrarily. Normal applications should never use this.
- * Returns 0 for success, or -ve error code. */
+ * Returns 0 for success, or -ve error code.
+ * Caller must have locked the devlock. */
 int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk,
                           cyg_nand_bbt_status_t st);
 
 /* Looks to find the bad block table(s) on the chip and read them in.
  * Updates dev->bbt.* as appropriate.
+ * Caller must have locked the devlock or (more likely) the device not 
+ * be accessible to callers yet (as we're running from nand_lookup).
  *
  * Returns: 0 if either or both were found;
  *          -ENOENT if neither; 
@@ -99,6 +103,8 @@ int cyg_nand_bbti_find_tables(cyg_nand_device *dev);
 
 /* Creates the initial BBTs by running a scan for factory bad blocks.
  * Returns: 0 if OK, else a -ve error code.
+ * Caller must have locked the devlock or (more likely) the device not 
+ * be accessible to callers yet (as we're running from nand_lookup).
  */
 int cyg_nand_bbti_build_tables(cyg_nand_device *dev);
 
@@ -116,11 +122,13 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev);
 
 /* Raw unchecked NAND access, for use by the BBT ===================== */
 
+/* Caller must hold the devlock! */
 int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                               CYG_BYTE * dest,
                               CYG_BYTE * spare, size_t spare_size,
                               int check_ecc);
 
+/* Caller must hold the devlock! */
 int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                          const CYG_BYTE * src,
                          const CYG_BYTE * spare, size_t spare_size);

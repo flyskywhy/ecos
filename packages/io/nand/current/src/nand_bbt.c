@@ -656,7 +656,8 @@ err_exit:
 }
 
 
-/* Increments the BBT version, then writes out _both_ tables*/
+/* Increments the BBT version, then writes out _both_ tables. 
+ * Caller must have the devlock. */
 static int cyg_nand_bbti_write_tables(cyg_nand_device *dev, int is_initial)
 {
     int rv, retries=-1;
