@@ -65,7 +65,7 @@ struct _mypriv {
     cyg_handle_t    inthdl; // interrupt handle
     cyg_interrupt   intr; // interrupt object
 
-    int ready;          // Set when interrupt fires. Protected by DSR lock.
+    volatile int ready;  // Set when interrupt fires. Protected by DSR lock.
 #else
     char dummy; // shush, gcc
 #endif
@@ -151,6 +151,11 @@ static void wait_ready_or_status(cyg_nand_device *ctx, CYG_BYTE mask);
 
 #define POLL_INTERVAL 10 /* us */
 
+#define POLLCOUNT_COUNTING_LEVEL 7
+#if defined(CYGSEM_IO_NAND_DEBUG_LEVEL) && (CYGSEM_IO_NAND_DEBUG_LEVEL >= POLLCOUNT_COUNTING_LEVEL)
+#define REPORT_POLLS
+#endif
+
 /* Case 1: The NAND_RDY line is not connected. ---------------------- */
 #ifndef CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_USE_NAND_RDY
 
@@ -162,11 +167,6 @@ static void wait_ready_or_time(cyg_nand_device *ctx, size_t initial, size_t fall
     NAND_CHATTER(8, ctx, "Waiting %d us for operation\n", initial+fallback);
     HAL_DELAY_US(initial+fallback);
 }
-
-#define POLLCOUNT_COUNTING_LEVEL 7
-#if defined(CYGSEM_IO_NAND_DEBUG_LEVEL) && (CYGSEM_IO_NAND_DEBUG_LEVEL >= POLLCOUNT_COUNTING_LEVEL)
-#define REPORT_POLLS
-#endif
 
 static void wait_ready_or_status(cyg_nand_device *dev, CYG_BYTE mask)
 {
@@ -207,26 +207,7 @@ static inline int is_chip_ready(cyg_nand_device *ctx)
     return rv;
 }
 
-/* Polling loop, does not return until the chip is READY.
- * Callers should themselves wait for tWB or other initial time 
- * to ensure that READY is deasserted. */
-static void wait_ready_polled(cyg_nand_device *ctx)
-{
-#ifdef REPORT_POLLS
-    int polls=0;
-#endif
-    while (0==is_chip_ready(ctx)) {
-        HAL_DELAY_US(POLL_INTERVAL);
-#ifdef REPORT_POLLS
-        ++polls;
-#endif
-    }
-#ifdef REPORT_POLLS
-    NAND_CHATTER(8, ctx, "!BUSY: pollcount %d\n",polls);
-#endif
-}
-
-
+static void wait_ready_polled(cyg_nand_device *ctx);
 
 # ifdef CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND_RDY_USE_INTERRUPT
 /* Case 2A: We are using sleep+interrupt wherever possible. */
@@ -377,7 +358,33 @@ static inline int ea_plf_init_nointerrupt(cyg_nand_device *ctx)
 }
 
 # endif
+
+/* Polling loop, does not return until the chip is READY.
+ * Callers should themselves wait for tWB or other initial time 
+ * to ensure that READY is deasserted. */
+static void wait_ready_polled(cyg_nand_device *ctx)
+{
+#ifdef REPORT_POLLS
+    int polls=0;
 #endif
+#ifdef CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND_RDY_USE_INTERRUPT
+    cyg_drv_interrupt_unmask(NAND_RDY_VECTOR);
+#endif
+    while (0==is_chip_ready(ctx)) {
+        HAL_DELAY_US(POLL_INTERVAL);
+#ifdef REPORT_POLLS
+        ++polls;
+#endif
+    }
+#ifdef CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND_RDY_USE_INTERRUPT
+    cyg_drv_interrupt_mask(NAND_RDY_VECTOR);
+#endif
+#ifdef REPORT_POLLS
+    NAND_CHATTER(8, ctx, "!BUSY: pollcount %d\n",polls);
+#endif
+}
+
+#endif // USE_INTERRUPT ?
 
 static int k9_plf_init(cyg_nand_device *dev)
 {
