@@ -185,39 +185,32 @@ static int ecc256_repair(struct _cyg_nand_device_t *dev,
                          CYG_BYTE *dat, size_t nbytes,
                          CYG_BYTE *read_ecc, const CYG_BYTE *calc_ecc)
 {
-    unsigned d1, d2, d3;
+    cyg_uint32 x = (calc_ecc[0] << 16) | (calc_ecc[1] << 8) | calc_ecc[2];
+    cyg_uint32 y = (read_ecc[0] << 16) | (read_ecc[1] << 8) | read_ecc[2];
 
-    d1 = calc_ecc[0] ^ read_ecc[0];
-    d2 = calc_ecc[1] ^ read_ecc[1];
-    d3 = calc_ecc[2] ^ read_ecc[2];
-
-    if((d1|d2|d3) == 0)
-        return 0; // Nothing to do.
+    x ^= y;
+    if (x == 0) return 0; // Nothing to do
 
     // Can we fix it? 11 bits should be set, and as they're stored
     // in adjacent pairs within each byte we can use this neat XOR
     // trick to make sure that precisely one bit of each pair is set.
-    unsigned a, b, c;
-    a = (d1 ^ (d1 >> 1)) & 0x55;
-    b = (d2 ^ (d2 >> 1)) & 0x55;
-    c = (d3 ^ (d3 >> 1)) & 0x54;
 
-    if ((a==b)&&(b==0x55)&&(c==0x54)) {
+    if (( (x ^ (x>>1)) & 0x555554 ) == 0x555554 ) {
         // Yes we can ! Figure out the offset.
         unsigned byte, bit; 
 
-        byte = ( (d1 << 0) & 0x80) |  // P1024 = 0x80 byte addr
-               ( (d1 << 1) & 0x40) |
-               ( (d1 << 2) & 0x20) |
-               ( (d1 << 3) & 0x10) |
-               ( (d2 >> 4) & 8) |
-               ( (d2 >> 3) & 4) |
-               ( (d2 >> 2) & 2) |
-               ( (d2 >> 1) & 1);      // ... P8
+        byte = ( (x >>16) & 0x80) |  // P1024 = 0x80 byte addr
+               ( (x >>15) & 0x40) |
+               ( (x >>14) & 0x20) |
+               ( (x >>13) & 0x10) |
+               ( (x >>12) & 8) |
+               ( (x >>11) & 4) |
+               ( (x >>10) & 2) |
+               ( (x >> 9) & 1);      // ... P8
 
-        bit = ( (d3 >> 3) & 1) |      // P4
-              ( (d3 >> 4) & 2) |      // P2
-              ( (d3 >> 5) & 4);       // and P1.
+        bit = ( (x >> 3) & 1) |      // P4
+              ( (x >> 4) & 2) |      // P2
+              ( (x >> 5) & 4);       // and P1.
 
         if (byte < nbytes)
             dat[byte] ^= (1<<bit);
@@ -227,17 +220,9 @@ static int ecc256_repair(struct _cyg_nand_device_t *dev,
 
     // No? Is it an ECC dropout? Count the bits...
     unsigned i=0;
-    while (d1) {
-        if (d1 & 1) ++i;
-        d1 >>= 1;
-    }
-    while (d2) {
-        if (d2 & 1) ++i;
-        d2 >>= 1;
-    }
-    while (d3) {
-        if (d3 & 1) ++i;
-        d3 >>= 1;
+    while (x) {
+        if (x & 1) ++i;
+        x >>= 1;
     }
     if (i==1) {
         read_ecc[0] = calc_ecc[0];

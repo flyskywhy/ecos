@@ -11,6 +11,7 @@
 	* nand_bbt.c: Rationalise BBT finding into one place and fix to 
 	  better cope with the situation where only one BBT block had
 	  been written.
+	* nand_ecc_mtd_fast.c: Speed up checking phase.
 
 2009-11-06  Ross Younger  <wry@eCosCentric.com>
 
