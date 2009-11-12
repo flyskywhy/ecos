@@ -125,7 +125,7 @@ static inline void read_data_bulk(cyg_nand_device *ctx, unsigned char *dp, size_
         cyg_uint32 *ip = (cyg_uint32*) dp;
         cyg_uint32 r;
         n /= 4;
-#ifdef CYGHWR_HAL_ARM_BIGENDIAN
+#if (CYGINT_HAL_ARM_BIGENDIAN == 1)
 #define ONEWORD do { r  = (*a) << 24; r |= (*a) << 16; r |= (*a) << 8; r |= *a; } while(0)
 #else
 #define ONEWORD do { r  = *a; r |= (*a) << 8; r |= (*a) << 16; r |= (*a) << 24; } while(0)
