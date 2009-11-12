@@ -106,19 +106,54 @@ static inline unsigned char read_data_1(cyg_nand_device *ctx)
 
 static inline void read_data_bulk(cyg_nand_device *ctx, unsigned char *dp, size_t n)
 {
-    HAL_READ_UINT8_VECTOR(NAND_BASE, dp, n, 0);
+    // Most of the time, we expect to be dealing with word-aligned
+    // multiples of 4 bytes, so optimise for that case.
+    if ( ((CYG_ADDRWORD)dp&3)==0 && (n%4)==0) {
+        volatile cyg_uint8 const *a = (cyg_uint8*) NAND_BASE;
+        cyg_uint32 *ip = (cyg_uint32*) dp;
+        cyg_uint32 r;
+        n /= 4;
+#ifdef CYGHWR_HAL_ARM_BIGENDIAN
+#define ONEWORD do { r  = (*a) << 24; r |= (*a) << 16; r |= (*a) << 8; r |= *a; } while(0)
+#else
+#define ONEWORD do { r  = *a; r |= (*a) << 8; r |= (*a) << 16; r |= (*a) << 24; } while(0)
+#endif
+        while (n) {
+            ONEWORD;
+            *(ip++) = r;
+            --n;
+        }
+#undef ONEWORD
+    } else
+        HAL_READ_UINT8_VECTOR(NAND_BASE, dp, n, 0);
 }
 
 static inline void write_data_1(cyg_nand_device *ctx, unsigned char b)
 {
-    HAL_WRITE_UINT8(NAND_BASE, b);
+    HAL_WRITE_UINT8(NAND_BASE,b);
 }
 
 static inline void write_data_bulk(cyg_nand_device *ctx, const unsigned char *dp, size_t n)
 {
-    HAL_WRITE_UINT8_VECTOR(NAND_BASE, dp, n, 0);
+    if ( ((CYG_ADDRWORD)dp&3)==0 && (n%4)==0) {
+        volatile cyg_uint8 *a = (cyg_uint8*) NAND_BASE;
+        cyg_uint32 *ip = (cyg_uint32*) dp;
+        cyg_uint32 r;
+        n /= 4;
+#ifdef CYGHWR_HAL_ARM_BIGENDIAN
+#define ONEWORD do { *a = (r>>24)&0xff; *a = (r>>16)&0xff; (*a) = (r>>8) & 0xff; (*a) = r & 0xff; } while(0)
+#else
+#define ONEWORD do { *a = r & 0xff; *a = (r>>8) & 0xff; *a = (r>>16)&0xff; *a = (r>>24)&0xff; } while(0)
+#endif
+        while (n) {
+            r = *(ip++);
+            ONEWORD;
+            --n;
+        }
+#undef ONEWORD
+    } else
+        HAL_WRITE_UINT8_VECTOR(NAND_BASE, dp, n, 0);
 }
-
 
 /* READY line handling and fallback ================================ */
 
