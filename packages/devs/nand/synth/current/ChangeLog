@@ -1,3 +1,7 @@
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* Don't provide BBT data if it's not called for.
+
 2009-11-09  Ross Younger  <wry@ecoscentric.com>
 
 	* nand_synth.c: Provide read_part_page function.

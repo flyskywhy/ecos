@@ -54,6 +54,7 @@
 #include <cyg/hal/hal_endian.h>
 #include <cyg/infra/diag.h>
 #include <cyg/infra/cyg_ass.h>
+#include <pkgconf/io_nand.h>
 #include <pkgconf/devs_nand_synth.h>
 #include <string.h>
 #include <errno.h>
@@ -183,7 +184,9 @@ static int                  last_block_gone_bad = -1;
 // The bad block table needed by the generic NAND layer.
 // 2 bits per block. This is separate from the bad block table
 // held in the image, which is what gets used by the driver.
+#ifdef CYGSEM_IO_NAND_USE_BBT
 static unsigned char bbtable[BLOCK_COUNT / 4];
+#endif
 
 // ----------------------------------------------------------------------------
 // Interaction with the I/O auxiliary and its nand.tcl script.
@@ -1297,8 +1300,10 @@ static int synth_devinit(cyg_nand_device *dev)
     dev->blockcount_bits    = log2u(BLOCK_COUNT);
     dev->chipsize_log       = dev->page_bits + dev->block_page_bits + dev->blockcount_bits;
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
     dev->bbt.datasize       = BLOCK_COUNT / 4;
     dev->bbt.data           = bbtable;
+#endif
     if (SPARE_PER_PAGE >= 64) {
         dev->oob = &nand_mtd_oob_64;
     } else if (SPARE_PER_PAGE >= 16) {
