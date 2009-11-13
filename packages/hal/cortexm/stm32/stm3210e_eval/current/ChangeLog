@@ -1,3 +1,7 @@
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Build fix for minimal configs.
+
 2009-11-12  Ross Younger  <wry@ecoscentric.com>
 
 	* src/stm3210e_eval_nand.c: Add i/o heuristic speed-up.

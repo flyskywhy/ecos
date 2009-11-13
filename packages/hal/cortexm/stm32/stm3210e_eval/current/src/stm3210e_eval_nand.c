@@ -50,6 +50,7 @@
 
 #include <cyg/nand/nand_device.h>
 #include <cyg/hal/hal_io.h>
+#include <cyg/hal/hal_intr.h>
 #include <cyg/hal/hal_diag.h>
 #include <cyg/hal/drv_api.h>
 
