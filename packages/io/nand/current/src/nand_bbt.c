@@ -552,10 +552,6 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev)
      * write_tables() takes care of choosing where.
      */
 
-    if (dev->bbt.primary != 0xFFFFFFFF)
-        bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
-    if (dev->bbt.mirror != 0xFFFFFFFF)
-        bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
     dev->bbt.version = 0; /* write_tables() will bump to 1, which is correct */
 
     int rv = cyg_nand_bbti_write_tables(dev, 1);
@@ -563,6 +559,11 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev)
         NAND_ERROR(dev,"Error %d writing out initial BBT: %s\n", -rv, strerror(-rv));
     else
         NAND_CHATTER(3,dev, "Chosen BBT locations: primary %u, mirror %u\n", dev->bbt.primary, dev->bbt.mirror);
+
+    if (dev->bbt.primary != 0xFFFFFFFF)
+        bbti_mark_raw(dev, dev->bbt.primary, CYG_NAND_BBT_RESERVED);
+    if (dev->bbt.mirror != 0xFFFFFFFF)
+        bbti_mark_raw(dev, dev->bbt.mirror,  CYG_NAND_BBT_RESERVED);
 
     return rv;
 #endif
