@@ -1,3 +1,7 @@
+2009-11-13  Ross Younger  <wry@eCosCentric.com>
+
+	* utils/erasenand.c: Fix fencepost error
+
 2009-11-12  Ross Younger  <wry@eCosCentric.com>
 
 	* nand.c: Add timing instrumentation hooks.

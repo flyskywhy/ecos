@@ -80,7 +80,7 @@ void cyg_user_start(void)
 
     int progmod = (prt->last - prt->first + 1) / 73 + 1;
 
-    for (blk=prt->first; blk < prt->last; blk++) {
+    for (blk=prt->first; blk <= prt->last; blk++) {
 #ifdef CYGSEM_IO_NAND_USE_BBT
         int st = cyg_nand_bbt_query(prt, blk);
         if (st<0) {
