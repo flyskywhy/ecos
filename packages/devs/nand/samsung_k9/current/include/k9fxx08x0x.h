@@ -52,6 +52,7 @@
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#include <pkgconf/io_nand.h>
 #include <cyg/nand/nand_device.h>
 #include <cyg/hal/drv_api.h>
 #include <cyg/infra/diag.h>
@@ -74,7 +75,9 @@
 struct _k9_priv {
     void *plat_priv; // For use by the platform HAL, if desired.
     cyg_nand_page_addr pagestash; // Guarded by dev lock.
+#ifdef CYGSEM_IO_NAND_USE_BBT
     unsigned char bbt_data[k9f1g_bbt_datasize];
+#endif
 };
 
 typedef struct _k9_priv k9_priv;

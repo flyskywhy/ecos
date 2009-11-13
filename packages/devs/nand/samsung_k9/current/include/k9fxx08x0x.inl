@@ -45,6 +45,7 @@
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#include <pkgconf/io_nand.h>
 #include <cyg/devs/nand/k9fxx08x0x.h>
 #include <cyg/infra/cyg_ass.h>
 
@@ -131,8 +132,10 @@ static int k9_devinit(cyg_nand_device *dev)
             // This is a 1Gbit device with 1024 eraseblocks.
             dev->blockcount_bits = k9f1g_blockcount_bits;
             dev->chipsize_log = k9f1g_chipsize_log;
+#ifdef CYGSEM_IO_NAND_USE_BBT
             dev->bbt.data = priv->bbt_data;
             dev->bbt.datasize = sizeof(priv->bbt_data);
+#endif
             break;
         default:
             NAND_CHATTER(1,dev, "Unrecognised device code (expected F1)\n");

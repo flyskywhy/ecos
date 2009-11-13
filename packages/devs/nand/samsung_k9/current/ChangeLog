@@ -1,3 +1,7 @@
+2009-11-13  Ross Younger  <wry@eCosCentric.com>
+
+	* Don't provide BBT data when the NAND layer doesn't call for it.
+
 2009-11-09  Ross Younger  <wry@eCosCentric.com>
 
 	* Add read_part_page function.
