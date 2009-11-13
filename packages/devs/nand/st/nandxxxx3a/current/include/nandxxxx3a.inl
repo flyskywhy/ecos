@@ -41,10 +41,12 @@
 //
 // Author(s):   Simon Kallweit
 // Date:        2009-06-30
+// Contributors: wry, for updates to the NAND interface
 //
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#include <pkgconf/io_nand.h>
 #include <cyg/devs/nand/nandxxxx3a.h>
 #include <cyg/infra/cyg_ass.h>
 
@@ -156,8 +158,10 @@ static int nandxxxx3a_devinit(cyg_nand_device *dev)
     dev->block_page_bits = 5;               // 32 pages per block 
     dev->blockcount_bits = size_log - 14;
     dev->chipsize_log = size_log;
+#ifdef CYGSEM_IO_NAND_USE_BBT
     dev->bbt.data = priv->bbt_data;
     dev->bbt.datasize = priv->mbit * 8;
+#endif
 
     int bytes_per_page = 1 << (dev->page_bits);
     CYG_ASSERT(bytes_per_page <= CYGNUM_NAND_PAGEBUFFER, "max pagebuffer not big enough");
@@ -234,7 +238,6 @@ static int nandxxxx3a_read_part(cyg_nand_device *dev, void *dest,
     wait_ready_or_time(dev, 1, 12);
     read_data_bulk(dev, dest, length);
 
-    // read A? read B?
     UNLOCK(dev);
     return 0;
 }

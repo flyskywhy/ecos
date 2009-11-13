@@ -52,6 +52,7 @@
 //####DESCRIPTIONEND####
 //=============================================================================
 
+#include <pkgconf/io_nand.h>
 #include <cyg/nand/nand_device.h>
 #include <cyg/hal/drv_api.h>
 #include <cyg/infra/diag.h>
@@ -66,19 +67,30 @@
 struct nandxxxx3a_priv {
     void *plat_priv; // For use by the platform HAL, if desired.
     int mbit;
+#ifdef CYGSEM_IO_NAND_USE_BBT
     unsigned char *bbt_data;
+#endif
     cyg_nand_page_addr pageop; // Protected by device lock
     size_t written; // Protected by device lock
 };
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
+#define DECLARE_BBT_DATA(_structname_, _mbit_) unsigned char _structname_##_bbt_data[_mbit_ * 8]
+#define INIT_BBT_DATA(_structname_) .bbt_data = _structname_##_bbt_data,
+#else
+#define DECLARE_BBT_DATA(_structname_, _mbit_)
+#define INIT_BBT_DATA(_structname_)
+#endif
+
+
 // Macro to instantiate a ST NANDxxxx3A device
 #define NANDXXXX3A_DEVICE(_structname_, _devname_, _mbit_, _priv_, _ecc_, _oob_)\
-unsigned char _structname_##_bbt_data[_mbit_ * 8];                          \
+    DECLARE_BBT_DATA(_structname_, _mbit_); \
 struct nandxxxx3a_priv _structname_##_priv =                                \
 {                                                                           \
     .plat_priv = _priv_,                                                    \
     .mbit = _mbit_,                                                         \
-    .bbt_data = _structname_##_bbt_data,                                    \
+    INIT_BBT_DATA(_structname_) \
 };                                                                          \
 CYG_NAND_DEVICE(_structname_, _devname_, &nandxxxx3a_funs,                  \
                 &_structname_##_priv, _ecc_, _oob_);

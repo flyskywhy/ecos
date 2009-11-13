@@ -1,3 +1,7 @@
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* Don't provide bbt_data if it isn't called for.
+
 2009-11-09  Ross Younger  <wry@ecoscentric.com>
 
 	* Driver update: add read_part_page function.
