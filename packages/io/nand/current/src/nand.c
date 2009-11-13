@@ -208,7 +208,9 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
             dev->pf = nand_default_pf;
             for (i=0; i<CYGNUM_NAND_MAX_PARTITIONS; i++)
                 dev->partition[i].dev = 0;
+#ifdef CYGSEM_IO_NAND_USE_BBT
             dev->bbt.data = 0; // Paranoia, ensure devinit sets up
+#endif
 
             rv = dev->fns->devinit(dev);
 
@@ -228,7 +230,9 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
             CYG_CHECK_FUNC_PTRC(dev->fns->erase_block);
             CYG_CHECK_FUNC_PTRC(dev->fns->is_factory_bad);
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
             CYG_CHECK_DATA_PTRC(dev->bbt.data);
+#endif
             CYG_CHECK_DATA_PTRC(dev->ecc);
             CYG_CHECK_DATA_PTRC(dev->oob);
             if (!dev->chipsize_log ||
@@ -236,7 +240,9 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
                     !dev->block_page_bits ||
                     !dev->spare_per_page ||
                     !dev->page_bits ||
+#ifdef CYGSEM_IO_NAND_USE_BBT
                     !dev->bbt.data ||
+#endif
                     !dev->ecc ||
                     !dev->oob) {
                 NAND_ERROR(dev,"BUG: NAND driver devinit did not fill in all required fields - disabling device\n");
@@ -244,11 +250,13 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
                 goto done;
             }
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
             if (dev->bbt.datasize < (1 << (dev->blockcount_bits-2)) ) {
                 NAND_ERROR(dev,"BUG: NAND driver declared bbt.data_size isn't big enough (got %lu, want %u) - disabling device\n", (unsigned long) dev->bbt.datasize, (1 << (dev->blockcount_bits-2)));
                 rv = -ENOSYS;
                 goto done;
             }
+#endif
 
             if ( dev->oob->ecc_size != CYG_NAND_ECCPERPAGE(dev) ) {
                 NAND_ERROR(dev,"BUG: NAND driver has inconsistent ECC size declaration (oob says %d, ecc says %d) - disabling device\n", dev->oob->ecc_size, CYG_NAND_ECCPERPAGE(dev));

@@ -240,6 +240,7 @@ struct _cyg_nand_device_t {
     size_t blockcount_bits; /* log2 of number of blocks */
     size_t chipsize_log; /* log2 of total chip size in BYTES. */
 
+#ifdef CYGSEM_IO_NAND_USE_BBT
     struct {
         cyg_nand_block_addr primary, mirror; // or 0xFFFFFFFF if not present
         CYG_BYTE *data; /* in-RAM bad block table. See nand_bbt.c.
@@ -247,6 +248,7 @@ struct _cyg_nand_device_t {
         size_t datasize; /* size of data in bytes, used to cross-check */
         CYG_BYTE version; /* _current_ version tag */
     } bbt;
+#endif
 
     cyg_nand_ecc_t *ecc;
     const cyg_nand_oob_layout *oob;
