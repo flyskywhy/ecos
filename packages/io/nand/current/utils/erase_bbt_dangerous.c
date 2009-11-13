@@ -53,6 +53,8 @@
 #include <cyg/infra/diag.h>
 #include <cyg/infra/testcase.h>
 #include <stdio.h>
+#include <pkgconf/isoinfra.h>
+#include CYGBLD_ISO_STRERROR_HEADER
 
 /* Utility code to erase the BBT on a device.
  * This is DANGEROUS, do not run unless you understand the consequences!

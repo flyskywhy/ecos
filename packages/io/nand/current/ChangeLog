@@ -3,6 +3,7 @@
 	* utils/erasenand.c: Fix fencepost error
 	* nand_device.h nand.c: Further refine CYGSEM_IO_NAND_USE_BBT,
 	drop the relevant parts of the struct when not enabled.
+	* utils/erase_bbt_dangerous.c: Build fix for non-default config
 
 2009-11-12  Ross Younger  <wry@eCosCentric.com>
 
