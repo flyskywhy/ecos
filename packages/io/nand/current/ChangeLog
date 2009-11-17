@@ -1,3 +1,7 @@
+2009-11-17  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.c: Cosmetic messages fix
+
 2009-11-13  Ross Younger  <wry@eCosCentric.com>
 
 	* utils/erasenand.c: Fix fencepost error

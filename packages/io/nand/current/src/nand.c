@@ -285,7 +285,7 @@ int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o)
             for (i=0; i<CYGNUM_NAND_MAX_PARTITIONS; i++)
                 if (dev->partition[i].dev) ++live_partitions;
             if (live_partitions)
-                NAND_CHATTER(1,dev, "%s devinit complete, %u partitions configured\n", devname, live_partitions);
+                NAND_CHATTER(1,dev, "%s devinit complete, %u partition%c configured\n", devname, live_partitions, live_partitions==1 ? ' ' : 's' );
             else
                 NAND_CHATTER(1,dev, "%s devinit complete, NO partitions configured!\n", devname); // hope they know what they're doing.
         }
