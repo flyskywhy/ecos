@@ -1,3 +1,11 @@
+2009-11-17  Ross Younger  <wry@ecoscentric.com>
+
+	* src/nand.c: Add "nand badblocks" subcommand and nested
+	subsubcmds: summarise or list bad blocks, and manually
+	change the state of a block's marking.
+	* cdl/redboot.cdl: Add CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD and
+	CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD.
+
 2009-06-26  Ross Younger  <wry@ecoscentric.com>
 
 	* src/nand.c: Created for NAND utilities

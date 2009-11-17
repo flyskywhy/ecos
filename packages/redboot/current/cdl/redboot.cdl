@@ -1347,6 +1347,31 @@ cdl_package CYGPKG_REDBOOT {
                     your users with this ability.
                 "
             }
+
+            cdl_option CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD {
+                display     "Include support for nand badblocks command"
+                flavor      bool
+                default_value   1
+                active_if   CYGPKG_REDBOOT_NAND
+                description "
+                    This option provides a helper command to query
+                    and (optionally) change the state of bad blocks
+                    in the NAND device's Bad Blocks Table.
+                "
+            }
+
+            cdl_option CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD {
+                display     "Can nand badblocks change block states"
+                flavor      bool
+                default_value   1
+                active_if   CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD
+                description "
+                    This option enables the `badblocks mark' subcommand,
+                    which allows the user to manually change the state
+                    of blocks in the Bad Block Table. It is potentially
+                    dangerous if misused, so you may not wish to
+                    enable this."
+            }
         }
 
     }

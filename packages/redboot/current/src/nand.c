@@ -64,6 +64,16 @@ CYG_HAL_TABLE_END( __NAND_cmds_TAB_END__, NAND_cmds);
 
 extern struct cmd __NAND_cmds_TAB__[], __NAND_cmds_TAB_END__;
 
+#ifdef CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD
+static unsigned count_nand_devices(void)
+{
+    unsigned n = 0;
+    cyg_nand_device *nand;
+    for (nand = &cyg_nanddevtab[0]; nand != &cyg_nanddevtab_end; nand++,n++);
+    return n;
+}
+#endif
+
 //==========================================================================
 
 static void
@@ -206,6 +216,293 @@ static void nand_info(int argc, char*argv[])
 }
 
 local_cmd_entry("info", "Displays information about one or more NAND devices", "[<device>] [<device>...]", nand_info, NAND_cmds);
+
+//==========================================================================
+#ifdef CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD
+// nand badblocks [-d <device>] SUBCOMMAND - bad block info and management
+// Shared handling allows -d device to default to the single present device.
+
+CYG_HAL_TABLE_BEGIN( __NAND_badblocks_cmds_TAB__, NAND_badblocks_cmds);
+CYG_HAL_TABLE_END( __NAND_badblocks_cmds_TAB_END__, NAND_badblocks_cmds);
+
+extern struct cmd __NAND_badblocks_cmds_TAB__[],
+                  __NAND_badblocks_cmds_TAB_END__;
+
+static cmd_fun do_nand_badblocks;
+static cmd_fun nbb_subcommand;
+
+#define nbb_cmd(_w, _h, _u) \
+    static struct cmd _cmd_tab_nbb_subcommand_##_w CYG_HAL_TABLE_QUALIFIED_ENTRY(NAND_badblocks_cmds,nbb_subcommand) = { #_w, _h, "[-d <device>] " _u, nbb_subcommand, 0, 0 }
+
+struct cmd _cmd_tag_do_nand_badblocks CYG_HAL_TABLE_QUALIFIED_ENTRY(NAND_cmds, do_nand_badblocks) = {
+    "badblocks", "Interrogates and manages the device bad block table",
+    "<subcommand> [-d <device>] [<subcommand args>...]",
+    do_nand_badblocks,
+    __NAND_badblocks_cmds_TAB__, &__NAND_badblocks_cmds_TAB_END__
+};
+
+static void nbb_usage(const char *why)
+{
+    diag_printf("*** invalid `nand badblocks' subcommand: %s\n", why);
+    cmd_usage(__NAND_badblocks_cmds_TAB__,
+            &__NAND_badblocks_cmds_TAB_END__, "nand badblocks ");
+}
+
+static void do_nand_badblocks(int argc, char**argv)
+{
+    struct cmd *cmd;
+    if (argc<2) {
+        // defaulting behaviour
+        nbb_subcommand(argc,argv);
+        return;
+    }
+    if ((cmd = cmd_search(__NAND_badblocks_cmds_TAB__,
+                    &__NAND_badblocks_cmds_TAB_END__, argv[1]))
+            != (struct cmd *)0) {
+        (cmd->fun)(argc, argv);
+        return;
+    }
+    nbb_usage("unrecognized command");
+}
+
+static void nbb_help(int argc, char**argv)
+{
+    cmd_usage(__NAND_badblocks_cmds_TAB__,
+            &__NAND_badblocks_cmds_TAB_END__, "nand badblocks ");
+}
+
+local_cmd_entry("help", "Explains the available commands", "", nbb_help, NAND_badblocks_cmds);
+
+static struct {
+    cyg_nand_bbt_status_t state;
+    const char *msg;
+} states[5] = {
+    { CYG_NAND_BBT_OK, "OK" },
+    { CYG_NAND_BBT_WORNBAD, "worn bad" },
+    { CYG_NAND_BBT_RESERVED, "reserved" },
+    { CYG_NAND_BBT_FACTORY_BAD, "factory bad" },
+    { 0,0 }
+};
+
+static void nbb_states(int argc, char**argv)
+{
+    int i = 0;
+    diag_printf("The possible block states are:\n");
+    while (states[i].msg) {
+        diag_printf("\t%u : %s\n", states[i].state, states[i].msg);
+        ++i;
+    }
+}
+
+local_cmd_entry("states", "Lists the valid states in the BBT", "", nbb_states, NAND_badblocks_cmds);
+
+// .........................
+
+// nand badblocks SUMMARY and nand badblocks LIST:
+// count the number of blocks of a given type and (in list mode) dump them out.
+
+// Forbidden knowledge:
+extern int cyg_nand_bbti_query(cyg_nand_device *dev, cyg_nand_block_addr blk);
+
+static void do_summary(cyg_nand_device *nand)
+{
+    // count the bad blocks
+    cyg_nand_block_addr i = 0;
+    unsigned state[1+CYG_NAND_BBT_FACTORY_BAD];
+    int rv;
+    memset(state, 0, sizeof(state));
+    for (i=0; i < NAND_BLOCKCOUNT(nand); i++) {
+        rv = cyg_nand_bbti_query(nand,i);
+        if (rv>=CYG_NAND_BBT_OK && rv <= CYG_NAND_BBT_FACTORY_BAD)
+            ++state[rv];
+    }
+
+    diag_printf("Device `%s' has %u blocks", nand->devname, NAND_BLOCKCOUNT(nand));
+
+    int counted=0;
+#define REPORT(_s,_msg) do {                                        \
+    if (state[_s] != 0) {                                           \
+        if (counted)                                                \
+            diag_printf(", %u %s", state[_s], _msg);                \
+        else                                                        \
+            diag_printf(", of which %u are %s", state[_s], _msg);   \
+        counted += state[_s];                                       \
+    }                                                               \
+} while(0)
+
+    // Report in sensible order, not enum order.
+    REPORT(CYG_NAND_BBT_FACTORY_BAD, "factory bad");
+    REPORT(CYG_NAND_BBT_WORNBAD, "worn bad");
+    REPORT(CYG_NAND_BBT_RESERVED, "reserved");
+
+    int pct = 100 * (NAND_BLOCKCOUNT(nand) - counted) / NAND_BLOCKCOUNT(nand);
+    diag_printf(". %u blocks (%d%%) are OK.\n", NAND_BLOCKCOUNT(nand) - counted, pct);
+}
+
+nbb_cmd(summary, "Summarises the bad blocks table", "");
+
+// .........................
+
+static void do_sublist(cyg_nand_device *nand, cyg_nand_bbt_status_t st, const char *msg)
+{
+    cyg_nand_block_addr i = 0;
+    int rv;
+    unsigned found = 0;
+
+    diag_printf("%s: ", msg);
+    for (i=0; i < NAND_BLOCKCOUNT(nand); i++) {
+        rv = cyg_nand_bbti_query(nand,i);
+        if (rv == st)  {
+            diag_printf("%s%d", (found ? ", " : ""), i);
+            ++found;
+        }
+    }
+
+    if (found)
+        diag_printf(". (count: %d blocks)\n", found);
+    else
+        diag_printf("no blocks\n");
+}
+
+static void do_list(cyg_nand_device *nand) {
+    do_sublist(nand, CYG_NAND_BBT_FACTORY_BAD, "factory bad");
+    do_sublist(nand, CYG_NAND_BBT_WORNBAD, "worn bad");
+    do_sublist(nand, CYG_NAND_BBT_RESERVED, "reserved");
+}
+
+nbb_cmd(list, "Lists the contents of the bad blocks table", "");
+
+// .........................
+
+// nand badblocks mark -d device -b block -s state
+// Manually marks a block in the BBT. Use with caution!
+#ifdef CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD
+// more forbidden knowledge:
+extern int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk, cyg_nand_bbt_status_t st);
+
+static void nbb_mark_usage(void) {
+    diag_printf("Usage: nand badblocks mark [-d device] -b block -s state\n  The valid states are shown by `nand badblocks states'.\n");
+}
+
+static void do_mark(cyg_nand_device *nand, int markblock, int markstate) 
+{
+    int bail=0;
+    if (markblock < 0 || markblock > NAND_BLOCKCOUNT(nand)) {
+        diag_printf("Invalid block number.\n");
+        bail=1;
+    }
+    if (markstate < CYG_NAND_BBT_OK || markstate > CYG_NAND_BBT_FACTORY_BAD) {
+        diag_printf("Invalid state.\n");
+        bail=1;
+    }
+    if (markstate == CYG_NAND_BBT_RESERVED) {
+        diag_printf("State `reserved' is for the BBT itself and cannot be written to flash.\n");
+        bail=1;
+    }
+    if (bail) {
+        nbb_mark_usage();
+        return;
+    }
+
+
+    // We don't need to take the devlock as RedBoot is single-threaded.
+    int rv = cyg_nand_bbti_markany(nand, markblock, markstate);
+    if (rv != 0)
+        diag_printf("mark operation failed with status %d\n", rv);
+    else
+        diag_printf("OK\n");
+}
+
+nbb_cmd(mark, "Manually marks a block in the BBT", "-b block -s state");
+
+#endif
+
+// .........................
+
+static void nbb_subcommand(int argc, char*argv[])
+{
+    cyg_nand_device *nand = 0;
+    const char *subcmd = argv[1];
+    char *dev;
+    cyg_bool got_dev = false;
+#define MAXOPTS 4
+    struct option_info opts[MAXOPTS];
+    enum {
+        unset=0,
+        dodefault,
+        summary,
+        list,
+        mark
+    } mode = unset;
+    int markblock = -1, markstate = -1;
+
+    // we know that we _have_ a valid subcommand at this point, just not _which_.
+    int n_opts = 0;
+#define OPTION(_f, _a, _t, _p, _got, _arg) init_opts(&opts[n_opts++], _f, _a, _t, _p, _got, _arg)
+    OPTION('d', true, OPTION_ARG_TYPE_STR, (void*)&dev, &got_dev, "device");
+
+    if (subcmd) {
+        int sclen = strlen(subcmd);
+        if (0==strncmp(subcmd, "summary", sclen))
+            mode = summary;
+        else if (0==strncmp(subcmd, "list", sclen))
+            mode = list;
+        else if (0==strncmp(subcmd, "mark", sclen)) {
+            mode = mark;
+            OPTION('s', true, OPTION_ARG_TYPE_NUM, (void*) &markstate, 0, "state");
+            OPTION('b', true, OPTION_ARG_TYPE_NUM, (void*) &markblock, 0, "block");
+        }
+
+        // Caution! If you are adding a new subsubcommand with options, make sure that n_opts can't become bigger than MAXOPTS !
+    }
+    else
+        mode = dodefault;
+
+    if (n_opts > MAXOPTS) {
+        diag_printf("BUG: Too many options at %s:%d\n",__FILE__,__LINE__);
+        return;
+    }
+
+    if (!scan_opts(argc, argv, 2, opts, n_opts, 0, 0, ""))
+        return;
+
+    if (got_dev) {
+        cyg_nand_lookup(dev, &nand);
+        if (!nand)
+            diag_printf("Device %s not found.\n", dev);
+    } else {
+        if (count_nand_devices()==1)
+            cyg_nand_lookup(cyg_nanddevtab[0].devname, &nand);
+        else
+            diag_printf("More than one NAND device present, please specify with -d <device>\n");
+    }
+    if (!nand) return;
+
+    switch(mode) {
+        case dodefault:
+            diag_printf("(You didn't specify a subcommand, so I'm defaulting to `summary.'\n `nand badblocks help' lists all known subcommands.)\n");
+            // FALLTHROUGH
+        case summary:
+            do_summary(nand);
+            return;
+        case list:
+            do_list(nand);
+            return;
+#ifdef CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD
+        case mark:
+            if (markblock==-1 || markstate==-1) {
+                nbb_mark_usage();
+            } else
+                do_mark(nand, markblock, markstate);
+            return;
+#endif
+        case unset:
+            diag_printf("can't happen at %s %d\n", __FILE__, __LINE__);
+            return;
+    }
+}
+
+#endif // CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD
 
 //==========================================================================
 // nand erase - erases a nand partition. (Who'd have thunk?)
