@@ -1,3 +1,17 @@
+2009-11-19  Ross Younger  <wry@eCosCentric.com>
+
+	Significant interface change.
+	* nand.h: Application-facing functions now take partition-relative
+	addresses, not device-relative addresses. 
+	Rename functions cyg_nand_* -> cyg_nandp_* to reflect this (change the
+	interface, change the name).
+	Create helper macros CYG_NAND_PARTITION_N{BLOCKS,PAGES}.
+	Rename NAND_* macros to CYG_NAND_*.
+	* tests, utils: Update to new semantics.
+	* nand.cdl: Declare CYGSEM_IO_NAND_APPINTERFACE_VERSION 
+	- calculated, 2 - and add a tripwire to ensure YAFFS is updated.
+	* docs/nand.sgml: Updated to suit.
+
 2009-11-17  Ross Younger  <wry@eCosCentric.com>
 
 	* nand.c: Cosmetic messages fix

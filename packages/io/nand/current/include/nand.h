@@ -96,14 +96,32 @@ __externC int cyg_nand_lookup(const char *devname, cyg_nand_device **dev_o);
 __externC
 cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno);
 
-#define NAND_BYTES_PER_PAGE(dev)    (1<<(dev)->page_bits)
-#define NAND_SPARE_PER_PAGE(dev)    ((dev)->spare_per_page)
-#define NAND_PAGES_PER_BLOCK(dev)   (1<<(dev)->block_page_bits)
-#define NAND_BLOCKCOUNT(dev)        (1<<(dev)->blockcount_bits)
-#define NAND_CHIPSIZE(dev)          (1<<(dev)->chipsize_log)
-#define NAND_APPSPARE_PER_PAGE(dev) ((dev)->oob->app_size)
+/* Device info helpers */
+#define CYG_NAND_BYTES_PER_PAGE(dev)    (1<<(dev)->page_bits)
+#define CYG_NAND_SPARE_PER_PAGE(dev)    ((dev)->spare_per_page)
+#define CYG_NAND_PAGES_PER_BLOCK(dev)   (1<<(dev)->block_page_bits)
+#define CYG_NAND_BLOCKCOUNT(dev)        (1<<(dev)->blockcount_bits)
+#define CYG_NAND_CHIPSIZE(dev)          (1<<(dev)->chipsize_log)
+#define CYG_NAND_APPSPARE_PER_PAGE(dev) ((dev)->oob->app_size)
 
 /* NAND access functions ============================================= */
+
+/*
+ * Pages and blocks are numbered relative to the partition containing
+ * them, not to the whole device. In other words, the first page
+ * of every partition is considered to be number 0.
+ *
+ * (Note: This was changed in application interface v2, and the
+ *  application-facing functions renamed.
+ *  The library uses device-relative addressing internally.
+ *  As an aide-memoire, if a function takes a cyg_nand_partition,
+ *  it expects a partition-relative address; if it takes a
+ *  cyg_nand_device, it expects a device-relative address.)
+ */
+
+/* How big is your partition? */
+#define CYG_NAND_PARTITION_NBLOCKS(_p) ((_p)->last - (_p)->first)
+#define CYG_NAND_PARTITION_NPAGES(_p) (CYG_NAND_PARTITION_NBLOCKS(_p) * CYG_NAND_PAGES_PER_BLOCK((_p)->dev))
 
 /* Reads a single page and/or its spare area from the device.
  * @page@ specifies the page to be read.
@@ -130,7 +148,7 @@ cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno
  *    in the current chip layout.
  */
 __externC
-int cyg_nand_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
+int cyg_nandp_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
         void * dest, void * spare, size_t spare_size);
 
 /* Reads a partial page from the device, to @dest@.
@@ -162,7 +180,7 @@ int cyg_nand_read_page(cyg_nand_partition *ctx, cyg_nand_page_addr page,
  *    past the end of the page.
  */
 __externC
-int cyg_nand_read_part_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
+int cyg_nandp_read_part_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
         void * dest, size_t offset, size_t length, int check_ecc);
 
 /* Writes a single page and/or its spare area to the device.
@@ -185,7 +203,7 @@ int cyg_nand_read_part_page(cyg_nand_partition *ctx, cyg_nand_page_addr page,
  * -EINVAL : The page address is within a block that is marked bad.
  */
 __externC
-int cyg_nand_write_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
+int cyg_nandp_write_page(cyg_nand_partition *ctx, cyg_nand_page_addr page, 
         const void * src, const void * spare, size_t spare_size);
 
 /* Erases an eraseblock.
@@ -198,7 +216,7 @@ int cyg_nand_write_page(cyg_nand_partition *ctx, cyg_nand_page_addr page,
  *   -ENOENT : the block address was not valid.
  */
 __externC
-int cyg_nand_erase_block(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+int cyg_nandp_erase_block(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
 
 /* Bad block table functions ======================================= */
 
@@ -215,7 +233,7 @@ typedef enum {
  * -EIO : something awful happened with the bad block table.
  */
 __externC
-int cyg_nand_bbt_query(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+int cyg_nandp_bbt_query(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
 
 /* These functions mark a block as worn-bad in the Bad Block Table.
  * (The only difference is in the addressing: markbad_pageaddr takes 
@@ -230,9 +248,9 @@ int cyg_nand_bbt_query(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
  * -EIO : something awful happened with the bad block table.
  */
 __externC
-int cyg_nand_bbt_markbad(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
+int cyg_nandp_bbt_markbad(cyg_nand_partition *ctx, cyg_nand_block_addr blk);
 
 __externC
-int cyg_nand_bbt_markbad_pageaddr(cyg_nand_partition *ctx, cyg_nand_page_addr pg);
+int cyg_nandp_bbt_markbad_pageaddr(cyg_nand_partition *ctx, cyg_nand_page_addr pg);
 
 #endif

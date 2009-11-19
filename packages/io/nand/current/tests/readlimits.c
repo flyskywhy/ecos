@@ -81,7 +81,7 @@ int tryread(cyg_nand_partition *prt, cyg_nand_page_addr pg, int shouldwork)
 #if 0
     printf("Trying %d...\n",pg);
 #endif
-    int rv = cyg_nand_read_page(prt, pg, buf, NULL, 0);
+    int rv = cyg_nandp_read_page(prt, pg, buf, NULL, 0);
 
     if (!shouldwork) ++tried_bad;
     if (rv==0)
@@ -96,6 +96,7 @@ int cyg_user_start(void)
 {
     cyg_nand_device *dev;
     cyg_nand_partition *prt;
+    cyg_nand_page_addr pg;
     CYG_TEST_INIT();
     CYG_TEST_INFO(msg);
 
@@ -109,9 +110,8 @@ int cyg_user_start(void)
 
     /* Check we can read the first page of the partition, and the page
      * before it (which might be off the start of the device) */
-    cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(dev, prt->first);
-    TRYREAD(prt, pg, 1);
-    TRYREAD(prt, pg-1, 0);
+    TRYREAD(prt, 0, 1);
+    TRYREAD(prt, -1, 0);
 
     /* Check we can read the last page of the partition (allowing for
      * the BBT perhaps getting in the way) */
@@ -122,12 +122,13 @@ int cyg_user_start(void)
 #else
     CYG_TEST_INFO("Caution, CYGSEM_IO_NAND_USE_BBT disabled - this may go wrong if we hit a bad block.");
 #endif
-    pg = CYG_NAND_BLOCK2PAGEADDR(dev, blk+1) - 1;
+    cyg_nand_block_addr pblk = blk - prt->first;
+    pg = CYG_NAND_BLOCK2PAGEADDR(dev, pblk+1) - 1;
     TRYREAD(prt, pg, 1);
 
     /* Try and read the page after the last page (which might be off
      * the end of the device) */
-    pg = CYG_NAND_BLOCK2PAGEADDR(dev, prt->last + 1);
+    pg = CYG_NAND_PARTITION_NPAGES(prt);
     TRYREAD(prt, pg, 0);
 
     if (!fails) {

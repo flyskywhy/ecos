@@ -332,13 +332,13 @@ size_t chipsize_log; // log2 of total chip size in BYTES.
 ...
 };
 
-#define NAND_BYTES_PER_PAGE(dev) (1&lt;&lt;(dev)->page_bits)
-#define NAND_SPARE_PER_PAGE(dev) ((dev)->spare_per_page)
-#define NAND_PAGES_PER_BLOCK(dev) (1&lt;&lt;(dev)->block_page_bits)
-#define NAND_BLOCKCOUNT(dev) (1&lt;&lt;(dev)->blockcount_bits)
-#define NAND_PAGECOUNT(dev) (NAND_BLOCKCOUNT(dev) * NAND_PAGES_PER_BLOCK(dev))
-#define NAND_CHIPSIZE(dev) (1&lt;&lt;(dev)->chipsize_log)
-#define NAND_APPSPARE_PER_PAGE(dev) ((dev)->oob->app_size)
+#define CYG_NAND_BYTES_PER_PAGE(dev) (1&lt;&lt;(dev)->page_bits)
+#define CYG_NAND_SPARE_PER_PAGE(dev) ((dev)->spare_per_page)
+#define CYG_NAND_PAGES_PER_BLOCK(dev) (1&lt;&lt;(dev)->block_page_bits)
+#define CYG_NAND_BLOCKCOUNT(dev) (1&lt;&lt;(dev)->blockcount_bits)
+#define CYG_NAND_PAGECOUNT(dev) (NAND_BLOCKCOUNT(dev) * NAND_PAGES_PER_BLOCK(dev))
+#define CYG_NAND_CHIPSIZE(dev) (1&lt;&lt;(dev)->chipsize_log)
+#define CYG_NAND_APPSPARE_PER_PAGE(dev) ((dev)->oob->app_size)
 
 </programlisting>
 </para>
@@ -399,7 +399,7 @@ associated with it.  These are used by the NAND library to store the
 page's ECC; whatever is left over may be used by the application for
 whatever purposes may suit it.</para>
 
-<para>Every page has <function>NAND_APPSPARE_PER_PAGE(dev)</function>
+<para>Every page has <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>
 bytes of spare area available to the application. (This amount is implicit
 from the driver configuration and cannot change during the lifetime of
 a device.)  </para>
@@ -430,10 +430,13 @@ are as follows:</para>
 <glossentry><glossterm><parameter>ctx</parameter></glossterm><glossdef><para>The
 partition that data is to be read from.</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>page</parameter></glossterm><glossdef><para>
-The page to be read, <emphasis>numbered from the start of the device, not
-the partition</emphasis>. As a double-check, the library will refuse the
+The page to be read, <emphasis>numbered from the start of the partition.
+</emphasis>. As a double-check, the library will refuse the
 operation with <constant>-ENOENT</constant> if this address is not within
-partition <parameter>ctx</parameter>. </para></glossdef></glossentry>
+partition <parameter>ctx</parameter>.
+    <note><para>This was changed in application interface v2; earlier page
+    and block addresses were device-relative.</para></note>
+</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>dest</parameter></glossterm><glossdef><para>
 Where to put the data. May be NULL, in which case the page data is not
 read.</para></glossdef></glossentry>
@@ -446,7 +449,7 @@ Where to store the application data read from the spare area. This may
 be NULL if spare data is not required.</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>spare_size</parameter></glossterm><glossdef><para>
 The maximum number of bytes to read from the spare area. This will
-not be more than <function>NAND_APPSPARE_PER_PAGE(dev)</function>
+not be more than <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>
 bytes.</para></glossdef></glossentry>
 </glosslist>
 
@@ -474,7 +477,7 @@ and stored automatically.  Parameters are as follows:</para>
 partition that data is to be written to.</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>page</parameter></glossterm><glossdef><para>
 The page to be written, <emphasis>numbered from the start of
-the device, not the partition</emphasis>. As a double-check, the
+the partition</emphasis>. As a double-check, the
 library will refuse the operation with <constant>-ENOENT</constant>
 if this address is not within partition <parameter>ctx</parameter>.
 </para></glossdef></glossentry>
@@ -490,7 +493,7 @@ be packed around the ECC as necessary. Again, this may be NULL if spare
 data is not required.</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>spare_size</parameter></glossterm><glossdef><para>
 The number of bytes to write to the spare area. This should not be
-larger than <function>NAND_APPSPARE_PER_PAGE(dev)</function>; if it is,
+larger than <function>CYG_NAND_APPSPARE_PER_PAGE(dev)</function>; if it is,
 only that many bytes will be stored.</para></glossdef></glossentry>
 </glosslist>
 
@@ -511,7 +514,7 @@ __externC int cyg_nand_erase_block(cyg_nand_partition *ctx, cyg_nand_block_addr 
 partition that data is to be erased from.</para></glossdef></glossentry>
 <glossentry><glossterm><parameter>blk</parameter></glossterm><glossdef><para>
 The block to be erased, <emphasis>numbered from the start of
-the device, not the partition</emphasis>. As a double-check, the
+the partition</emphasis>. As a double-check, the
 library will refuse the operation with <constant>-ENOENT</constant>
 if this address is not within partition <parameter>ctx</parameter>.
 </para></glossdef></glossentry>
@@ -570,7 +573,9 @@ applications.</para>
 as bad. This most commonly happens when a write operation fails
 (see <xref linkend="nand-app-writing"> above). To do this, call
 <function>cyg_nand_bbt_markbad</function>; the return is 0 for success,
-or a negative eCos error code.</para>
+or a negative eCos error code. <emphasis>As with other calls, blocks
+are numbered from 0 at the start of the partition, and internally
+translated for the device as appropriate.</emphasis></para>
 
 <para>Both of these calls may foreseeably return
 <constant>-ENOENT</constant> if the given block address was not valid,
@@ -1259,9 +1264,13 @@ and they will be built and placed into
 <glossentry><glossterm>erasenand.c</glossterm><glossdef><para>
 Loops over all the blocks of a partition, erasing all the blocks which are not
 marked as bad.  The device and partition to erase are set by #define.
-<note><para>This will not erase the Bad Block Table. This is because
+<note><para>This will not normally erase the Bad Block Table. This is because
 the BBT reports its own blocks as "Reserved" when queried via
-<function>cyg_nand_bbt_query</function>.  </para></note>
+<function>cyg_nand_bbt_query</function>, which makes them inaccessible
+to applications.  However, if
+<constant>CYGSEM_IO_NAND_USE_BBT</constant> is turned off, then any BBT
+present will not be detected and hence will be erased.
+</para></note>
 </para></glossdef></glossentry>
 <glossentry><glossterm>erase_bbt_dangerous.c</glossterm><glossdef><para>
 Erases the NAND blocks comprising the primary and mirror bad-block tables of a device.
@@ -1269,8 +1278,10 @@ The device to erase is set by #define.
 (The tables are detected by the library in the usual way. If none are present, the
 library will scan the device for factory-bad blocks to create such a table, then this
 code will immediately erase it.)
-<emphasis>It is particularly dangerous to run this code on a production
-device, as it may not be possible to later reconstruct the list of factory-bad blocks.</emphasis>
+<warning><para>It is particularly dangerous to run this utility
+on a production device, as it is generally not possible to later
+reconstruct the list of factory-bad blocks. It is intended only as an
+aid to driver authors. </para></warning>
 </para></glossdef></glossentry>
 </glosslist>
 </sect1>

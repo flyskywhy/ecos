@@ -151,7 +151,7 @@ static void bbti_mark_raw(cyg_nand_device *dev, cyg_nand_block_addr blk,
 
 int cyg_nand_bbti_query(cyg_nand_device *dev, cyg_nand_block_addr blk)
 {
-    CYG_ASSERT(blk >= 0 && blk <= NAND_BLOCKCOUNT(dev), "valid block");
+    CYG_ASSERT(blk >= 0 && blk <= CYG_NAND_BLOCKCOUNT(dev), "valid block");
     unsigned offset = blk >> 2;
     unsigned byteshift = (blk & 3) * 2;
     return ( dev->bbt.data[offset] >> byteshift ) & 3;
@@ -160,7 +160,7 @@ int cyg_nand_bbti_query(cyg_nand_device *dev, cyg_nand_block_addr blk)
 int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk,
                                   cyg_nand_bbt_status_t st)
 {
-    CYG_ASSERT(blk >= 0 && blk <= NAND_BLOCKCOUNT(dev), "valid block");
+    CYG_ASSERT(blk >= 0 && blk <= CYG_NAND_BLOCKCOUNT(dev), "valid block");
     bbti_mark_raw(dev, blk, st);
 #ifdef CYGSEM_IO_NAND_READONLY
     NAND_CHATTER(2,dev,"ignoring mark request on read-only config\n");
@@ -175,7 +175,7 @@ int cyg_nand_bbti_markany(cyg_nand_device *dev, cyg_nand_block_addr blk,
 
 int cyg_nand_bbti_markbad(cyg_nand_device *dev, cyg_nand_block_addr blk)
 {
-    CYG_ASSERT(blk >= 0 && blk <= NAND_BLOCKCOUNT(dev), "valid block");
+    CYG_ASSERT(blk >= 0 && blk <= CYG_NAND_BLOCKCOUNT(dev), "valid block");
     return cyg_nand_bbti_markany(dev, blk, CYG_NAND_BBT_WORNBAD);
 }
 
@@ -313,8 +313,8 @@ err_exit:
 static int nandi_bbt_packing_test(cyg_nand_device *dev)
 {
     // Startup sanity check: Can we pack the BBT marker and version into the app spare area, do they appear in the right place, and can we extract them?
-    CYG_BYTE appspare[NAND_APPSPARE_PER_PAGE(dev)],
-             packed[NAND_SPARE_PER_PAGE(dev)],
+    CYG_BYTE appspare[CYG_NAND_APPSPARE_PER_PAGE(dev)],
+             packed[CYG_NAND_SPARE_PER_PAGE(dev)],
              testdata[NAND_PATTERN_SIZE > NAND_VERSION_SIZE ? NAND_PATTERN_SIZE : NAND_VERSION_SIZE],
              ecc[CYG_NAND_ECCPERPAGE(dev)];
     int i, rv, fail = 0;
@@ -400,7 +400,7 @@ static int nandi_find_bbt_locations(cyg_nand_device *dev,
         cyg_nand_block_addr *mir_o, CYG_BYTE*mir_ver, int find_only)
 {
     cyg_nand_block_addr start = (1<<dev->blockcount_bits) - 1;
-    CYG_BYTE oobbuf[NAND_APPSPARE_PER_PAGE(dev)];
+    CYG_BYTE oobbuf[CYG_NAND_APPSPARE_PER_PAGE(dev)];
     CYG_BYTE patternbuf[NAND_PATTERN_SIZE];
     CYG_BYTE versionbuf[NAND_VERSION_SIZE];
     int i, rv=0;
@@ -626,7 +626,7 @@ static int bbti_write_one_table(cyg_nand_device *dev,
         }
 
         /* Prep ECC & OOB, then send */
-        CYG_BYTE appspare[NAND_APPSPARE_PER_PAGE(dev)];
+        CYG_BYTE appspare[CYG_NAND_APPSPARE_PER_PAGE(dev)];
         memset(appspare, 0xff, sizeof appspare);
 
         rv = nand_oob_packed_write(dev, NAND_PATTERN_OFFSET, NAND_PATTERN_SIZE, appspare, pattern);

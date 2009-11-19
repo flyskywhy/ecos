@@ -311,14 +311,14 @@ void show_test_parameters(void)
 
 cyg_nand_block_addr find_spare_block(cyg_nand_partition *part)
 {
-    const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
+    const int oobz = CYG_NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
     int i,rv;
     cyg_nand_block_addr b;
 
-    for (b=part->last; b>=part->first; b--) {
+    for (b=CYG_NAND_PARTITION_NBLOCKS(part)-1; b>=0; b--) {
         cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(part->dev, b);
-        rv = cyg_nand_read_page(part, pg, 0, oob, oobz);
+        rv = cyg_nandp_read_page(part, pg, 0, oob, oobz);
         if (rv != 0) continue; // bad block?
 
         for (i=0; i<oobz; i++)
@@ -347,19 +347,19 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
                        pgend = CYG_NAND_BLOCK2PAGEADDR(part->dev, b+1)-1,
                        pg = pgstart;
     int i, rv;
-    const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
+    const int oobz = CYG_NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
 #define ft ft_read
 
     /* First, set up the block the way we want it ... */
-    cyg_nand_erase_block(part, b);
+    cyg_nandp_erase_block(part, b);
     memcpy(oob, databuf, oobz);
     for (i=pgstart; i <= pgend; i++) {
-        rv = cyg_nand_write_page(part, i, databuf, oob, oobz);
+        rv = cyg_nandp_write_page(part, i, databuf, oob, oobz);
         switch (rv) {
             case 0: break;
             case -EIO:
-                    cyg_nand_bbt_markbad(part, b);
+                    cyg_nandp_bbt_markbad(part, b);
                     CYG_TEST_FAIL_FINISH("Write failed; block now marked as bad. This run can't continue but should be OK to repeat.");
 
             default:
@@ -387,7 +387,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEARDATA();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, testbuf, 0, 0);
+        cyg_nandp_read_page(part, pg, testbuf, 0, 0);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         ++pg;
@@ -399,7 +399,7 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, 0, oob, oobz);
+        cyg_nandp_read_page(part, pg, 0, oob, oobz);
         get_timestamp(&ft[i].end);
         CHECKOOB();
         ++pg;
@@ -412,14 +412,14 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         CLEAROOB();
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_read_page(part, pg, testbuf, oob, oobz);
+        cyg_nandp_read_page(part, pg, testbuf, oob, oobz);
         get_timestamp(&ft[i].end);
         CHECKDATA();
         CHECKOOB();
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
-    cyg_nand_erase_block(part, b);
+    cyg_nandp_erase_block(part, b);
     show_times(ft, NREADS, "NAND page reads (page + OOB)");
 #undef ft
 }
@@ -431,31 +431,31 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
                        pgend = CYG_NAND_BLOCK2PAGEADDR(part->dev, b+1)-1,
                        pg = pgstart;
     int i;
-    const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
+    const int oobz = CYG_NAND_APPSPARE_PER_PAGE(part->dev);
     unsigned char oob[oobz];
 #define ft ft_write
 
-    cyg_nand_erase_block(part, b);
+    cyg_nandp_erase_block(part, b);
     for (i=0; i < NWRITES; i++) {
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_write_page(part, pg, databuf, databuf, oobz);
+        cyg_nandp_write_page(part, pg, databuf, databuf, oobz);
         get_timestamp(&ft[i].end);
 
         // Read it back to confirm
         CLEARDATA();
         CLEAROOB();
-        cyg_nand_read_page(part, pg, testbuf, oob, oobz);
+        cyg_nandp_read_page(part, pg, testbuf, oob, oobz);
         CHECKDATA();
         CHECKOOB();
 
         ++pg;
         if (pg > pgend) {
-            cyg_nand_erase_block(part, b);
+            cyg_nandp_erase_block(part, b);
             pg = pgstart;
         }
     }
-    cyg_nand_erase_block(part, b);
+    cyg_nandp_erase_block(part, b);
     show_times(ft, NWRITES, "NAND full-page writes");
 #undef ft
 }
@@ -469,19 +469,19 @@ void test_erases(cyg_nand_partition *part, cyg_nand_block_addr b)
     for (i=0; i < NERASES; i++) {
         wait_for_tick();
         get_timestamp(&ft[i].start);
-        cyg_nand_erase_block(part, b);
+        cyg_nandp_erase_block(part, b);
         get_timestamp(&ft[i].end);
 
         if (i==0) {
             cyg_nand_page_addr pg = CYG_NAND_BLOCK2PAGEADDR(part->dev, b);
-            const int oobz = NAND_APPSPARE_PER_PAGE(part->dev);
+            const int oobz = CYG_NAND_APPSPARE_PER_PAGE(part->dev);
             unsigned char oob[oobz];
             int j;
             // TODO: It only makes sense to check the one, unless we want 
             // to try writing out more dummy data each time.
             CLEARDATA();
             CLEAROOB();
-            cyg_nand_read_page(part, pg, testbuf, oob, oobz);
+            cyg_nandp_read_page(part, pg, testbuf, oob, oobz);
             for (j=0; j < sizeof testbuf; j++) {
                 if (testbuf[j] != 0xff) {
                     CYG_TEST_FAIL("readback check failed");

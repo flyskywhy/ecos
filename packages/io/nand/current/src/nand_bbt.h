@@ -122,13 +122,13 @@ int cyg_nand_bbti_build_tables(cyg_nand_device *dev);
 
 /* Raw unchecked NAND access, for use by the BBT ===================== */
 
-/* Caller must hold the devlock! */
+/* Takes a DEVICE address. Caller must hold the devlock! */
 int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                               CYG_BYTE * dest,
                               CYG_BYTE * spare, size_t spare_size,
                               int check_ecc);
 
-/* Caller must hold the devlock! */
+/* Takes a DEVICE address. Caller must hold the devlock! */
 int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                          const CYG_BYTE * src,
                          const CYG_BYTE * spare, size_t spare_size);

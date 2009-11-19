@@ -80,9 +80,9 @@ void cyg_user_start(void)
 
     int progmod = (prt->last - prt->first + 1) / 73 + 1;
 
-    for (blk=prt->first; blk <= prt->last; blk++) {
+    for (blk=0; blk <= CYG_NAND_PARTITION_NBLOCKS(prt); blk++) {
 #ifdef CYGSEM_IO_NAND_USE_BBT
-        int st = cyg_nand_bbt_query(prt, blk);
+        int st = cyg_nandp_bbt_query(prt, blk);
         if (st<0) {
             diag_printf("Block %d BBTI error %d\n", blk, -st);
         }
@@ -92,7 +92,7 @@ void cyg_user_start(void)
         const char *msg = 0;
         switch(st) {
             case CYG_NAND_BBT_OK:
-                rv = cyg_nand_erase_block(prt, blk);
+                rv = cyg_nandp_erase_block(prt, blk);
                 if (rv != 0)
                     diag_printf("Block %d: error %d\n", blk, -rv);
                 break;

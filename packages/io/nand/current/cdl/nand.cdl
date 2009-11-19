@@ -46,6 +46,7 @@
 #
 # ====================================================================
 
+
 cdl_package CYGPKG_IO_NAND {
     display         "NAND Flash access library"
     parent          CYGPKG_IO
@@ -63,16 +64,32 @@ cdl_package CYGPKG_IO_NAND {
 	requires		CYGINT_ISO_STRING_MEMFUNCS
     requires        CYGPKG_LIBC_STDLIB
 
+    # If YAFFS is loaded, ensure that is knows how to drive us.
+    requires ( CYGPKG_FS_YAFFS implies CYGSEM_FS_YAFFS_NAND_APPINTERFACE > 1)
+
     compile         nand.c nand_bbt.c nand_oob.c util.c
     compile         nand_ecc_mtd.c
     compile         nand_ecc_mtd_fast.c
     compile         -library=libextras.a nandinit.cxx
 
+    cdl_option    CYGSEM_IO_NAND_APPINTERFACE_VERSION {
+        display         "NAND application interface version"
+        flavor          data
+        calculated      2
+        description     "The current version of the application
+            interface provided by
+            the NAND layer. As the NAND device interface evolves, this
+            version number will be incremented; applications may require
+            that the layer provide a certain level in order
+            to function correctly."
+    }
+
     cdl_option    CYGSEM_IO_NAND_INTERFACE_VERSION {
         display         "NAND device interface version"
         flavor          data
         calculated      2
-        description     "The current compatibility level provided by
+        description     "The current version of the device interface
+            provided by 
             the NAND layer. As the NAND device interface evolves, this
             version number will be incremented; devices may require
             that the infrastructure provide a certain level in order

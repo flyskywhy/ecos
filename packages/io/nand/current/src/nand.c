@@ -302,6 +302,14 @@ done:
 #define DEV_INIT_CHECK(dev) do { if (!dev->is_inited) return -ENXIO; } while(0)
 #define PARTITION_CHECK(p) do { if (!p->dev) return -ENXIO; } while(0)
 
+// Partition-to-Device and Device-to-Partition address xlation
+#define BLOCK_P_TO_D(_part,_block) ((_block) + (_part)->first)
+#define BLOCK_D_TO_P(_part,_block) ((_block) - (_part)->first)
+
+#define PAGE_P_TO_D(_part,_page) ((_page) + (_part)->first * CYG_NAND_PAGES_PER_BLOCK((_part)->dev) )
+#define PAGE_D_TO_P(_part,_page) ((_page) - (_part)->first * CYG_NAND_PAGES_PER_BLOCK((_part)->dev) )
+
+/* Sanity check helpers: these take a partition and a DEVICE address */
 static inline int valid_block_addr(cyg_nand_partition *part, cyg_nand_block_addr block)
 {
     return ( (block < part->first) || (block > part->last) ) ? -ENOENT : 0;
@@ -319,7 +327,7 @@ static int valid_page_addr(cyg_nand_partition *part, cyg_nand_page_addr page)
 #define EG(what) do { rv = (what); if (rv != 0) goto err_exit; } while(0)
 
 __externC
-int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
+int cyg_nandp_read_page(cyg_nand_partition *prt, cyg_nand_page_addr ppage,
                 void * dest, void * spare, size_t spare_size)
 {
     int rv, locked=0;
@@ -327,6 +335,7 @@ int cyg_nand_read_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
+    cyg_nand_page_addr page = PAGE_P_TO_D(prt,ppage);
 
     if (spare_size > dev->spare_per_page) return -EFBIG;
 
@@ -353,7 +362,7 @@ err_exit:
 
 
 __externC
-int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
+int cyg_nandp_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr ppage,
                 void * dest, size_t offset, size_t length, int check_ecc)
 
 {
@@ -361,10 +370,11 @@ int cyg_nand_read_part_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
+    cyg_nand_page_addr page = PAGE_P_TO_D(prt,ppage);
     CYG_BYTE *pagebuffer;
     int got_pagebuf = 0, locked = 0;
 
-    if (offset + length > NAND_BYTES_PER_PAGE(dev)) return -EFBIG;
+    if (offset + length > CYG_NAND_BYTES_PER_PAGE(dev)) return -EFBIG;
 
     EG(valid_page_addr(prt, page));
 
@@ -397,6 +407,7 @@ err_exit:
 
 
 /* Internal, mostly-unchecked interface to read a page. 
+ * Takes a DEVICE address.
  * Caller must hold the devlock! */
 int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
             CYG_BYTE * dest, CYG_BYTE * spare, size_t spare_size,
@@ -412,7 +423,7 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     const int do_hw_ecc = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE) && check_ecc;
 
     // Stride for reading from device:
-    const unsigned read_data_stride = do_hw_ecc ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    const unsigned read_data_stride = do_hw_ecc ? dev->ecc->data_size : CYG_NAND_BYTES_PER_PAGE(dev);
     // Stride for calculating/checking/repairing ECC:
     const unsigned ecc_data_stride = dev->ecc->data_size;
     // Stride within the ECC data
@@ -421,14 +432,14 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     if (dest)  CYG_CHECK_DATA_PTRC(dest);
     if (spare) CYG_CHECK_DATA_PTRC(spare);
 
-    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
+    CYG_ASSERTC(CYG_NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
 
     do {
         CYG_BYTE *data_dest = dest;
         CYG_BYTE *ecc_dest = ecc_calc;
 
         ++tries;
-        remain = NAND_BYTES_PER_PAGE(dev);
+        remain = CYG_NAND_BYTES_PER_PAGE(dev);
 
         TIMETAG();
         EG(dev->fns->read_begin(dev, page));
@@ -466,7 +477,7 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                     // Calculate software ECC in one go to try and take
                     // advantage of the cache.
                     data_dest = dest;
-                    remain = NAND_BYTES_PER_PAGE(dev);
+                    remain = CYG_NAND_BYTES_PER_PAGE(dev);
                     ecc_calc_p = ecc_calc;
 
                     while (remain) {
@@ -482,7 +493,7 @@ int nandi_read_whole_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
                 // Now repair ...
                 rv = 0;
                 int step_rv;
-                remain = NAND_BYTES_PER_PAGE(dev);
+                remain = CYG_NAND_BYTES_PER_PAGE(dev);
                 data_dest = dest;
 
                 ecc_calc_p = ecc_calc;
@@ -538,9 +549,8 @@ err_exit:
     return rv;
 }
 
-/* Internal, mostly-unchecked interface to write a page. */
 __externC
-int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
+int cyg_nandp_write_page(cyg_nand_partition *prt, cyg_nand_page_addr ppage,
         const void * src, const void * spare, size_t spare_size)
 {
     int rv, locked = 0;
@@ -548,6 +558,7 @@ int cyg_nand_write_page(cyg_nand_partition *prt, cyg_nand_page_addr page,
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
+    cyg_nand_page_addr page = PAGE_P_TO_D(prt,ppage);
 
     EG(valid_page_addr(prt, page));
 
@@ -568,6 +579,8 @@ err_exit:
     return rv;
 }
 
+/* Internal, mostly-unchecked interface to write a page. 
+ * Takes a DEVICE address. */
 __externC
 int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
         const CYG_BYTE * src, const CYG_BYTE * spare, size_t spare_size)
@@ -580,7 +593,7 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     CYG_BYTE ecc[CYG_NAND_ECCPERPAGE(dev)];
 
     const int do_hw_ecc = (dev->ecc->flags & NAND_ECC_FLAG_IS_HARDWARE);
-    const unsigned write_data_stride = do_hw_ecc ? dev->ecc->data_size : NAND_BYTES_PER_PAGE(dev);
+    const unsigned write_data_stride = do_hw_ecc ? dev->ecc->data_size : CYG_NAND_BYTES_PER_PAGE(dev);
     const unsigned ecc_data_stride = dev->ecc->data_size;
     const unsigned ecc_stride = dev->ecc->ecc_size;
     size_t remain;
@@ -590,13 +603,13 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
 
     if (src)   CYG_CHECK_DATA_PTRC(src);
     if (spare) CYG_CHECK_DATA_PTRC(spare);
-    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
+    CYG_ASSERTC(CYG_NAND_BYTES_PER_PAGE(dev) % ecc_data_stride == 0);
 
     TIMETAG();
     // If we're doing software ECC, do it all in one go now.
     if (src && !do_hw_ecc) {
         const CYG_BYTE *data_src = src;
-        remain = NAND_BYTES_PER_PAGE(dev);
+        remain = CYG_NAND_BYTES_PER_PAGE(dev);
 
         while (remain) {
             CYG_ASSERTC(remain >= ecc_data_stride);
@@ -613,7 +626,7 @@ int nandi_write_page_raw(cyg_nand_device *dev, cyg_nand_page_addr page,
     EG(dev->fns->write_begin(dev, page));
     TIMETAG();
     if (src) {
-        remain = NAND_BYTES_PER_PAGE(dev);
+        remain = CYG_NAND_BYTES_PER_PAGE(dev);
         while (remain) {
             CYG_ASSERTC(remain >= write_data_stride);
             TIMETAG();
@@ -646,7 +659,7 @@ err_exit:
 }
 
 __externC
-int cyg_nand_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr blk)
+int cyg_nandp_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr pblk)
 {
 #ifdef CYGSEM_IO_NAND_READONLY
     return -EROFS;
@@ -655,6 +668,7 @@ int cyg_nand_erase_block(cyg_nand_partition *prt, cyg_nand_block_addr blk)
     cyg_nand_device *dev = prt->dev;
     int rv;
     DEV_INIT_CHECK(dev);
+    cyg_nand_block_addr blk = BLOCK_P_TO_D(prt, pblk);
 
     TIMETAG();
     LOCK_DEV(dev);
@@ -684,13 +698,14 @@ err_exit:
 }
 
 __externC
-int cyg_nand_bbt_query(cyg_nand_partition *prt, cyg_nand_block_addr blk)
+int cyg_nandp_bbt_query(cyg_nand_partition *prt, cyg_nand_block_addr pblk)
 {
 #ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
+    cyg_nand_block_addr blk = BLOCK_P_TO_D(prt, pblk);
     LOCK_DEV(dev);
     EG(valid_block_addr(prt, blk));
     rv = cyg_nand_bbti_query(dev, blk);
@@ -703,13 +718,14 @@ err_exit:
 }
 
 __externC
-int cyg_nand_bbt_markbad(cyg_nand_partition *prt, cyg_nand_block_addr blk)
+int cyg_nandp_bbt_markbad(cyg_nand_partition *prt, cyg_nand_block_addr pblk)
 {
 #ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
+    cyg_nand_block_addr blk = BLOCK_P_TO_D(prt, pblk);
     LOCK_DEV(dev);
     EG(valid_block_addr(prt, blk));
     EG(cyg_nand_bbti_markbad(dev, blk));
@@ -722,16 +738,17 @@ err_exit:
 }
 
 __externC
-int cyg_nand_bbt_markbad_pageaddr(cyg_nand_partition *prt, cyg_nand_page_addr pg)
+int cyg_nand_bbt_markbad_pageaddr(cyg_nand_partition *prt, cyg_nand_page_addr ppg)
 {
 #ifdef CYGSEM_IO_NAND_USE_BBT
     int rv;
     PARTITION_CHECK(prt);
     cyg_nand_device *dev = prt->dev;
     DEV_INIT_CHECK(dev);
-    LOCK_DEV(dev);
-    cyg_nand_block_addr blk = CYG_NAND_PAGE2BLOCKADDR(dev, pg);
+    cyg_nand_block_addr pblk = CYG_NAND_PAGE2BLOCKADDR(dev, ppg);
+    cyg_nand_block_addr blk = BLOCK_P_TO_D(prt, pblk);
     EG(valid_block_addr(prt, blk));
+    LOCK_DEV(dev);
     EG(cyg_nand_bbti_markbad(dev, blk));
 err_exit:
     UNLOCK_DEV(dev);

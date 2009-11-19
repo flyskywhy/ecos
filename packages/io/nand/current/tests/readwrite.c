@@ -110,13 +110,13 @@ int cyg_user_start(void)
     prt = cyg_nand_get_partition(dev, 0);
 
     /* Now select a usable block in the partition to base ourselves around. */
-    blk = prt->first+5;
+    blk = 0;
 #ifdef CYGSEM_IO_NAND_USE_BBT
-    while ( (cyg_nand_bbt_query(prt, blk) != CYG_NAND_BBT_OK)
-            && (cyg_nand_bbt_query(prt, blk+1) != CYG_NAND_BBT_OK) ) {
+    while ( (cyg_nandp_bbt_query(prt, blk) != CYG_NAND_BBT_OK)
+            && (cyg_nandp_bbt_query(prt, blk+1) != CYG_NAND_BBT_OK) ) {
         blk++;
-        if (blk+3 > prt->last)
-            CYG_TEST_NA("Cannot find a usable block to test");
+        if (blk > CYG_NAND_PARTITION_NBLOCKS(prt))
+            CYG_TEST_FAIL_FINISH("Cannot find a usable block to test");
     }
 #else
     CYG_TEST_INFO("Caution, CYGSEM_IO_NAND_USE_BBT disabled - this may go wrong if we hit a bad block.");
@@ -124,28 +124,28 @@ int cyg_user_start(void)
     pg = CYG_NAND_BLOCK2PAGEADDR(dev,blk);
 
     diag_printf("Erasing block %d\n", blk);
-    MUST(0==cyg_nand_erase_block(prt, blk));
+    MUST(0==cyg_nandp_erase_block(prt, blk));
 
-    CYG_ASSERTC(NAND_BYTES_PER_PAGE(dev) <= CYGNUM_NAND_PAGEBUFFER);
+    CYG_ASSERTC(CYG_NAND_BYTES_PER_PAGE(dev) <= CYGNUM_NAND_PAGEBUFFER);
     ar4prng_many(&rnd, buf, datasize);
 
     diag_printf("Read/write to page %d (block %d)\n", pg, blk);
-    MUST(0==cyg_nand_write_page(prt, pg, buf, 0, 0));
-    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
+    MUST(0==cyg_nandp_write_page(prt, pg, buf, 0, 0));
+    MUST(0==cyg_nandp_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
 
     diag_printf("Partial-reads of page %d (block %d)\n", pg, blk);
 #define TEST(_m,_n,_ecc) do {       \
     memset(buf2, 0, sizeof buf2);   \
-    MUST(0==cyg_nand_read_part_page(prt, pg, buf2, _m, _n, _ecc));  \
+    MUST(0==cyg_nandp_read_part_page(prt, pg, buf2, _m, _n, _ecc));  \
     MUST(0==memcmp(&buf[_m], buf2, _n));    \
 } while(0)
 #define TESTFAIL(_m,_n,_ecc) do {   \
-    MUST(0!=cyg_nand_read_part_page(prt, pg, buf2, _m, _n, _ecc)); \
+    MUST(0!=cyg_nandp_read_part_page(prt, pg, buf2, _m, _n, _ecc)); \
 } while(0)
     // Ordinary whole-page reads:
-    TEST(0, NAND_BYTES_PER_PAGE(dev), 0);
-    TEST(0, NAND_BYTES_PER_PAGE(dev), 1);
+    TEST(0, CYG_NAND_BYTES_PER_PAGE(dev), 0);
+    TEST(0, CYG_NAND_BYTES_PER_PAGE(dev), 1);
     // Partial reads:
     TEST(0, 99, 0);
     TEST(0, 99, 1);
@@ -155,30 +155,30 @@ int cyg_user_start(void)
     TEST(258, 99, 1);
     TEST(258, 99, 0);
     // Read right up to the end:
-    TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 0);
-    TEST(43, NAND_BYTES_PER_PAGE(dev)-43, 1);
-    TEST(258, NAND_BYTES_PER_PAGE(dev)-258, 0);
-    TEST(258, NAND_BYTES_PER_PAGE(dev)-258, 1);
+    TEST(43, CYG_NAND_BYTES_PER_PAGE(dev)-43, 0);
+    TEST(43, CYG_NAND_BYTES_PER_PAGE(dev)-43, 1);
+    TEST(258, CYG_NAND_BYTES_PER_PAGE(dev)-258, 0);
+    TEST(258, CYG_NAND_BYTES_PER_PAGE(dev)-258, 1);
     // ... but we should not be able to read off the end of the page:
-    TESTFAIL(0, NAND_BYTES_PER_PAGE(dev)+1, 0);
-    TESTFAIL(43, NAND_BYTES_PER_PAGE(dev)-42, 1);
+    TESTFAIL(0, CYG_NAND_BYTES_PER_PAGE(dev)+1, 0);
+    TESTFAIL(43, CYG_NAND_BYTES_PER_PAGE(dev)-42, 1);
     // Zero-length reads should work:
     TEST(0, 0, 0);
     TEST(0, 0, 1);
     // Silly offsets should fail:
-    TESTFAIL(NAND_BYTES_PER_PAGE(dev)+1, 1, 0);
-    TESTFAIL(NAND_BYTES_PER_PAGE(dev)+1, 0, 1);
+    TESTFAIL(CYG_NAND_BYTES_PER_PAGE(dev)+1, 1, 0);
+    TESTFAIL(CYG_NAND_BYTES_PER_PAGE(dev)+1, 0, 1);
 
     diag_printf("Erasing adjacent block %d\n", blk+1);
-    MUST(0==cyg_nand_erase_block(prt, blk+1));
+    MUST(0==cyg_nandp_erase_block(prt, blk+1));
     diag_printf("Re-read check..\n");
-    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
+    MUST(0==cyg_nandp_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
 
     diag_printf("Re-erase %d\n", blk);
-    MUST(0==cyg_nand_erase_block(prt, blk));
+    MUST(0==cyg_nandp_erase_block(prt, blk));
     diag_printf("Read-back page %d to confirm erase\n", pg);
-    MUST(0==cyg_nand_read_page (prt, pg, buf2, 0, 0));
+    MUST(0==cyg_nandp_read_page (prt, pg, buf2, 0, 0));
     for (i=0; i<datasize; i++)
         MUST(buf2[i]==0xff);
 
