@@ -311,13 +311,13 @@ static void do_summary(cyg_nand_device *nand)
     unsigned state[1+CYG_NAND_BBT_FACTORY_BAD];
     int rv;
     memset(state, 0, sizeof(state));
-    for (i=0; i < NAND_BLOCKCOUNT(nand); i++) {
+    for (i=0; i < CYG_NAND_BLOCKCOUNT(nand); i++) {
         rv = cyg_nand_bbti_query(nand,i);
         if (rv>=CYG_NAND_BBT_OK && rv <= CYG_NAND_BBT_FACTORY_BAD)
             ++state[rv];
     }
 
-    diag_printf("Device `%s' has %u blocks", nand->devname, NAND_BLOCKCOUNT(nand));
+    diag_printf("Device `%s' has %u blocks", nand->devname, CYG_NAND_BLOCKCOUNT(nand));
 
     int counted=0;
 #define REPORT(_s,_msg) do {                                        \
@@ -335,8 +335,8 @@ static void do_summary(cyg_nand_device *nand)
     REPORT(CYG_NAND_BBT_WORNBAD, "worn bad");
     REPORT(CYG_NAND_BBT_RESERVED, "reserved");
 
-    int pct = 100 * (NAND_BLOCKCOUNT(nand) - counted) / NAND_BLOCKCOUNT(nand);
-    diag_printf(". %u blocks (%d%%) are OK.\n", NAND_BLOCKCOUNT(nand) - counted, pct);
+    int pct = 100 * (CYG_NAND_BLOCKCOUNT(nand) - counted) / CYG_NAND_BLOCKCOUNT(nand);
+    diag_printf(". %u blocks (%d%%) are OK.\n", CYG_NAND_BLOCKCOUNT(nand) - counted, pct);
 }
 
 nbb_cmd(summary, "Summarises the bad blocks table", "");
@@ -350,7 +350,7 @@ static void do_sublist(cyg_nand_device *nand, cyg_nand_bbt_status_t st, const ch
     unsigned found = 0;
 
     diag_printf("%s: ", msg);
-    for (i=0; i < NAND_BLOCKCOUNT(nand); i++) {
+    for (i=0; i < CYG_NAND_BLOCKCOUNT(nand); i++) {
         rv = cyg_nand_bbti_query(nand,i);
         if (rv == st)  {
             diag_printf("%s%d", (found ? ", " : ""), i);
@@ -387,7 +387,7 @@ static void nbb_mark_usage(void) {
 static void do_mark(cyg_nand_device *nand, int markblock, int markstate) 
 {
     int bail=0;
-    if (markblock < 0 || markblock > NAND_BLOCKCOUNT(nand)) {
+    if (markblock < 0 || markblock > CYG_NAND_BLOCKCOUNT(nand)) {
         diag_printf("Invalid block number.\n");
         bail=1;
     }
@@ -562,17 +562,17 @@ static void nand_erase(int argc, char*argv[])
     diag_printf("Erasing device %s blocks %u to %u...\n", nand->devname, part->first, part->last);
     cyg_nand_block_addr blk;
     // Compute a modulus to print out about 72 x `.' as we go by
-    int progmod = (part->last - part->first + 1) / 73 + 1;
+    int progmod = (1 + CYG_NAND_PARTITION_NBLOCKS(part)) / 73 + 1;
 
     for (blk = part->first; blk <= part->last; blk++) {
-        int st = cyg_nand_bbt_query(part, blk);
+        int st = cyg_nandp_bbt_query(part, blk);
         if (st<0) {
             diag_printf("Block %d BBTI error %d\n", blk, -st);
         }
         const char *msg = 0;
         switch(st) {
             case CYG_NAND_BBT_OK:
-                rv = cyg_nand_erase_block(part, blk);
+                rv = cyg_nandp_erase_block(part, blk);
                 if (rv != 0)
                     diag_printf("Block %d: error %d\n", blk, -rv);
                 break;

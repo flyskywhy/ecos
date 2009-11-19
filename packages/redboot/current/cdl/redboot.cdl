@@ -1326,6 +1326,7 @@ cdl_package CYGPKG_REDBOOT {
             default_value 1
             active_if     CYGPKG_IO_NAND
             requires      CYGPKG_IO_NAND
+            requires      ( CYGSEM_IO_NAND_INTERFACE_VERSION > 1 )
             description   "
               If this option is enabled then RedBoot will provide commands
               to interrogate and manage NAND storage chips at a low level.
