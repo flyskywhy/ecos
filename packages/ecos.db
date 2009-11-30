@@ -6795,15 +6795,6 @@ package CYGPKG_DEVS_FRAMEBUF_SYNTH {
         synthetic target."
 }
 
-package CYGPKG_DEVS_NAND_ST_NANDXXXX3A {
-    alias       { "ST Microelectronics NANDxxxx3A chip family support" nand_st_nandxxxx3a }
-    directory   devs/nand/st/nandxxxx3a
-    script      nandxxxx3a.cdl
-    description     "
-        This package provides support for the ST Microelectronics family of
-        NANDxxxx3A flash devices."
-}
-
 # --------------------------------------------------------------------------
 
 package CYGPKG_NET_LWIP {
