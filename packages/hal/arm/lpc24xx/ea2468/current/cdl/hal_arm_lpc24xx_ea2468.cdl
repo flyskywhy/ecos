@@ -321,7 +321,63 @@ cdl_package CYGPKG_HAL_ARM_LPC24XX_EA2468 {
                              "<pkgconf/mlt_arm_lpc24xx_ea2468_rom.h>" }
         }
     }
-    
+
+    cdl_component CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND {
+        display         "EA LPC2xxx NAND support"
+        parent          CYGPKG_IO_NAND
+        active_if       CYGPKG_IO_NAND
+		implements		CYGHWR_IO_NAND_DEVICE
+		requires		CYGPKG_DEVS_NAND_SAMSUNG_K9
+        requires		{ (CYGPKG_REDBOOT && CYGPKG_FS_YAFFS) implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x20000) }
+
+        compile         -library=libextras.a ea_lpc2468_nand.c
+        description "This option enables support for the on-board Samsung 
+					 K9F1G08U0A NAND flash chip."
+
+		cdl_option CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_USE_NAND_RDY {
+         display         "Use NAND_RDY line"
+         flavor          bool
+         default_value   0
+         description 	"The EA OEM Base Board provides a jumper which 
+		 			connects the NAND_RDY line with P2.12 on the CPU.
+					This option allows the driver to query that line.
+					You should not set this option if the jumper is not
+					connected; the results of interacting with the
+					chip will be undefined."
+		}
+
+		cdl_option CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_NAND_RDY_USE_INTERRUPT {
+			display		"Configure NAND_RDY line as an interrupt"
+			flavor		bool
+			default_value	CYGPKG_KERNEL
+			active_if 	(CYGHWR_HAL_ARM_LPC2XXX_EA_LPC2468_USE_NAND_RDY && CYGPKG_KERNEL)
+			description	"This option configures the CPU pin P2.12 
+				- to which the NAND_RDY line is assumed to be connected -
+				as an interrupt (EINT2). This is normally the preferred
+				configuration when the NAND_RDY line is connected, as 
+				it allows a thread waiting for the
+				NAND device to sleep for exactly the right amount of time.
+				If this is disabled, the NAND_RDY line is polled in a
+				loop which consumes unnecessary CPU cycles."
+		}
+
+		# Manual configuration of NAND partitions.
+		# We currently only provide manual config.
+
+
+		cdl_component CYGSEM_DEVS_NAND_EA_LPC2468_PARTITION_MANUAL_CONFIG {
+			display "Manual partition configuration"
+			flavor	bool
+			default_value	1
+			description "
+				Set in order to use CDL to manually configure the
+				partitions of the EA LPC2468 on-board NAND."
+
+			set ::partition_device "EA_LPC2468"
+			script manual_partition.cdl
+		}
+    }
+
    cdl_option CYGPKG_HAL_ARM_LPC24XX_EA2468_TESTS {
         display "Tests for LPC2468 OEM board HAL"
         flavor  data

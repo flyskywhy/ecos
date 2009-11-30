@@ -1,3 +1,31 @@
+2009-11-13  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Build fix for minimal configs.
+
+2009-11-12  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Add i/o heuristic speed-up.
+
+2009-11-09  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Update for nand interface changes.
+	* cdl/hal_cortexm_stm32_stm3210e_eval.cdl: Add 
+	  CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_{ADD,REMOVE},
+	  default to -Werror.
+
+2009-10-28  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Implement hardware ECC.
+	Create eccwalk test to test it.
+	Add a nop to work around an apparent timing issue in the
+	NAND-specific FSMC setup when optimised.
+	Implement CYGNUM_HAL_CORTEXM_STM3210E_EVAL_POLL_INTERVAL.
+
+2009-08-26  Ross Younger  <wry@ecoscentric.com>
+
+	* src/stm3210e_eval_nand.c: Added support for onboard NAND chip.
+	Based on work by Simon Kallweit.
+
 2009-02-04  Nick Garnett  <nickg@ecoscentric.com>
 
 	* include/pkgconf/mlt_cortexm_stm3210e_eval_rom.ldi:

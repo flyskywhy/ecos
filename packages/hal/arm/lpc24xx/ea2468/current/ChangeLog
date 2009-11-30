@@ -1,3 +1,45 @@
+2009-11-10  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc2468_nand.c: Fix interrupt-mode brokenness when the debug
+	  level was low.
+	  Add heuristic to improve I/O throughput.
+	  Tune the EMC timings to speed up NAND access.
+
+2009-11-06  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc2468_nand.c: Use mtd_ecc256_fast, not linux_mtd_ecc.
+
+2009-08-18  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc_2468_nand.c: Minor bugfix - attach on the interrupt handle,
+	not the interrupt object, even if it's currently inconsequential.
+
+2009-07-02  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc_2468_nand.c: Small optimisations:
+	+ Condition-out poll-counting unless it's being reported.
+	+ Properly defined initial-wait semantics for wait_ready_polled;
+	tweak callers to match.
+	+ Don't bother with an interrupt-assisted sleep for a small 
+	time (i.e. a page read).
+
+2009-06-05  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc_2468_nand.c: refactor for k9fxx08x0x changes; retab.
+	* * BBT per-chip
+	* * provide for locking though we don't use it on this board.
+
+2009-05-27  Ross Younger <wry@ecoscentric.com>
+
+	* src/ea_lpc_2468_nand.c: Rip out eCosPro HAL ifdefs & partial rewrite
+	  for clarity.
+
+2009-05-14  Ross Younger <wry@ecoscentric.com>
+
+	* cdl/hal_arm_lpc24xx_ea2468.cdl: Add NAND support and options
+	* cdl/manual_partition.cdl: Created
+	* src/ea_lpc_2468_nand.c: Created
+
 2009-01-31  Bart Veer <bartv@ecoscentric.com>
 
 	* cdl/hal_arm_lpc24xx_ea2468.cdl: update compiler flags for gcc 4.x

@@ -94,7 +94,7 @@ __externC void hal_system_init( void )
                      CYGHWR_HAL_STM32_RCC_APB2ENR_IOPD |
                      CYGHWR_HAL_STM32_RCC_APB2ENR_IOPE |
                      CYGHWR_HAL_STM32_RCC_APB2ENR_IOPF |
-                     CYGHWR_HAL_STM32_RCC_APB2ENR_IOPG );
+                     CYGHWR_HAL_STM32_RCC_APB2ENR_IOPG);
 
     // Set all unused GPIO lines to input with pull down to prevent
     // them floating and annoying any external hardware.
