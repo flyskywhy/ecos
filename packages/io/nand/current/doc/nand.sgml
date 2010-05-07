@@ -1159,6 +1159,13 @@ int my_ecc_repair(struct _cyg_nand_device_t *dev,
                   CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
 </programlisting>
 
+<para>In some cases - particularly where hardware assistance is in use -
+it is necessary to specify different functions
+for calculating the ECC depending on whether the operation at hand is
+a page read or a page write. In that case, two <emphasis>calc</emphasis>
+functions may be supplied, each taking the same prototype.
+</para>
+
 <para>The algorithm parameters and functions are then tied together
 with one of the following macros:
 </para>
@@ -1167,6 +1174,8 @@ with one of the following macros:
 CYG_NAND_ECC_ALG_SW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
 
 CYG_NAND_ECC_ALG_HW(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc, my_ecc_repair);
+
+CYG_NAND_ECC_ALG_HW2(my_ecc, _datasize, _eccsize, my_ecc_init, my_ecc_calc_read, my_ecc_calc_write, my_ecc_repair);
 </programlisting>
 
 <tip><para>

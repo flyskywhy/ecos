@@ -1,3 +1,35 @@
+2010-04-20  Ross Younger  <wry@eCosCentric.com>
+
+	* nand_ecc.h nand.c: Expand ECC interface to allow different
+	calculate functions during reads and writes, as needed by some
+	hardware ECC implementations. Defines
+	CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION.
+	* nandunit.c nand_eccequiv.c nand_sweccwalk.c: Fix up.
+	* nand.c nand_oob.c: Fix uninitialised OOB issue.
+	* tests/nand_readwrite.c: Add further checks to confirm
+	the spare area works as expected.
+
+2010-03-16  Ross Younger  <wry@eCosCentric.com>
+
+	* tests: Prefix test names with "nand", for consistency.
+	* utils/erasenand.c: Fix off-by-one error.
+
+2010-03-12  Ross Younger  <wry@eCosCentric.com>
+
+	* nand.c: Short-cut zero-length part-reads; don't pass them on to the
+	underlying driver.
+	* nand.h: Correct off-by-one error (in the safe direction) in the
+	definition of CYG_NAND_PARTITION_NBLOCKS.
+
+2009-11-24  Ross Younger  <wry@eCosCentric.com>
+
+	* tests/rwbenchmark.c: Add bulk-read and bulk-write modes
+	which measure time for a whole block. Improve timing output 
+	to scale itself to milliseconds where appropriate.
+
+	* nand_ecc.h, nand_ecc_mtd_fast.c: Expose the byte-parity table
+	for use in other packages.
+
 2009-11-19  Ross Younger  <wry@eCosCentric.com>
 
 	Significant interface change.
@@ -112,6 +144,7 @@
 	* tests: Add rwbenchmark.c
 
 2009-06-17 Ross Younger  <wry@eCosCentric.com>
+
 	* Global: Create a per-device lock to remove this burden from drivers.
 	Retab for consistency with the rest of eCos.
 	* cdl: Create CYGNUM_NAND_PAGEBUFFER; NAND drivers must impose

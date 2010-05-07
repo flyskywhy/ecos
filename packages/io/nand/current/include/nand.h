@@ -120,7 +120,7 @@ cyg_nand_partition* cyg_nand_get_partition(cyg_nand_device *dev, unsigned partno
  */
 
 /* How big is your partition? */
-#define CYG_NAND_PARTITION_NBLOCKS(_p) ((_p)->last - (_p)->first)
+#define CYG_NAND_PARTITION_NBLOCKS(_p) (1 + (_p)->last - (_p)->first)
 #define CYG_NAND_PARTITION_NPAGES(_p) (CYG_NAND_PARTITION_NBLOCKS(_p) * CYG_NAND_PAGES_PER_BLOCK((_p)->dev))
 
 /* Reads a single page and/or its spare area from the device.

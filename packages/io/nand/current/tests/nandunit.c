@@ -174,8 +174,17 @@ int do_ecc_known_answer(eccvector *v)
 {
     ar4prng_init(&ctx, (unsigned char*)v->seed, strlen(v->seed));
     ar4prng_many(&ctx, chunk, CHUNKSIZE);
+    int i;
+    const int nblocks = (1<<fakenand.page_bits) / fakenand.ecc->data_size;
+    unsigned char *page = &chunk[0];
+    CYG_BYTE *ecc_o = &ecc[0];
 
-    nand_ecci_calc_page(&fakenand, chunk, ecc);
+    for (i=0; i<nblocks; i++) {
+        if (fakenand.ecc->init) fakenand.ecc->init(&fakenand);
+        fakenand.ecc->calc_wr(&fakenand, page, ecc_o);
+        page += fakenand.ecc->data_size;
+        ecc_o += fakenand.ecc->ecc_size;
+    }
 
     int pass = (0 == memcmp(ecc, v->ecc, ECCSIZE));
     if (!pass)

@@ -201,7 +201,7 @@ show_times_hdr(void)
     diag_printf("HAL_CLOCK_READ() is not supported on this platform.\n");
     diag_printf("Timing results are meaningless.\n");
 #endif
-    diag_printf("All times are in microseconds\n");
+    diag_printf("All times are in microseconds (us) unless stated\n");
     diag_printf("\n");
     diag_printf("                                     Confidence\n");
     diag_printf("      Ave      Min      Max      Var  Ave  Min  Function\n");
@@ -213,8 +213,17 @@ show_times_hdr(void)
 void
 show_ns(cyg_uint64 ns)
 {
-    ns += 5;  // for rounding to .01us
-    diag_printf("%6d.%02d", (int)(ns/1000), (int)((ns%1000)/10));
+    if (ns > 999995000) {
+        ns += 5000000;  // round to nearest 0.01s
+        diag_printf("%5u.%02us", (int)(ns/1000000000), (int)((ns%1000000000)/10000000));
+
+    } else if (ns >= 99999995) {
+        ns += 5000;  // round to 0.01ms
+        diag_printf("%4u.%02ums", (int)(ns/1000000), (int)((ns%1000000)/10000));
+    } else {
+        ns += 5;  // round to .01us
+        diag_printf("%6u.%02u", (int)(ns/1000), (int)((ns%1000)/10));
+    }
 }
 
 void
@@ -294,18 +303,29 @@ show_times(timing ft[], int nsamples, char *title)
 #define WORKDIR MOUNTPOINT "/" "test"
 
 #define NREADS 100
-#define NWRITES 30  /* TODO */
+#define NBULKREADS 10
+#define NBULKWRITES 10
+#define NWRITES 30
 #define NERASES 30
 
-void show_test_parameters(void)
+void show_test_parameters(cyg_nand_device *dev)
 {
     disable_clock_latency_measurement();
     diag_printf("\nTesting parameters:\n");
-    diag_printf("   NAND reads:            %5d\n", NREADS);
+    diag_printf("   NAND reads:            %5u\n", NREADS);
     if (NWRITES)
-        diag_printf("   NAND writes:           %5d\n", NWRITES);
+        diag_printf("   NAND writes:           %5u\n", NWRITES);
     if (NERASES)
-        diag_printf("   NAND erases:           %5d\n", NERASES);
+        diag_printf("   NAND erases:           %5u\n", NERASES);
+    if (NBULKREADS)
+        diag_printf("   NAND bulk reads:       %5u\n", NBULKREADS);
+    if (NBULKWRITES)
+        diag_printf("   NAND bulk writes:      %5u\n", NBULKWRITES);
+    diag_printf("   Device page size:      %5u bytes\n"
+                "   Device block size:     %5u pages\n",
+            CYG_NAND_BYTES_PER_PAGE(dev),
+            CYG_NAND_PAGES_PER_BLOCK(dev) );
+
     enable_clock_latency_measurement();
 }
 
@@ -338,6 +358,8 @@ CYG_BYTE databuf[CYGNUM_NAND_PAGEBUFFER], testbuf[CYGNUM_NAND_PAGEBUFFER];
 timing ft_read[NREADS];
 timing ft_write[NWRITES];
 timing ft_erase[NERASES];
+timing ft_bulkread[NBULKREADS];
+timing ft_bulkwrite[NBULKWRITES];
 
 int fails = 0;
 
@@ -419,9 +441,23 @@ void test_reads(cyg_nand_partition *part, cyg_nand_block_addr b)
         ++pg;
         if (pg > pgend) pg = pgstart;
     }
-    cyg_nandp_erase_block(part, b);
     show_times(ft, NREADS, "NAND page reads (page + OOB)");
+
 #undef ft
+#define ft ft_bulkread
+    for (i=0; i < NBULKREADS; i++) {
+        CLEARDATA();
+        wait_for_tick();
+        get_timestamp(&ft[i].start);
+        for (pg = pgstart; pg <= pgend; pg++) {
+            cyg_nandp_read_page(part, pg, testbuf, 0, 0);
+        }
+        get_timestamp(&ft[i].end);
+        CHECKDATA();
+    }
+    // report the results later.
+#undef ft
+    cyg_nandp_erase_block(part, b);
 }
 
 
@@ -457,6 +493,20 @@ void test_writes(cyg_nand_partition *part, cyg_nand_block_addr b)
     }
     cyg_nandp_erase_block(part, b);
     show_times(ft, NWRITES, "NAND full-page writes");
+
+#undef ft
+#define ft ft_bulkwrite
+    // N.B. Bulk writing times will likely improve later if we implement cache-programming mode as found on many a large-page device.
+    for (i=0; i < NBULKWRITES; i++) {
+        wait_for_tick();
+        get_timestamp(&ft[i].start);
+        for (pg = pgstart; pg <= pgend; pg++) {
+            cyg_nandp_write_page(part, pg, testbuf, 0, 0);
+        }
+        get_timestamp(&ft[i].end);
+        cyg_nandp_erase_block(part, b);
+    }
+    // report later.
 #undef ft
 }
 
@@ -520,7 +570,7 @@ void rwbenchmark_main(void)
     block = find_spare_block(part);
     diag_printf("Using block %d\n",block);
 
-    show_test_parameters();
+    show_test_parameters(dev);
     show_times_hdr();
 
     // TODO: For speed, refactor test_reads and test_writes into each other.
@@ -532,6 +582,8 @@ void rwbenchmark_main(void)
 
     test_erases(part,block);
 
+    show_times(ft_bulkread,  NBULKREADS,  "Bulk reads (block data)");
+    show_times(ft_bulkwrite, NBULKWRITES, "Bulk writes (block data)");
 }
 
 int main(void)
@@ -550,10 +602,12 @@ int main(void)
 
     rwbenchmark_main();
 
-    if (fails)
+    if (fails) {
+        diag_printf("There were %d failures.\n",fails);
         CYG_TEST_FAIL_FINISH("something went wrong, THESE RESULTS ARE INVALID");
+    }
 
-    CYG_TEST_EXIT("Run complete");
+    CYG_TEST_PASS_FINISH("Benchmarking complete");
 }
 
 #endif

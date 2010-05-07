@@ -72,13 +72,19 @@ typedef struct {
     /* Initialises an ECC computation. May be NULL if not required. */
     void (*init)(struct _cyg_nand_device_t *dev);
 
-    /* Returns the ECC for the given data block.
+    /* These two functions return the ECC for the given data block.
+     * calc_rd is called on read, calc_wr on write; normally they are
+     * the same but the difference is to allow different interaction
+     * with hardware ECC controllers.
+     *
      * If IS_HARDWARE:
      *  - dat is ignored
      * If ! IS_HARDWARE:
      *  - dat is required, and @data_size@ bytes will be read from it
      */
-    void (*calc)(struct _cyg_nand_device_t *dev, 
+    void (*calc_rd)(struct _cyg_nand_device_t *dev, 
+                 const CYG_BYTE *dat, CYG_BYTE *ecc);
+    void (*calc_wr)(struct _cyg_nand_device_t *dev, 
                  const CYG_BYTE *dat, CYG_BYTE *ecc);
 
     /* Repairs the ECC for the given data block, if needed.
@@ -99,22 +105,27 @@ typedef struct {
                   CYG_BYTE *ecc_read, const CYG_BYTE *ecc_calc);
 } cyg_nand_ecc_t;
 
-#define CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, _flags)  \
+#define CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc_rd, _calc_wr, _repair, _flags)  \
     cyg_nand_ecc_t _name = {                                           \
         .data_size = _dataz,                                           \
         .ecc_size = _eccz,                                             \
         .init = _init,                                                 \
-        .calc = _calc,                                                 \
+        .calc_rd = _calc_rd,                                           \
+        .calc_wr = _calc_wr,                                           \
         .repair = _repair,                                             \
         .flags = _flags,                                               \
     }
 
 #define CYG_NAND_ECC_ALG_SW(_name, _dataz, _eccz, _init, _calc, _repair) \
-    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, 0)
+    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _calc, _repair, 0)
 
 #define CYG_NAND_ECC_ALG_HW(_name, _dataz, _eccz, _init, _calc, _repair) \
-    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _repair, \
+    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc, _calc, _repair, \
             NAND_ECC_FLAG_IS_HARDWARE)
+
+#define CYG_NAND_ECC_ALG_HW2(_name, _dataz, _eccz, _init, _calc_rd, _calc_wr, _repair) \
+    CYG_NAND_ECC_ALG(_name, _dataz, _eccz, _init, _calc_rd, _calc_wr,   \
+            _repair, NAND_ECC_FLAG_IS_HARDWARE)
 
 /* Useful code ==================================================== */
 
@@ -123,6 +134,8 @@ typedef struct {
 #define CYG_NAND_ECCPERPAGE(dev) ( (dev)->ecc->ecc_size * (1<<(dev)->page_bits) / (dev)->ecc->data_size )
 
 /* Computes the ECC for a whole device page.
+ * This is intended for testing with software-based ECC only!
+ * (The calc_wr function will be used.)
  * 'page' points to the data; a whole page will necessarily be read.
  * The computed ECC will be stored in 'ecc_o'; CYG_NAND_ECCPERPAGE(dev)
  * bytes will be written. */
@@ -153,5 +166,11 @@ int nand_ecci_repair_page(struct _cyg_nand_device_t *dev,
  * See nand_ecc_mtd.c and nand_ecc_mtd_fast.c. */
 __externC cyg_nand_ecc_t linux_mtd_ecc;
 __externC cyg_nand_ecc_t mtd_ecc256_fast;
+
+/* External helpers =============================================== */
+/* Pre-computed inverse-parity for single bytes. */
+__externC const CYG_BYTE ecc256_ParityTable256[256];
+#define ecc256_bytepar(i) ecc256_ParityTable256[(CYG_BYTE)(i)]
+
 
 #endif

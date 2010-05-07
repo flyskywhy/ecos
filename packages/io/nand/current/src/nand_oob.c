@@ -48,6 +48,7 @@
 #include <string.h>
 #include <cyg/nand/nand_device.h>
 #include <cyg/nand/nand_oob.h>
+#include <cyg/nand/nand.h>
 #include CYGBLD_ISO_ERRNO_CODES_HEADER
 
 static
@@ -85,6 +86,7 @@ void nand_oob_pack( struct _cyg_nand_device_t *dev,
 {
     const cyg_nand_oob_layout *layout = dev->oob;
     unsigned real_size = app_size;
+    memset(oob_o, 0xff, CYG_NAND_SPARE_PER_PAGE(dev));
     if(real_size > layout->app_size) real_size = layout->app_size;
     pack(layout->ecc, CYG_NAND_OOB_MAX_ECC_SLOTS, ecc, ecc? layout->ecc_size : 0, oob_o);
     pack(layout->app, CYG_NAND_OOB_MAX_APP_SLOTS, app, app_size, oob_o);

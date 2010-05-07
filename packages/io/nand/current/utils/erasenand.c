@@ -80,7 +80,7 @@ void cyg_user_start(void)
 
     int progmod = (prt->last - prt->first + 1) / 73 + 1;
 
-    for (blk=0; blk <= CYG_NAND_PARTITION_NBLOCKS(prt); blk++) {
+    for (blk=0; blk < CYG_NAND_PARTITION_NBLOCKS(prt); blk++) {
 #ifdef CYGSEM_IO_NAND_USE_BBT
         int st = cyg_nandp_bbt_query(prt, blk);
         if (st<0) {

@@ -85,7 +85,7 @@ cyg_start( void )
 extern unsigned char _stext[], _etext[];
 
 #define datasize CYGNUM_NAND_PAGEBUFFER
-unsigned char buf[datasize], buf2[datasize];
+unsigned char buf[datasize], buf2[datasize], buf3[datasize];
 ar4ctx rnd;
 
 int cyg_user_start(void)
@@ -113,7 +113,7 @@ int cyg_user_start(void)
     blk = 0;
 #ifdef CYGSEM_IO_NAND_USE_BBT
     while ( (cyg_nandp_bbt_query(prt, blk) != CYG_NAND_BBT_OK)
-            && (cyg_nandp_bbt_query(prt, blk+1) != CYG_NAND_BBT_OK) ) {
+            || (cyg_nandp_bbt_query(prt, blk+1) != CYG_NAND_BBT_OK) ) {
         blk++;
         if (blk > CYG_NAND_PARTITION_NBLOCKS(prt))
             CYG_TEST_FAIL_FINISH("Cannot find a usable block to test");
@@ -130,9 +130,15 @@ int cyg_user_start(void)
     ar4prng_many(&rnd, buf, datasize);
 
     diag_printf("Read/write to page %d (block %d)\n", pg, blk);
-    MUST(0==cyg_nandp_write_page(prt, pg, buf, 0, 0));
+    MUST(0==cyg_nandp_write_page(prt, pg, buf, buf, CYG_NAND_APPSPARE_PER_PAGE(dev)));
     MUST(0==cyg_nandp_read_page (prt, pg, buf2, 0, 0));
     MUST(0==memcmp(buf, buf2, datasize));
+    MUST(0==cyg_nandp_read_page (prt, pg, 0, buf3, CYG_NAND_APPSPARE_PER_PAGE(dev)));
+    MUST(0==memcmp(buf, buf2, datasize));
+    memset(buf2, 0, sizeof buf2);
+    MUST(0==cyg_nandp_read_page (prt, pg, buf2, buf3, CYG_NAND_APPSPARE_PER_PAGE(dev)));
+    MUST(0==memcmp(buf, buf2, datasize));
+    memset(buf3, 0, sizeof buf3);
 
     diag_printf("Partial-reads of page %d (block %d)\n", pg, blk);
 #define TEST(_m,_n,_ecc) do {       \

@@ -276,12 +276,21 @@ cdl_package CYGPKG_IO_NAND {
 		display "NAND library tests"
 		flavor data
 		no_define
-		calculated { "tests/nandunit tests/readlimits tests/readwrite"
-                     . " tests/rwbenchmark tests/sweccwalk tests/eccequiv"
+		calculated { "tests/nandunit tests/nand_readlimits tests/nand_readwrite"
+                     . " tests/nand_rwbenchmark tests/nand_sweccwalk tests/nand_eccequiv"
                      . (CYGBLD_IO_NAND_BUILD_UTILS ? CYGBLD_IO_NAND_UTILS : "")
         }
 		description "This special option specifies the set of NAND
                     library tests (and utilities, if enabled) to build."
 	}
+
+    cdl_option    CYGSEM_IO_NAND_ECC_SPLIT_FUNCTION {
+        flavor      bool
+        calculated  1
+        display     "ECC interface has split calculate function"
+        description "This marker option signals to NAND drivers that the
+            split calculate-ECC function is present. Some require it."
+        no_define
+    }
 
 }

@@ -67,20 +67,22 @@
 /* This is a precomputed inverse-parity table for single bytes.
  * If your camel's back is broken, you could push it into RAM
  * and precompute it at boot time, or even fall back to software
- * parity calculation.
+ * parity calculation. (However, you will also have to fix up
+ * anything which uses it. Beware!)
+ *
  * You might find Sean Eron Anderson's collection of "Bit Twiddling Hacks"
  * useful - see http://graphics.stanford.edu/~seander/bithacks.html .
  * That's where this (public domain) macro to generate the table comes from.
  */
 
-static const CYG_BYTE ParityTable256[256] = 
+const CYG_BYTE ecc256_ParityTable256[256] =
 {
 #   define P2(n) n, n^1, n^1, n
 #   define P4(n) P2(n), P2(n^1), P2(n^1), P2(n)
 #   define P6(n) P4(n), P4(n^1), P4(n^1), P4(n)
         P6(1), P6(0), P6(0), P6(1)
 };
-#define BYTEPAR(i) ParityTable256[(unsigned char)(i)]
+#define BYTEPAR(i) ecc256_bytepar(i)
 
 static void ecc256_fast(struct _cyg_nand_device_t *dev, const CYG_BYTE *data,
                         CYG_BYTE *ecc)
@@ -208,9 +210,9 @@ static int ecc256_repair(struct _cyg_nand_device_t *dev,
                ( (x >>10) & 2) |
                ( (x >> 9) & 1);      // ... P8
 
-        bit = ( (x >> 3) & 1) |      // P4
+        bit = ( (x >> 3) & 1) |      // P1
               ( (x >> 4) & 2) |      // P2
-              ( (x >> 5) & 4);       // and P1.
+              ( (x >> 5) & 4);       // and P4.
 
         if (byte < nbytes)
             dat[byte] ^= (1<<bit);
