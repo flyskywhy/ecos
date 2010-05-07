@@ -53,7 +53,7 @@
 #include <cyg/hal/hal_diag.h>
 #include <cyg/hal/drv_api.h>
 
-#include <cyg/devs/nand/k9fxx08x0x.h>
+#include <cyg/devs/nand/k9_generic.h>
 
 /* Private structs. We need one k9_priv (and one of our privs) per
  * instance of the chip. */
@@ -72,7 +72,6 @@ struct _mypriv {
 };
 
 static struct _mypriv _ea_lpc2468_nand_priv;
-static k9_priv _k9_ea_lpc2468_priv = { &_ea_lpc2468_nand_priv };
 
 #define CAST_MYPRIV(x) ((struct _mypriv *) (x))
 #define CAST_K9PRIV(x) ((k9_priv *) (x))
@@ -519,8 +518,12 @@ static inline void k9_devunlock(cyg_nand_device *dev)
 
 /* Putting it all together ... ========================================= */
 
-#include <cyg/devs/nand/k9fxx08x0x.inl>
+#include <cyg/devs/nand/k9_generic.inl>
 
-CYG_NAND_DEVICE(ea_nand, "onboard", &k9f8_funs, &_k9_ea_lpc2468_priv,
+static k9_subtype chips[] = { K9F1G08U0x, K9_SUBTYPE_SENTINEL };
+
+static k9_priv _k9_ea_lpc2468_priv = { &chips, &_ea_lpc2468_nand_priv };
+
+CYG_NAND_DEVICE(ea_nand, "onboard", &nand_k9_funs, &_k9_ea_lpc2468_priv,
                 &mtd_ecc256_fast, &nand_mtd_oob_64);
 

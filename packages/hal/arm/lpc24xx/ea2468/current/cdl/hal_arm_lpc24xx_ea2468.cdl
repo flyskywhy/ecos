@@ -328,6 +328,7 @@ cdl_package CYGPKG_HAL_ARM_LPC24XX_EA2468 {
         active_if       CYGPKG_IO_NAND
 		implements		CYGHWR_IO_NAND_DEVICE
 		requires		CYGPKG_DEVS_NAND_SAMSUNG_K9
+        requires        CYGFUN_NAND_SAMSUNG_K9_F1G
         requires		{ (CYGPKG_REDBOOT && CYGPKG_FS_YAFFS) implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x20000) }
 
         compile         -library=libextras.a ea_lpc2468_nand.c

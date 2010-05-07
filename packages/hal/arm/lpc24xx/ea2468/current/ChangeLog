@@ -1,3 +1,7 @@
+2010-03-12  Ross Younger <wry@ecoscentric.com>
+
+	* ea_lpc2468_nand.c: Tweak for updated k9 family NAND driver.
+
 2009-11-10  Ross Younger <wry@ecoscentric.com>
 
 	* ea_lpc2468_nand.c: Fix interrupt-mode brokenness when the debug
