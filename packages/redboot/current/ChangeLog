@@ -1,5 +1,10 @@
-2009-11-19  Ross Younger  <wry@ecoscentric.com>
+2010-04-23  John Dallaway  <john@dallaway.org.uk>
 
+	* src/net/dns.c: Initialise DNS domain with an empty string to
+	avoid possible invalid memory access. Issue reported by
+	Kirill Berezin.
+
+2009-11-19  Ross Younger  <wry@ecoscentric.com>
 	* src/nand.c: Update to application interface v2.
 	Requires CYGSEM_IO_NAND_INTERFACE_VERSION > 1.
 
