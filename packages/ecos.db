@@ -6953,5 +6953,15 @@ package CYGPKG_DEVS_NAND_ST_NANDXXXX3A {
         NANDxxxx3A flash devices."
 }
 
+package CYGPKG_DEVS_NAND_MICRON_MT29F {
+    alias       { "Micron MT29F NAND chip family support" nand_micron_mt29f }
+    directory   devs/nand/micron_mt29
+    script      mt29f.cdl
+    hardware
+    description     "
+		This package provides support for the Micron MT29F family of NAND 
+        flash devices."
+}
+
 # ==========================================================================
 # End of ecos.db
