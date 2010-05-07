@@ -6915,7 +6915,7 @@ target stm3210e_eval {
 }
 
 # ==========================================================================
-# NAND and YAFFS packages
+# NAND packages
 
 package CYGPKG_IO_NAND {
     alias       { "NAND flash memory support" nand io_nand }
@@ -6961,6 +6961,15 @@ package CYGPKG_DEVS_NAND_MICRON_MT29F {
     description     "
 		This package provides support for the Micron MT29F family of NAND 
         flash devices."
+}
+
+package CYGPKG_DEVS_NAND_ARM_AT91SAM9 {
+    alias       { "Common NAND support for the AT91SAM926X family" nand_at91sam926x }
+    directory   devs/nand/arm/at91sam9
+    script      devs_nand_arm_at91sam9.cdl
+    hardware
+    description "Common support definitions and code for the NAND support
+        hardware found on the Atmel AT91SAM926X chip family."
 }
 
 # ==========================================================================
