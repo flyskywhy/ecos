@@ -1,3 +1,7 @@
+2010-03-18  Ross Younger  <wry@ecoscentric.com>
+
+	* tests/eccwalk.c: Build fix for changes elsewhere.
+
 2009-11-13  Ross Younger  <wry@ecoscentric.com>
 
 	* src/stm3210e_eval_nand.c: Build fix for minimal configs.

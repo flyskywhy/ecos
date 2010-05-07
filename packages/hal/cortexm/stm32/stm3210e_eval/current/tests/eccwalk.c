@@ -72,7 +72,7 @@ void ecc(cyg_nand_device *dev, const char *msg, CYG_BYTE *out)
     // This is necessarily board-specific ...
     HAL_WRITE_UINT8_VECTOR(NAND_BASE, buf, datasize, 0);
 
-    dev->ecc->calc(dev, 0, 256, out);
+    dev->ecc->calc(dev, 0, out);
     diag_printf("%s: ecc=%02x%02x%02x\n", msg, out[0], out[1], out[2]);
 }
 
