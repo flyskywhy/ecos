@@ -37,23 +37,26 @@
 
 <para>
 The <varname>CYGPKG_DEVS_NAND_SAMSUNG_K9</varname> driver package currently
-provides support for the Samsung K9F1G08x0x series of NAND flash chips, and
+provides support for the Samsung K9F1G08, K9F2G08 and K9F1208 series of NAND flash chips, and
 is intended to be expanded to provide support for more of the K9 family.
 </para>
 
 <para>
-Most users will only need to add this package to their eCos configuration
-and not need to interact with it further. This package provides only an
+Most users will not need to interact with this package; it should be included
+as a hardware dependency on all appropriate targets.
+This package provides only an
 inline code fragment which is intended to be instantiated by the target
 platform HAL and provided with appropriate board-specific low-level
 functions allowing it to access the hardware.
 </para>
 
-<note><para> This part is not quite ONFI-compliant, but this code could
+<note><para> The large-page parts in this family are not quite 
+ONFI-compliant, but this code could
 probably be extended to a much wider set of chips - or indeed to the ONFI
 specification - without too much trouble. Appropriate definitions will
 be required for the chip identifier, decoding of the Read ID response,
-and the chip's blockcount-bits and device-size fields.</para>
+and the chip's blockcount-bits and device-size fields.
+</para>
 </note>
 
 <note><para> At the present time, this driver has the limitation that it only
@@ -63,32 +66,37 @@ supports 8-bit parts.  This is an area of probable future expansion.
 
 <sect1 id="devs-nand-samsung-k9-instantiation"><title>Using this driver in a board port</title>
 <para>
-This driver's chip support is currently provided as two files:</para>
+This driver's top-level chip support is currently provided as two files:</para>
 
 <glosslist>
-<glossentry><glossterm><filename>cyg/devs/nand/k9fxx08x0x.h</filename></glossterm>
+<glossentry><glossterm><filename>cyg/devs/nand/k9_generic.h</filename></glossterm>
 <glossdef><para>Prototypes the low-level chip access functions required by the chip driver and
 declares a private struct for use by the driver.</para></glossdef></glossentry>
-<glossentry><glossterm><filename>cyg/devs/nand/k9fxx08x0x.inl</filename></glossterm>
-<glossdef><para>Implements high-level chip functions and exposes them via the <constant>CYG_NAND_FUNS</constant> macro.  This file is not intended to be compiled on its own.
+<glossentry><glossterm><filename>cyg/devs/nand/k9_generic.inl</filename></glossterm>
+<glossdef><para>Implements high-level chip functions and exposes them via the <constant>CYG_NAND_FUNS</constant> macro.  
+This file is not intended to be compiled on its own, but to be included by the source file in a platform HAL which implements the low-level functions.
 </para></glossdef></glossentry>
 </glosslist>
 
 <para> A platform HAL would typically make use of this driver in a single source file
 with the following steps:</para>
 <itemizedlist>
-<listitem><para> Declare a private struct and one or more static instances of it as appropriate,</para></listitem>
-<listitem><para> <filename>#include &lt;cyg/devs/nand/k9fxx08x0x.h&gt;</filename></para></listitem>
+<listitem><para> Declare a local private struct with contents as appropriate,</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/k9_generic.h&gt;</filename></para></listitem>
 <listitem><para> implement the required low-level functions,</para></listitem>
-<listitem><para> <filename>#include &lt;cyg/devs/nand/k9fxx08x0x.inl&gt;</filename></para></listitem>
-<listitem><para> finally, instantiate the chip with the <constant>CYG_NAND_DEVICE</constant> macro the appropriate number of times, giving each chip an appropriate name, its own private struct if need be, and selecting the ECC and OOB semantics to use.</para></listitem>
+<listitem><para> <filename>#include &lt;cyg/devs/nand/k9_generic.inl&gt;</filename></para></listitem>
+<listitem><para> declare a list of the supported <constant>k9_subtype</constant> which may appear on the board, terminated by <constant>K9_SUBTYPE_SENTINEL</constant></para></listitem>
+<listitem><para> declare a static instance of the <constant>k9_priv</constant> struct containing pointers to that list and to an instance of the local-private struct</para></listitem>
+<listitem><para> finally, instantiate the chip with the <constant>CYG_NAND_DEVICE</constant> macro, selecting the ECC and OOB semantics to use.
+<note><para>If there is more than one chip on the board, each needs its own CYG_NAND_DEVICE with a distinct name and device name, its own instance of the k9_priv struct.</para></note>
+</para></listitem>
 </itemizedlist>
 
 <para>
 For more details about the infrastructure provided by the NAND layer
 and the semantics it expects of the chip driver, refer to 
 <xref linkend="io-nand-overview">. An example driver instantiation can be
-found in <link linkend="nanddev-ea-lpc2468">the NAND driver for the EA LPC2468 platform</link>.</para>
+found in the NAND driver for the EA LPC2468 platform.</para>
 
 <sect2 id="nanddev-samsung-k9-memory-note">
 <title>Memory usage</title>
@@ -96,8 +104,10 @@ found in <link linkend="nanddev-ea-lpc2468">the NAND driver for the EA LPC2468 p
 As discussed in <xref linkend="nand-devs-highlevel">, the chip
 initialisation function must set up the <varname>bbt.data</varname>
 pointer in the <type>cyg_nand_device</type> struct.  This driver does so
-by including a sufficiently large byte array in the <type>k9_priv</type>
-struct. That struct is intended to be allocated as a static struct in the
+by including a large byte array in the <type>k9_priv</type>
+struct whose size is controlled by CDL depending on the enabled
+chip support.
+That struct is intended to be allocated as a static struct in the
 data or BSS segment (one per chip), which avoids adding a dependency
 on <function>malloc</function>.</para>
 </sect2>
@@ -106,7 +116,7 @@ on <function>malloc</function>.</para>
 <title>Low-level functions required from the platform HAL</title>
 <para>
 These functions are prototyped in 
-<filename>k9fxx08x0x.h</filename>.
+<filename>k9_generic.h</filename>.
 They have no return value ("void"), except for
 <function>read_data_1</function> which returns the byte it has read.</para>
 

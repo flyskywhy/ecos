@@ -1,3 +1,16 @@
+2010-03-16	Ross Younger  <wry@eCosCentric.com>
+
+	* Break out large page device specific support into k9_generic_lp.inl,
+	add CYGFUN_NAND_SAMSUNG_K9_LP
+	* Add small page device support to k9_generic_sp.inl (mediated by
+	CYGFUN_NAND_SAMSUNG_K9_SP)
+	* Add K9G12 chip support (small-page)
+
+2010-03-12	Ross Younger  <wry@eCosCentric.com>
+
+	* k9fxx08x0x.{c,inl}: Renamed to k9_generic.{c,inl}.
+	* Add K9F2G chip support
+
 2009-11-13  Ross Younger  <wry@eCosCentric.com>
 
 	* Don't provide BBT data when the NAND layer doesn't call for it.

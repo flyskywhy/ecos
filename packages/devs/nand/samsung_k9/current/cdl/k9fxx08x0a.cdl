@@ -62,7 +62,46 @@ cdl_package CYGPKG_DEVS_NAND_SAMSUNG_K9 {
 		for the target, in order to bring it in and properly
 		configure it to talk to the hardware present."
     # This is a 2k page device.
-    requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
     requires        ( CYGSEM_IO_NAND_INTERFACE_VERSION >= 2 )
+
+    cdl_option      CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE {
+        display     "Bad Block Table in-memory size"
+        flavor      data
+        legal_values 256 to 2048
+        active_if   CYGSEM_IO_NAND_USE_BBT
+        default_value 256
+        description "This variable specifies the in-memory size of the
+            Bad Block Table. It is automatically set based on the
+            enabled chip support options."
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F1G {
+        display     "Enable support for K9F1G sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 256 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_LP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F2G {
+        display     "Enable support for K9F2G sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 512 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_LP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_F12 {
+        display     "Enable support for K9F12 sub-family"
+        requires    ( CYGSEM_IO_NAND_USE_BBT implies CYGNUM_DEVS_NAND_SAMSUNG_K9_BBT_DATASIZE >= 1024 )
+        requires    CYGFUN_NAND_SAMSUNG_K9_SP
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_LP {
+        display     "Enable large-page device support"
+        requires        ( CYGNUM_NAND_PAGEBUFFER >= 2048 )
+    }
+
+    cdl_option      CYGFUN_NAND_SAMSUNG_K9_SP {
+        display     "Enable small-page device support"
+        requires        ( CYGNUM_NAND_PAGEBUFFER >= 512 )
+    }
+
 }
 
