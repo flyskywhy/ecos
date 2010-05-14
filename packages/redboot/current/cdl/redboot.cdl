@@ -1290,7 +1290,7 @@ cdl_package CYGPKG_REDBOOT {
             flavor	    	bool
             active_if   	CYGPKG_MEMALLOC
             active_if   	CYGPKG_MEMALLOC_MALLOC_ALLOCATORS
-            default_value	0
+            default_value	1
             description 	"
                     If the MEMALLOC package is present, it usually allocates
                     the whole of memory not used by the program to the heap.
@@ -1318,6 +1318,61 @@ cdl_package CYGPKG_REDBOOT {
                 When loading images a buffer is used between redboot and the
                 underlying storage medium, eg a filesystem, or a socket etc.
                 The size of this buffer can have a big impart on load speed."
+        }
+
+        cdl_component CYGPKG_REDBOOT_NAND {
+            display       "Include NAND utilities in RedBoot"
+            flavor        bool
+            default_value 1
+            active_if     CYGPKG_IO_NAND
+            requires      CYGPKG_IO_NAND
+            requires      ( CYGSEM_IO_NAND_INTERFACE_VERSION > 1 )
+            description   "
+              If this option is enabled then RedBoot will provide commands
+              to interrogate and manage NAND storage chips at a low level.
+              (Note that files are normally stored on a NAND chip
+               via a filesystem. To enable that, you need to add the
+               relevant package to the configuration and check that
+               CYGPKG_REDBOOT_FILEIO is enabled.)"
+            compile -library=libextras.a nand.c
+
+            cdl_option CYGSEM_REDBOOT_NAND_ERASE_CMD {
+                display     "Include support for nand erase command"
+                flavor      bool
+                default_value   1
+                active_if   CYGPKG_REDBOOT_NAND
+                description "
+                    This option provides a helper command to erase 
+                    a partition of a NAND device. It may be useful to 
+                    turn off if (for example) you don't want to provide 
+                    your users with this ability.
+                "
+            }
+
+            cdl_option CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD {
+                display     "Include support for nand badblocks command"
+                flavor      bool
+                default_value   1
+                active_if   CYGPKG_REDBOOT_NAND
+                description "
+                    This option provides a helper command to query
+                    and (optionally) change the state of bad blocks
+                    in the NAND device's Bad Blocks Table.
+                "
+            }
+
+            cdl_option CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD {
+                display     "Can nand badblocks change block states"
+                flavor      bool
+                default_value   1
+                active_if   CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD
+                description "
+                    This option enables the `badblocks mark' subcommand,
+                    which allows the user to manually change the state
+                    of blocks in the Bad Block Table. It is potentially
+                    dangerous if misused, so you may not wish to
+                    enable this."
+            }
         }
 
     }

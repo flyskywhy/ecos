@@ -4,6 +4,26 @@
 	avoid possible invalid memory access. Issue reported by
 	Kirill Berezin.
 
+2009-11-19  Ross Younger  <wry@ecoscentric.com>
+	* src/nand.c: Update to application interface v2.
+	Requires CYGSEM_IO_NAND_INTERFACE_VERSION > 1.
+
+2009-11-17  Ross Younger  <wry@ecoscentric.com>
+
+	* src/nand.c: Add "nand badblocks" subcommand and nested
+	subsubcmds: summarise or list bad blocks, and manually
+	change the state of a block's marking.
+	* cdl/redboot.cdl: Add CYGSEM_REDBOOT_NAND_BADBLOCKS_CMD and
+	CYGSEM_REDBOOT_NAND_BADBLOCKS_MARK_CMD.
+
+2009-06-26  Ross Younger  <wry@ecoscentric.com>
+
+	* src/nand.c: Created for NAND utilities
+	* cdl/redboot.cdl: Build nand.c if it's appropriate.
+	CYGMEM_REDBOOT_WORKSPACE_HEAP defaults on where active.
+	* fs/fileio.c: Try to be more helpful if mount failed.
+	* main.c: If mallinfo exists, report on it.
+
 2009-06-24  Nick Garnett  <nickg@ecoscentric.com>
 
 	* cdl/redboot.cdl:

@@ -233,6 +233,36 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
         }
     }
 
+    cdl_component CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_OPTIONS {
+        display "stm3210e HAL build options"
+                flavor  none
+                description   "
+                        Package specific build options including control over
+                        compiler flags used only in building this HAL."
+
+                cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_ADD {
+                        display "Additional compiler flags"
+                        flavor  data
+                        no_define
+                        default_value { "-Werror" }
+                        description   "
+                                This option modifies the set of compiler flags
+                                for building this HAL. These flags are used
+                                in addition to the set of global flags."
+                        }
+                cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_CFLAGS_REMOVE {
+                        display "Suppressed compiler flags"
+                        flavor  data
+                        no_define
+                        default_value { "" }
+                        description   "
+                                This option modifies the set of compiler flags
+                                for building this HAL. These flags are
+                                removed from the set of global flags if
+                                present."
+                }
+        }
+
     cdl_option CYGSEM_HAL_ROM_MONITOR {
         display       "Behave as a ROM monitor"
         flavor        bool
@@ -328,4 +358,79 @@ cdl_package CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL {
                      files."
     }
     
+    cdl_component CYGHWR_HAL_CORTEXM_STM3210E_EVAL_NAND {
+        display       "STM3210E EVAL NAND support"
+        parent        CYGPKG_IO_NAND
+        active_if     CYGPKG_IO_NAND
+        implements    CYGHWR_IO_NAND_DEVICE
+        requires      CYGPKG_DEVS_NAND_ST_NANDXXXX3A
+        requires      { (CYGPKG_REDBOOT && CYGPKG_FS_YAFFS) implies (CYGMEM_REDBOOT_WORKSPACE_HEAP_SIZE >= 0x20000) }
+
+        compile       -library=libextras.a stm3210e_eval_nand.c
+        description   "
+            This option enables support for the on-board ST NAND flash chip."
+
+        cdl_option CYGHWR_HAL_CORTEXM_STM3210E_EVAL_RB_ON_INT2 {
+            display       "Use NAND_RB line"
+            flavor        bool
+            default_value 0
+            description   "
+                The STM3210E board provides a jumper, JP7, which
+                routes the NAND ready/busy signal to either the
+                WAIT line (pins 1-2, the default as shipped), or to
+                FSMC_INT2 (pins 2-3). You must set
+                this option if the jumper is in the FSMC_INT2 position;
+                if you do not, the results are undefined.
+                (In WAIT mode, the FSMC automatically stalls further
+                accesses until the NAND signals it is ready: this is
+                code-size-efficient, but may cause problems with a
+                multi-threaded application.)
+                "
+        }
+
+        cdl_option CYGNUM_HAL_CORTEXM_STM3210E_EVAL_POLL_INTERVAL {
+            display         "Chip polling interval (us)"
+            flavor          data
+            active_if       CYGHWR_HAL_CORTEXM_STM3210E_EVAL_RB_ON_INT2
+            default_value   10
+            legal_values    1 to 1000
+            description     "
+                If the NAND_RB line is routed to INT2, the driver polls
+                that line whilst waiting for the chip to signal
+                that it has completed an operation.
+                This setting is the interval - in microseconds - the
+                NAND driver will sleep for during each wait cycle.
+                Lower values improve responsiveness slightly, at the cost
+                of stealing CPU time from any other threads which may be
+                running."
+        }
+
+        # Manual configuration of NAND partitions.
+        # We currently only provide manual config.
+
+        cdl_component CYGSEM_DEVS_NAND_STM3210E_EVAL_PARTITION_MANUAL_CONFIG {
+            display "Manual partition configuration"
+            flavor  bool
+            default_value   1
+            description "
+                Set in order to use CDL to manually configure the
+                partitions of the ST STM3210E EVAL on-board NAND."
+
+            set ::partition_device "STM3210E_EVAL"
+            script manual_partition.cdl
+        }
+    }
+
+    cdl_option CYGPKG_HAL_CORTEXM_STM32_STM3210E_EVAL_TESTS {
+        display "STM3210E tests"
+        flavor  data
+        no_define
+        calculated {
+             ( CYGHWR_HAL_CORTEXM_STM3210E_EVAL_NAND ? "tests/eccwalk "  : "")
+       }
+
+        description   "
+            This option specifies the set of tests for the STM3210E HAL."
+   }
+
 }

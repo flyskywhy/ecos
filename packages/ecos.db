@@ -4914,6 +4914,7 @@ target ea2468 {
                    CYGPKG_IO_I2C
                    CYGPKG_DEVS_I2C_ARM_LPC2XXX     
                    CYGPKG_DEVS_ADC_ARM_LPC24XX
+                   CYGPKG_DEVS_NAND_SAMSUNG_K9
         }
         description "
             The Embedded Artists LPC2468 HAL package provides the support
@@ -5666,6 +5667,7 @@ target linux {
                       CYGPKG_DEVS_WALLCLOCK_SYNTH      
                       CYGPKG_DEVS_FRAMEBUF_SYNTH
                       CYGPKG_DEVS_ADC_SYNTH
+                      CYGPKG_DEVS_NAND_SYNTH
         }
         description "
     	    The linux target provides the 
@@ -6906,9 +6908,68 @@ target stm3210e_eval {
                    CYGPKG_IO_SPI
                    CYGPKG_DEVS_SPI_CORTEXM_STM32
                    CYGPKG_DEVS_ADC_CORTEXM_STM32
+                   CYGPKG_DEVS_NAND_ST_NANDXXXX3A
                  }
         description "The stm3210e_eval target provides the packages needed
         to run eCos on the STM3210E EVAL board."
+}
+
+# ==========================================================================
+# NAND packages
+
+package CYGPKG_IO_NAND {
+    alias       { "NAND flash memory support" nand io_nand }
+    directory   io/nand
+    script      nand.cdl
+    description     "
+        This package provides the NAND flash access library.
+		Further platform-specific package(s) are required to implement
+		support for the specific devices present."
+}
+
+package CYGPKG_DEVS_NAND_SAMSUNG_K9 {
+    alias       { "Samsung K9 NAND chip family support" nand_samsung_k9 }
+    directory   devs/nand/samsung_k9
+    script      k9fxx08x0a.cdl
+    description     "
+		This package provides support for the Samsung K9Fxx08x0A family of NAND 
+        flash devices."
+}
+
+package CYGPKG_DEVS_NAND_SYNTH {
+	alias 		{ "Synthetic NAND device" nand_synth }
+	directory	devs/nand/synth
+	script		nand_synth.cdl
+	description "
+		This package provides a synthetic NAND device, for testing purposes."
+}
+
+package CYGPKG_DEVS_NAND_ST_NANDXXXX3A {
+    alias       { "ST Microelectronics NANDxxxx3A chip family support" nand_st_nandxxxx3a }
+    directory   devs/nand/st/nandxxxx3a
+    script      nandxxxx3a.cdl
+    description     "
+        This package provides support for the ST Microelectronics family of
+        NANDxxxx3A flash devices."
+}
+
+package CYGPKG_DEVS_NAND_MICRON_MT29F {
+    alias       { "Micron MT29F NAND chip family support" nand_micron_mt29f }
+    directory   devs/nand/micron_mt29
+    script      mt29f.cdl
+    hardware
+    description     "
+		This package provides support for the Micron MT29F family of NAND 
+        flash devices."
+}
+
+package CYGPKG_DEVS_NAND_ARM_AT91SAM9 {
+    alias       { "Common NAND support for the AT91SAM926X family" nand_at91sam926x }
+    directory   devs/nand/arm/at91sam9
+    script      devs_nand_arm_at91sam9.cdl
+    hardware
+    description "Common support definitions and code for the NAND support
+        hardware found on the Atmel AT91SAM926X chip family."
 }
 
 # ==========================================================================
