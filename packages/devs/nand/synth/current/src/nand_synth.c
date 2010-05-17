@@ -1600,6 +1600,9 @@ synth_writebegin(cyg_nand_device *dev, cyg_nand_page_addr page)
     // Do we make it bad this time?
     if (0 == result) _page_going_bad = write_check_injections(page);
 
+#if CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES == 1
+    (void) i;
+#else
     // Do not allow multiple writes to a single page, for now.
     if (0 == result) {
         for (i = 0; i < PAGESIZE; i++) {
@@ -1611,6 +1614,7 @@ synth_writebegin(cyg_nand_device *dev, cyg_nand_page_addr page)
             }
         }
     }
+#endif
 
     if (0 == result) {
         counter                     = CYG_BE32_TO_CPU(image_write_counts[page]);
@@ -1643,7 +1647,12 @@ synth_writestride(cyg_nand_device *dev, const void * src, size_t size)
     }
 
     if (src && (size > 0)) {
+#if CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES == 1
+        for (i=0; i<size; i++)
+            image_data[_offset + _stridden + i] &= ((unsigned char*)src)[i];
+#else
         memcpy(&(image_data[_offset + _stridden]), src, size);
+#endif
         if (_page_going_bad) {
             // Fake it so that most of the write has succeeded, but one byte
             // is stuck at 0xFF. That means looking for a byte in src that
@@ -1695,7 +1704,12 @@ synth_writefinish(cyg_nand_device *dev, const void * spare, size_t spare_size)
 
     if (0 == result) {
         if (spare && (spare_size > 0)) {
+#if CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES == 1
+            for (i=0; i<spare_size; i++)
+                image_data[_offset + PAGESIZE + i] &= ((unsigned char*)spare)[i];
+#else
             memcpy(&(image_data[_offset + PAGESIZE]), spare, spare_size);
+#endif
             if (_page_going_bad) {
                 idx = rand() % spare_size;
                 for (i = 0; i < spare_size; i++) {

@@ -156,6 +156,19 @@ cdl_package CYGPKG_DEVS_NAND_SYNTH {
 		description		"This option causes the synthetic NAND device to suffer frequent random bit flips, in order to confirm that they are handled properly (in conjunction with the eccdamage test)."
 	}
 
+	cdl_option CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES {
+		display			"Allow multiple writes without erasing"
+		flavor			bool
+		default_value	0
+		description		"Some NAND parts - mostly
+            small-page devices - allow pages to be programmed multiple
+            times without an intervening erase. This driver does
+            not normally allow such writes, but can be made to by
+            setting this option. Note that in this mode, this driver
+            follow the normal NAND semantics - i.e. that a programming
+            operation can only clear a bit from 1 to 0."
+	}
+
 	# Partition table support
 
 	# Every NAND board driver has to decide how it will determine the

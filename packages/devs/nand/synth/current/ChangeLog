@@ -1,3 +1,9 @@
+2010-05-11  Ross Younger  <wry@ecoscentric.com>
+
+	* nand_synth.c, nand_synth.cdl: Allow simulation of multiple
+	writes to a page if CYGSEM_NAND_SYNTH_ALLOW_MULTIPLE_WRITES
+	is set.
+
 2009-11-13  Ross Younger  <wry@ecoscentric.com>
 
 	* Don't provide BBT data if it's not called for.
