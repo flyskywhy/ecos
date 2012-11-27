@@ -49,6 +49,7 @@ TCLDIR=TCLDIR_use_system
 USEEXPERIMENTALCODE=1
 
 EXTRACPPFLAGS=\
+  -I/usr/include/tcl \
   -I$(TCLDIR)/include \
   -I$(INSTALLDIR)/include \
   -I$(ECOSSRCDIR)/tools/configtool/common/common \
