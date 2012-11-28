@@ -2,7 +2,7 @@
 ##
 ##      context.S
 ##
-##      PowerPC context switch code
+##      MicroBlaze context switch code
 ##
 ##=============================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,10 +39,11 @@
 ##=============================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s):   nickg
-## Contributors:        nickg
+## Author(s):      Michal Pfeifer
+## Original data:  PowerPC
+## Contributors: 
 ## Date:        1998-04-27
-## Purpose:     PowerPC context switch code
+## Purpose:     MicroBlaze context switch code
 ## Description: This file contains implementations of the thread context 
 ##              switch routines. It also contains the longjmp() and setjmp()
 ##              routines.
@@ -54,264 +55,172 @@
 #include <pkgconf/hal.h>
         
 #include <cyg/hal/arch.inc>
-#include <cyg/hal/ppc_offsets.inc>
+#include <cyg/hal/mb_offsets.inc>
 
-#------------------------------------------------------------------------------
-# Configure to use either a minimal or maximal thread state
-        
-#ifdef CYGDBG_HAL_COMMON_CONTEXT_SAVE_MINIMUM
-
-#define MIN_SAVE_REG    13
-#define MAX_SAVE_REG    31
-
-        .macro  save_special
-        .endm
-
-        .macro  load_special
-        .endm
-#else
-
-#define MIN_SAVE_REG     6
-#define MAX_SAVE_REG    31
-
-        .macro  save_special
-        mfxer   r6
-        mfctr   r7
-        stw     r6,CYGARC_PPCREG_XER(sp)
-        stw     r7,CYGARC_PPCREG_CTR(sp)
-        .endm
-
-        .macro  load_special
-        lwz     r6,CYGARC_PPCREG_XER(sp)
-        lwz     r7,CYGARC_PPCREG_CTR(sp)
-        mtxer   r6
-        mtctr   r7
-        .endm
-                
-#endif                  
-
-#ifdef CYGHWR_HAL_POWERPC_FPU
-#ifdef CYGDBG_HAL_COMMON_CONTEXT_SAVE_MINIMUM
-
-#define MIN_CONTEXT_SAVE_FREG   14
-#define MAX_CONTEXT_SAVE_FREG   31
-
-#else
-
-#define MIN_CONTEXT_SAVE_FREG    0
-#define MAX_CONTEXT_SAVE_FREG   31
-
-#endif
-#endif
-                
 #------------------------------------------------------------------------------
 # hal_thread_switch_context
 # Switch thread contexts
-# R3 = address of sp of next thread to execute
-# R4 = address of sp save location of current thread
+# R5 = address of sp of next thread to execute
+# R6 = address of sp save location of current thread
 
-        
+
 FUNC_START(hal_thread_switch_context)
-        mr      r5,sp                   # R5 = saved stack pointer
-        subi    sp,sp,CYGARC_PPC_CONTEXT_SIZE  # space for state
+	add	r4, r0, r1				# R4 = saved stack pointer
+	addi	r1, r1, -CYGARC_MB_CONTEXT_SIZE		# space for state
 
-        # Save registers MIN..MAX
-        .set    _reg,MIN_SAVE_REG
-        .rept   MAX_SAVE_REG+1-MIN_SAVE_REG
-        stw     _reg,(CYGARC_PPCREG_REGS+_reg*4)(sp)
-        .set    _reg,_reg+1
-        .endr
+	swi	r3, r1, (CYGARC_MBREG_REGS+(3-1)*4)	# R3
+	swi	r7, r1, (CYGARC_MBREG_REGS+(7-1)*4)
+	swi	r8, r1, (CYGARC_MBREG_REGS+(8-1)*4)
+	swi	r9, r1, (CYGARC_MBREG_REGS+(9-1)*4)
+	swi	r10, r1, (CYGARC_MBREG_REGS+(10-1)*4)
+	swi	r11, r1, (CYGARC_MBREG_REGS+(11-1)*4)
+	swi	r12, r1, (CYGARC_MBREG_REGS+(12-1)*4)
+	swi	r13, r1, (CYGARC_MBREG_REGS+(13-1)*4)
+	swi	r14, r1, (CYGARC_MBREG_REGS+(14-1)*4)
+	swi	r15, r1, (CYGARC_MBREG_REGS+(15-1)*4)
+	swi	r16, r1, (CYGARC_MBREG_REGS+(16-1)*4)
+	swi	r17, r1, (CYGARC_MBREG_REGS+(17-1)*4)
+	swi	r18, r1, (CYGARC_MBREG_REGS+(18-1)*4)
+	swi	r19, r1, (CYGARC_MBREG_REGS+(19-1)*4)
+	swi	r20, r1, (CYGARC_MBREG_REGS+(20-1)*4)
+	swi	r21, r1, (CYGARC_MBREG_REGS+(21-1)*4)
+	swi	r22, r1, (CYGARC_MBREG_REGS+(22-1)*4)
+	swi	r23, r1, (CYGARC_MBREG_REGS+(23-1)*4)
+	swi	r24, r1, (CYGARC_MBREG_REGS+(24-1)*4)
+	swi	r25, r1, (CYGARC_MBREG_REGS+(25-1)*4)
+	swi	r26, r1, (CYGARC_MBREG_REGS+(26-1)*4)
+	swi	r27, r1, (CYGARC_MBREG_REGS+(27-1)*4)
+	swi	r28, r1, (CYGARC_MBREG_REGS+(28-1)*4)
+	swi	r29, r1, (CYGARC_MBREG_REGS+(29-1)*4)
+	swi	r30, r1, (CYGARC_MBREG_REGS+(30-1)*4)
+	swi	r31, r1, (CYGARC_MBREG_REGS+(31-1)*4)
 
-#ifdef CYGHWR_HAL_POWERPC_FPU
-        # Save floating point MIN..MAX
-        .set    _freg, MIN_CONTEXT_SAVE_FREG
-        .rept   MAX_CONTEXT_SAVE_FREG+1-MIN_CONTEXT_SAVE_FREG
-        stfd    _freg,(CYGARC_PPCREG_FREGS+_freg*8)(sp)
-        .set    _freg, _freg+1
-        .endr
-#endif
-
-        stw     r0,CYGARC_PPCREG_REGS+0*4(sp)  # R0
-        stw     r5,CYGARC_PPCREG_REGS+1*4(sp)  # R5 = real SP, save in R1 slot
-        stw     r2,CYGARC_PPCREG_REGS+2*4(sp)  # R2 = TOC
-
-        # CR cannot be treated as a special register since GCC will only
-        # do partial restore of CR at function exit, depending on which
-        # of CR2, CR3, and CR4 have been used in the given function.
-        mfcr    r5                      # save CR.
-        stw     r5,CYGARC_PPCREG_CR(sp)
+	swi	r4, r1, (CYGARC_MBREG_REGS+(1-1)*4)	# R4 = real SP, save in R1 slot
+	swi	r2, r1, (CYGARC_MBREG_REGS+(2-1)*4)	# R2 = TOC
 
 #ifdef CYGDBG_HAL_DEBUG_GDB_THREAD_SUPPORT
-        # Make the thread context look like an exception context if thread-
-        # aware debugging is required. This state does not need restoring.
-        mflr    r5
-        stw     r5,CYGARC_PPCREG_PC(sp) # pc of caller
+	# Make the thread context look like an exception context if thread-
+	# aware debugging is required. This state does not need restoring.
+	swi	r15, r1, CYGARC_MBREG_PC # pc of caller
 #endif
+		
+	mfs	r4, rmsr
+	swi	r4, r1, CYGARC_MBREG_MSR # msr
 
-        mfmsr   r5
-        stw     r5,CYGARC_PPCREG_MSR(sp)# msr (or PS)
+	##save_special			# save special regs
+	swi	r1, r6, 0		# save SP into save location
 
-        save_special                    # save special regs
-        
-        mflr    r5                      # save LR == return link for this fn
-        stw     r5,CYGARC_PPCREG_LR(sp)
-        
-        stw     sp,0(r4)                # save SP into save location
+	# Now load the destination thread by dropping through
+	# to hal_thread_load_context
 
-        # Now load the destination thread by dropping through
-        # to hal_thread_load_context
-        
 #------------------------------------------------------------------------------
 # hal_thread_load_context
 # Load thread context
-# R3 = address of sp of next thread to execute
+# R5 = address of sp of next thread to execute
 # Note that this function is also the second half of hal_thread_switch_context
 # and is simply dropped into from it.
-        
+
 FUNC_START(hal_thread_load_context)
-        
-        lwz     sp,0(r3)                # load state directly into SP
+        lwi     r1, r5, 0                # load state directly into SP
+	##load_special                    # load special registers
+	lwi	r3, r1, CYGARC_MBREG_REGS+(3-1)*4
+	lwi	r7, r1, (CYGARC_MBREG_REGS+(7-1)*4)
+	lwi	r8, r1, (CYGARC_MBREG_REGS+(8-1)*4)
+	lwi	r9, r1, (CYGARC_MBREG_REGS+(9-1)*4)
+	lwi	r10, r1, (CYGARC_MBREG_REGS+(10-1)*4)
+	lwi	r11, r1, (CYGARC_MBREG_REGS+(11-1)*4)
+	lwi	r12, r1, (CYGARC_MBREG_REGS+(12-1)*4)
+	lwi	r13, r1, (CYGARC_MBREG_REGS+(13-1)*4)
+	lwi	r14, r1, (CYGARC_MBREG_REGS+(14-1)*4)
+	lwi	r15, r1, (CYGARC_MBREG_REGS+(15-1)*4)
+	lwi	r16, r1, (CYGARC_MBREG_REGS+(16-1)*4)
+	lwi	r17, r1, (CYGARC_MBREG_REGS+(17-1)*4)
+	lwi	r18, r1, (CYGARC_MBREG_REGS+(18-1)*4)
+	lwi	r19, r1, (CYGARC_MBREG_REGS+(19-1)*4)
+	lwi	r20, r1, (CYGARC_MBREG_REGS+(20-1)*4)
+	lwi	r21, r1, (CYGARC_MBREG_REGS+(21-1)*4)
+	lwi	r22, r1, (CYGARC_MBREG_REGS+(22-1)*4)
+	lwi	r23, r1, (CYGARC_MBREG_REGS+(23-1)*4)
+	lwi	r24, r1, (CYGARC_MBREG_REGS+(24-1)*4)
+	lwi	r25, r1, (CYGARC_MBREG_REGS+(25-1)*4)
+	lwi	r26, r1, (CYGARC_MBREG_REGS+(26-1)*4)
+	lwi	r27, r1, (CYGARC_MBREG_REGS+(27-1)*4)
+	lwi	r28, r1, (CYGARC_MBREG_REGS+(28-1)*4)
+	lwi	r29, r1, (CYGARC_MBREG_REGS+(29-1)*4)
+	lwi	r30, r1, (CYGARC_MBREG_REGS+(30-1)*4)
+	lwi	r31, r1, (CYGARC_MBREG_REGS+(31-1)*4)
 
-        load_special                    # load special registers
+	lwi     r5, r1, CYGARC_MBREG_MSR       # merge interrupt state
+	hal_cpu_int_merge r5
 
-        lwz     r5,CYGARC_PPCREG_CR(sp) # restore CR
-        mtcr    r5
+	lwi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4  # R2 = TOC
 
-        lwz     r5,CYGARC_PPCREG_LR(sp) # get LR as set as return link
-        mtlr    r5
-                
-        # Load registers MIN..MAX
-        .set    _reg,MIN_SAVE_REG
-        .rept   MAX_SAVE_REG+1-MIN_SAVE_REG
-        lwz     _reg,(CYGARC_PPCREG_REGS+_reg*4)(sp)
-        .set    _reg,_reg+1
-        .endr
+	lwi     r5, r1, CYGARC_MBREG_REGS+(5-1)*4  # load r5
 
-#ifdef CYGHWR_HAL_POWERPC_FPU
-        # Load floating registers MIN..MAX
-        .set    _freg, MIN_CONTEXT_SAVE_FREG
-        .rept   MAX_CONTEXT_SAVE_FREG+1-MIN_CONTEXT_SAVE_FREG
-        lfd     _freg,(CYGARC_PPCREG_FREGS+_freg*8)(sp)
-        .set    _freg,_freg+1
-        .endr
-#endif
+	lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # finally restore true SP
 
-        lwz     r3,CYGARC_PPCREG_MSR(sp)       # merge interrupt state
-        hal_cpu_int_merge r3,r2
+	rtsd	r15, 8                             # jump to LR
+	nop
 
-        lwz     r0,CYGARC_PPCREG_REGS+0*4(sp)  # R0
-        lwz     r2,CYGARC_PPCREG_REGS+2*4(sp)  # R2 = TOC
-        lwz     r3,CYGARC_PPCREG_REGS+3*4(sp)  # load r3
-        
-        lwz     sp,CYGARC_PPCREG_REGS+1*4(sp)  # finally restore true SP
-        
-        blr                             # jump to LR
-                        
 #------------------------------------------------------------------------------
 # HAL longjmp, setjmp implementations
 # hal_setjmp saves only to callee save registers 13-31, r1[sp],r2, cr[2-4]
 # and lr into buffer supplied in r3[arg0]
 
 FUNC_START(hal_setjmp)
-        mfcr    r5
-        stw     r5, CYGARC_JMPBUF_CR(r3)
-        mflr    r5
-        stw     r5, CYGARC_JMPBUF_LR(r3)
-        stw     r31,CYGARC_JMPBUF_R31(r3)
-        stw     r30,CYGARC_JMPBUF_R30(r3)
-        stw     r29,CYGARC_JMPBUF_R29(r3)
-        stw     r28,CYGARC_JMPBUF_R28(r3)
-        stw     r27,CYGARC_JMPBUF_R27(r3)
-        stw     r26,CYGARC_JMPBUF_R26(r3)
-        stw     r25,CYGARC_JMPBUF_R25(r3)
-        stw     r24,CYGARC_JMPBUF_R24(r3)
-        stw     r23,CYGARC_JMPBUF_R23(r3)
-        stw     r22,CYGARC_JMPBUF_R22(r3)
-        stw     r21,CYGARC_JMPBUF_R21(r3)
-        stw     r20,CYGARC_JMPBUF_R20(r3)
-        stw     r19,CYGARC_JMPBUF_R19(r3)
-        stw     r18,CYGARC_JMPBUF_R18(r3)
-        stw     r17,CYGARC_JMPBUF_R17(r3)
-        stw     r16,CYGARC_JMPBUF_R16(r3)
-        stw     r15,CYGARC_JMPBUF_R15(r3)
-        stw     r14,CYGARC_JMPBUF_R14(r3)
-        stw     r13,CYGARC_JMPBUF_R13(r3)
-#ifdef CYGHWR_HAL_POWERPC_FPU
-        stfd    f31,CYGARC_JMPBUF_F31(r3)
-        stfd    f30,CYGARC_JMPBUF_F30(r3)
-        stfd    f29,CYGARC_JMPBUF_F29(r3)
-        stfd    f28,CYGARC_JMPBUF_F28(r3)
-        stfd    f27,CYGARC_JMPBUF_F27(r3)
-        stfd    f26,CYGARC_JMPBUF_F26(r3)
-        stfd    f25,CYGARC_JMPBUF_F25(r3)
-        stfd    f24,CYGARC_JMPBUF_F24(r3)
-        stfd    f23,CYGARC_JMPBUF_F23(r3)
-        stfd    f22,CYGARC_JMPBUF_F22(r3)
-        stfd    f21,CYGARC_JMPBUF_F21(r3)
-        stfd    f20,CYGARC_JMPBUF_F20(r3)
-        stfd    f19,CYGARC_JMPBUF_F19(r3)
-        stfd    f18,CYGARC_JMPBUF_F18(r3)
-        stfd    f17,CYGARC_JMPBUF_F17(r3)
-        stfd    f16,CYGARC_JMPBUF_F16(r3)
-        stfd    f15,CYGARC_JMPBUF_F15(r3)
-        stfd    f14,CYGARC_JMPBUF_F14(r3)
-#endif
-        stw     r2, CYGARC_JMPBUF_R2(r3)        # TOC, optimize out?
-        stw     sp, CYGARC_JMPBUF_SP(r3)
-        li      r3,0            # return 0
-        blr
-
+	swi	r31, r5, CYGARC_JMPBUF_R31
+	swi	r30, r5, CYGARC_JMPBUF_R30
+	swi	r29, r5, CYGARC_JMPBUF_R29
+	swi	r28, r5, CYGARC_JMPBUF_R28
+	swi	r27, r5, CYGARC_JMPBUF_R27
+	swi	r26, r5, CYGARC_JMPBUF_R26
+	swi	r25, r5, CYGARC_JMPBUF_R25
+	swi	r24, r5, CYGARC_JMPBUF_R24
+	swi	r23, r5, CYGARC_JMPBUF_R23
+	swi	r22, r5, CYGARC_JMPBUF_R22
+	swi	r21, r5, CYGARC_JMPBUF_R21
+	swi	r20, r5, CYGARC_JMPBUF_R20
+	swi	r19, r5, CYGARC_JMPBUF_R19
+	swi	r18, r5, CYGARC_JMPBUF_R18
+	swi	r17, r5, CYGARC_JMPBUF_R17
+	swi	r16, r5, CYGARC_JMPBUF_R16
+	swi	r15, r5, CYGARC_JMPBUF_R15
+	swi	r14, r5, CYGARC_JMPBUF_R14
+	swi	r13, r5, CYGARC_JMPBUF_R13
+	swi	r2,  r5, CYGARC_JMPBUF_R2	# TOC, optimize out?
+	swi	r1,  r5, CYGARC_JMPBUF_SP
+	xor	r3, r3, r3			# return 0
+	rtsd	r15, 8
+	nop
+	
 # hal_longjmp loads state from r3[arg0] and returns
 # to the setjmp caller with r4[arg1] as return value 
 
 FUNC_START(hal_longjmp)
-        lwz     r5,CYGARC_JMPBUF_CR(r3)
-        mtcr    r5
-        lwz     r5,CYGARC_JMPBUF_LR(r3)
-        mtlr    r5
-        lwz     r31,CYGARC_JMPBUF_R31(r3)
-        lwz     r30,CYGARC_JMPBUF_R30(r3)
-        lwz     r29,CYGARC_JMPBUF_R29(r3)
-        lwz     r28,CYGARC_JMPBUF_R28(r3)
-        lwz     r27,CYGARC_JMPBUF_R27(r3)
-        lwz     r26,CYGARC_JMPBUF_R26(r3)
-        lwz     r25,CYGARC_JMPBUF_R25(r3)
-        lwz     r24,CYGARC_JMPBUF_R24(r3)
-        lwz     r23,CYGARC_JMPBUF_R23(r3)
-        lwz     r22,CYGARC_JMPBUF_R22(r3)
-        lwz     r21,CYGARC_JMPBUF_R21(r3)
-        lwz     r20,CYGARC_JMPBUF_R20(r3)
-        lwz     r19,CYGARC_JMPBUF_R19(r3)
-        lwz     r18,CYGARC_JMPBUF_R18(r3)
-        lwz     r17,CYGARC_JMPBUF_R17(r3)
-        lwz     r16,CYGARC_JMPBUF_R16(r3)
-        lwz     r15,CYGARC_JMPBUF_R15(r3)
-        lwz     r14,CYGARC_JMPBUF_R14(r3)
-        lwz     r13,CYGARC_JMPBUF_R13(r3)
-#ifdef CYGHWR_HAL_POWERPC_FPU
-        lfd     f31,CYGARC_JMPBUF_F31(r3)
-        lfd     f30,CYGARC_JMPBUF_F30(r3)
-        lfd     f29,CYGARC_JMPBUF_F29(r3)
-        lfd     f28,CYGARC_JMPBUF_F28(r3)
-        lfd     f27,CYGARC_JMPBUF_F27(r3)
-        lfd     f26,CYGARC_JMPBUF_F26(r3)
-        lfd     f25,CYGARC_JMPBUF_F25(r3)
-        lfd     f24,CYGARC_JMPBUF_F24(r3)
-        lfd     f23,CYGARC_JMPBUF_F23(r3)
-        lfd     f22,CYGARC_JMPBUF_F22(r3)
-        lfd     f21,CYGARC_JMPBUF_F21(r3)
-        lfd     f20,CYGARC_JMPBUF_F20(r3)
-        lfd     f19,CYGARC_JMPBUF_F19(r3)
-        lfd     f18,CYGARC_JMPBUF_F18(r3)
-        lfd     f17,CYGARC_JMPBUF_F17(r3)
-        lfd     f16,CYGARC_JMPBUF_F16(r3)
-        lfd     f15,CYGARC_JMPBUF_F15(r3)
-        lfd     f14,CYGARC_JMPBUF_F14(r3)
-#endif
-        lwz     r2, CYGARC_JMPBUF_R2(r3)
-        lwz     sp, CYGARC_JMPBUF_SP(r3)
-        mr      r3,r4           # return r4[arg1]
-        blr
+	lwi	r31, r5, CYGARC_JMPBUF_R31
+	lwi	r30, r5, CYGARC_JMPBUF_R30
+	lwi	r29, r5, CYGARC_JMPBUF_R29
+	lwi	r28, r5, CYGARC_JMPBUF_R28
+	lwi	r27, r5, CYGARC_JMPBUF_R27
+	lwi	r26, r5, CYGARC_JMPBUF_R26
+	lwi	r25, r5, CYGARC_JMPBUF_R25
+	lwi	r24, r5, CYGARC_JMPBUF_R24
+	lwi	r23, r5, CYGARC_JMPBUF_R23
+	lwi	r22, r5, CYGARC_JMPBUF_R22
+	lwi	r21, r5, CYGARC_JMPBUF_R21
+	lwi	r20, r5, CYGARC_JMPBUF_R20
+	lwi	r19, r5, CYGARC_JMPBUF_R19
+	lwi	r18, r5, CYGARC_JMPBUF_R18
+	lwi	r17, r5, CYGARC_JMPBUF_R17
+	lwi	r16, r5, CYGARC_JMPBUF_R16
+	lwi	r15, r5, CYGARC_JMPBUF_R15
+	lwi	r14, r5, CYGARC_JMPBUF_R14
+	lwi	r13, r5, CYGARC_JMPBUF_R13
+	lwi	r2,  r5, CYGARC_JMPBUF_R2
+	lwi	r1,  r5, CYGARC_JMPBUF_SP
+	or	r3, r6, r6			# return r6[arg1]
+	rtsd	r15, 8
+	nop
 
 #------------------------------------------------------------------------------
 # end of context.S

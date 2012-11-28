@@ -42,8 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:  nickg
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        1997-09-08
 // Purpose:     Define architecture abstractions
 // Usage:       #include <cyg/hal/hal_arch.h>
@@ -56,44 +57,45 @@
 #include <pkgconf/hal.h>
 #include <cyg/infra/cyg_type.h>
 
-#include <cyg/hal/ppc_regs.h>           // CYGARC_REG_MSR_EE
+#include <cyg/hal/mb_regs.h>           // CYGARC_REG_MSR_EE
 
 //-----------------------------------------------------------------------------
 // Processor saved states:
 
 typedef struct 
 {
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
-    cyg_uint32   wall_head;
-#endif
-
     // These are common to all saved states
-    cyg_uint32   d[32];                 // Data regs
-#ifdef CYGHWR_HAL_POWERPC_FPU
-    double       f[32];                 // Floating point registers
-#endif   
-    cyg_uint32   cr;                    // Condition Reg
-    cyg_uint32   xer;                   // XER
-    cyg_uint32   lr;                    // Link Reg
-    cyg_uint32   ctr;                   // Count Reg
+    cyg_uint32   d[31];                 // General Purpose Regs without R0 (always is 0)
+										// R1 = stack pointer
+										// R2 = small data area pointer - for read only
+										// R13 - small data area pointer - for read-write
+										// R14 - return address for interrupt
+										// R15 - return address for sub-routine
+										// R16 - return address for trap
+										// R17 - return address for exceptions
+										// R18 - reserved for assembler
+	
 
     // These are saved for exceptions and interrupts, but may also
     // be saved in a context switch if thread-aware debugging is enabled.
     cyg_uint32   msr;                   // Machine State Reg
     cyg_uint32   pc;                    // Program Counter
 
+	// Variant additional special purpose registers
+	CYGARC_VAR_ADDITIONAL_SAVEDREGS
+
     // This marks the limit of state saved during a context switch and
     // is used to calculate necessary stack allocation for context switches.
     // It would probably be better to have a union instead...
-    cyg_uint32   context_size[0];
+    //cyg_uint32   context_size[0];
 
     // These are only saved for exceptions and interrupts
     cyg_uint32   vector;                // Vector number
-
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
-    cyg_uint32   wall_tail;
-#endif
+    
+	
 } HAL_SavedRegisters;
+
+#define CYGARC_MB_CONTEXT_SIZE (34 + CYGARC_VAR_ADDITIONAL_CONTEXT_SIZE) * 4
 
 //-----------------------------------------------------------------------------
 // Exception handling function.
@@ -107,26 +109,16 @@ externC void cyg_hal_deliver_exception( CYG_WORD code, CYG_ADDRWORD data );
 //-----------------------------------------------------------------------------
 // Bit manipulation macros
 
-#define HAL_LSBIT_INDEX(index, mask)    \
-    asm ( "neg    11,%1;"               \
-          "and    11,11,%1;"            \
-          "cntlzw %0,11;"               \
-          "subfic %0,%0,31;"            \
-          : "=r" (index)                \
-          : "r" (mask)                  \
-          : "r11"                       \
-        );
+externC cyg_uint32 hal_lsbit_index(cyg_uint32 mask);
+externC cyg_uint32 hal_msbit_index(cyg_uint32 mask);
 
-#define HAL_MSBIT_INDEX(index, mask)            \
-    asm ( "cntlzw %0,%1\n"                      \
-          "subfic %0,%0,31;"                    \
-          : "=r" (index)                        \
-          : "r" (mask)                          \
-        );
+#define HAL_LSBIT_INDEX(index, mask) index = hal_lsbit_index(mask);
+
+#define HAL_MSBIT_INDEX(index, mask) index = hal_msbit_index(mask);
 
 //-----------------------------------------------------------------------------
-// eABI
-#define CYGARC_PPC_STACK_FRAME_SIZE     56      // size of a stack frame
+// ABI
+#define CYGARC_MB_STACK_FRAME_SIZE     48      // size of a stack frame
 
 //-----------------------------------------------------------------------------
 // Context Initialization
@@ -137,25 +129,20 @@ externC void cyg_hal_deliver_exception( CYG_WORD code, CYG_ADDRWORD data );
 // _entry_ entry point address.
 // _id_ bit pattern used in initializing registers, for debugging.
 
-#define HAL_THREAD_INIT_CONTEXT( _sparg_, _thread_, _entry_, _id_ )           \
-    CYG_MACRO_START                                                           \
-    register CYG_WORD _sp_ = (((CYG_WORD)_sparg_) &~15)                       \
-                                 - CYGARC_PPC_STACK_FRAME_SIZE;               \
-    register HAL_SavedRegisters *_regs_;                                      \
-    int _i_;                                                                  \
-    ((CYG_WORD *)_sp_)[0] = 0;            /* Zero old FP and LR for EABI */   \
-    ((CYG_WORD *)_sp_)[1] = 0;            /* to make GDB backtraces sane */   \
-    _regs_ = (HAL_SavedRegisters *)((_sp_) - sizeof(HAL_SavedRegisters));     \
-    for( _i_ = 0; _i_ < 32; _i_++ ) (_regs_)->d[_i_] = (_id_)|_i_;            \
-    (_regs_)->d[01] = (CYG_WORD)(_sp_);        /* SP = top of stack      */   \
-    (_regs_)->d[03] = (CYG_WORD)(_thread_);    /* R3 = arg1 = thread ptr */   \
-    (_regs_)->cr = 0;                          /* CR = 0                 */   \
-    (_regs_)->xer = 0;                         /* XER = 0                */   \
-    (_regs_)->lr = (CYG_WORD)(_entry_);        /* LR = entry point       */   \
-    (_regs_)->pc = (CYG_WORD)(_entry_);        /* set PC for thread dbg  */   \
-    (_regs_)->ctr = 0;                         /* CTR = 0                */   \
-    (_regs_)->msr = CYGARC_REG_MSR_EE;         /* MSR = enable irqs      */   \
-    _sparg_ = (CYG_ADDRESS)_regs_;                                            \
+#define HAL_THREAD_INIT_CONTEXT( _sparg_, _thread_, _entry_, _id_ )         \
+    CYG_MACRO_START                                                         \
+    register CYG_WORD* _sp_ = ((CYG_WORD*)((_sparg_) &~15));            	\
+    register HAL_SavedRegisters *_regs_;                                    \
+    int _i_;                                                                \
+    _regs_ = (HAL_SavedRegisters *)((_sp_) - ((sizeof(HAL_SavedRegisters) + CYGARC_MB_STACK_FRAME_SIZE) / 4));    \
+    for( _i_ = 1; _i_ < 32; _i_++ ) (_regs_)->d[_i_ - 1] = (_id_)|_i_;      \
+    (_regs_)->d[CYGARC_GPR_SP] = (CYG_WORD)(_sp_);     /* SP = top of stack */		\
+	(_regs_)->d[04] = (CYG_WORD)(_thread_);    		   /* R5 = arg1 = thread ptr */   	\
+    (_regs_)->d[CYGARC_GPR_LR] = (CYG_WORD)(_entry_) - 8;  /* LR = entry point */   \
+    (_regs_)->pc = (CYG_WORD)(_entry_);        		   /* set PC for thread dbg  */   	\
+    (_regs_)->msr = CYGARC_REG_MSR_IE;         		   /* MSR = enable irqs      */   	\
+	CYGARC_VAR_ADDITIONAL_THREAD_INIT_CONTEXT								\
+   _sparg_ = (CYG_ADDRESS)_regs_;                                          	\
     CYG_MACRO_END
 
 //-----------------------------------------------------------------------------
@@ -192,142 +179,48 @@ externC void hal_thread_load_context( CYG_ADDRESS to )
 #define HAL_BREAKPOINT(_label_)                 \
 asm volatile (" .globl  " #_label_ ";"          \
               #_label_":"                       \
-              " trap"                           \
+              " brki r16, 0x18"                 \
     );
 
-#define HAL_BREAKINST           0x7d821008
+#define HAL_BREAKINST           0xBA0C0018
 
 #define HAL_BREAKINST_SIZE      4
 
 //-----------------------------------------------------------------------------
 // Thread register state manipulation for GDB support.
 
-#ifndef CYGHWR_HAL_POWERPC_BOOK_E
-
-typedef struct {
-    cyg_uint32  gpr[32];     // General purpose registers
-    double      f0[16];      // First sixteen floating point regs
-    cyg_uint32  pc;
-    cyg_uint32  msr;
-    cyg_uint32  cr;
-    cyg_uint32  lr;
-    cyg_uint32  ctr;
-    cyg_uint32  xer;
-    cyg_uint32  mq;
-#ifdef CYGHWR_HAL_POWERPC_FPU
-    double     f16[16];      // Last sixteen floating point regs
-                             // Could probably also be inserted in the middle
-	                     // Adding them at the end minimises the risk of
-	                     // breaking existing implementations that do not
-	                     // have floating point registers.
-#endif
-} GDB_Registers;
-
-#else
-
-typedef struct {
-    cyg_uint32  gpr[32];     // General purpose registers
-    cyg_uint32  ev[32];      // SPE register extensions (not currently supported)
-    cyg_uint32  pc;
-    cyg_uint32  msr;
-    cyg_uint32  cr;
-    cyg_uint32  lr;
-    cyg_uint32  ctr;
-    cyg_uint32  xer;
-} GDB_Registers;
-
-#endif
-
-
 // Translate a stack pointer as saved by the thread context macros above into
 // a pointer to a HAL_SavedRegisters structure.
 #define HAL_THREAD_GET_SAVED_REGISTERS( _sp_, _regs_ )  \
         (_regs_) = (HAL_SavedRegisters *)(_sp_)
 
-// Copy floating point registers from a HAL_SavedRegisters structure into a
-// GDB_Registers structure
-#ifdef CYGHWR_HAL_POWERPC_FPU
-#define HAL_GET_GDB_FLOATING_POINT_REGISTERS( _gdb_, _regs_ ) \
-	CYG_MACRO_START                                           \
-	double * _p_ = _gdb_->f0;                                 \
-    double * _q_ = _regs_->f;                                 \
-    for( _i_ = 0; _i_ < 16; _i_++)                            \
-	  *_p_++ = *_q_++;                                        \
-	                                                          \
-    _p_ = _gdb_->f16;                                         \
-    for( _i_ = 0; _i_ < 16; _i_++)                            \
-	  *_p_++ = *_q_++;                                        \
-	CYG_MACRO_END
-#else
-#define HAL_GET_GDB_FLOATING_POINT_REGISTERS( _gdb_, _regs_ ) \
-	CYG_MACRO_START                                           \
-	CYG_MACRO_END
-#endif
-
-// Copy a GDB_Registers structure into a HAL_SavedRegisters structure
-#ifdef CYGHWR_HAL_POWERPC_FPU
-#define HAL_SET_GDB_FLOATING_POINT_REGISTERS( _regs_, _gdb_) \
-	CYG_MACRO_START                                          \
-	double * _p_ = _regs_->f;                                \
-	double * _q_ = _gdb_->f0;                                \
-	for( _i_ = 0; _i_ < 16; _i_++)                           \
-	  *_p_++ = *_q_++;                                       \
-                                                             \
-	_q_ = _gdb_->f16;                                        \
-	for( _i_ = 0; _i_ < 16; _i_++)                           \
-	  *_p_++ = *_q_++;                                       \
-	CYG_MACRO_END
-#else
-#define HAL_SET_GDB_FLOATING_POINT_REGISTERS( _regs_, _gdb_)  \
-	CYG_MACRO_START                                           \
-	CYG_MACRO_END
-#endif
-	
 // Copy a set of registers from a HAL_SavedRegisters structure into a
 // GDB ordered array.    
 #define HAL_GET_GDB_REGISTERS( _aregval_, _regs_ )              \
     CYG_MACRO_START                                             \
-    union __gdbreguniontype {                                   \
-      __typeof__(_aregval_) _aregval2_;                         \
-      GDB_Registers *_gdbr;                                     \
-    } __gdbregunion;                                            \
-    __gdbregunion._aregval2_ = (_aregval_);                     \
-    GDB_Registers *_gdb_ = __gdbregunion._gdbr;                 \
+    CYG_ADDRWORD *_regval_ = (CYG_ADDRWORD *)(_aregval_);       \
     int _i_;                                                    \
                                                                 \
-    for( _i_ = 0; _i_ < 32; _i_++ )                             \
-        _gdb_->gpr[_i_] = (_regs_)->d[_i_];                     \
+    for( _i_ = 1; _i_ < 32; _i_++ )                             \
+        _regval_[_i_] = (_regs_)->d[_i_ - 1];                   \
                                                                 \
-    _gdb_->pc    = (_regs_)->pc;                                \
-    _gdb_->msr   = (_regs_)->msr;                               \
-    _gdb_->cr    = (_regs_)->cr;                                \
-    _gdb_->lr    = (_regs_)->lr;                                \
-    _gdb_->ctr   = (_regs_)->ctr;                               \
-    _gdb_->xer   = (_regs_)->xer;                               \
-    HAL_GET_GDB_FLOATING_POINT_REGISTERS(_gdb_, _regs_);        \
+    _regval_[32] = (_regs_)->pc;                                \
+    _regval_[33] = (_regs_)->msr;                               \
+	HAL_GET_ADDITIONAL_GDB_REGISTERS							\
     CYG_MACRO_END
 
 // Copy a GDB ordered array into a HAL_SavedRegisters structure.
 #define HAL_SET_GDB_REGISTERS( _regs_ , _aregval_ )             \
     CYG_MACRO_START                                             \
-    union __gdbreguniontype {                                   \
-      __typeof__(_aregval_) _aregval2_;                         \
-      GDB_Registers *_gdbr;                                     \
-    } __gdbregunion;                                            \
-    __gdbregunion._aregval2_ = (_aregval_);                     \
-    GDB_Registers *_gdb_ = __gdbregunion._gdbr;                 \
+    CYG_ADDRWORD *_regval_ = (CYG_ADDRWORD *)(_aregval_);       \
     int _i_;                                                    \
                                                                 \
-    for( _i_ = 0; _i_ < 32; _i_++ )                             \
-        (_regs_)->d[_i_] = _gdb_->gpr[_i_];                     \
+    for( _i_ = 1; _i_ < 32; _i_++ )                             \
+        (_regs_)->d[_i_ - 1] = _regval_[_i_];                   \
                                                                 \
-    (_regs_)->pc  = _gdb_->pc;                                  \
-    (_regs_)->msr = _gdb_->msr;                                 \
-    (_regs_)->cr  = _gdb_->cr;                                  \
-    (_regs_)->lr  = _gdb_->lr;                                  \
-    (_regs_)->ctr = _gdb_->ctr;                                 \
-    (_regs_)->xer = _gdb_->xer;                                 \
-    HAL_SET_GDB_FLOATING_POINT_REGISTERS(_regs_, _gdb_);        \
+    (_regs_)->pc  = _regval_[32];                               \
+    (_regs_)->msr = _regval_[33];                               \
+	HAL_SET_ADDITIONAL_GDB_REGISTERS							\
     CYG_MACRO_END
 
 //-----------------------------------------------------------------------------
@@ -355,28 +248,6 @@ typedef struct {
     cyg_uint32 r29;
     cyg_uint32 r30;
     cyg_uint32 r31;
-#ifdef CYGHWR_HAL_POWERPC_FPU
-    double     f14;
-    double     f15;
-    double     f16;
-    double     f17;
-    double     f18;
-    double     f19;
-    double     f20;
-    double     f21;
-    double     f22;
-    double     f23;
-    double     f24;
-    double     f25;
-    double     f26;
-    double     f27;
-    double     f28;
-    double     f29;
-    double     f30;
-    double     f31;
-#endif
-    cyg_uint32 lr;
-    cyg_uint32 cr;
 } hal_jmp_buf_t;
 
 #define CYGARC_JMP_BUF_SIZE      (sizeof(hal_jmp_buf_t) / sizeof(cyg_uint32))
@@ -412,20 +283,16 @@ externC void hal_idle_thread_action(cyg_uint32 loop_count);
 // saved. callee saved variables are irrelevant for us as they would contain
 // automatic variables, so we only count the caller-saved regs here
 // So that makes r0..r12 + cr, xer, lr, ctr:
-#define CYGNUM_HAL_STACK_FRAME_SIZE (4 * 17)
+//r1 .. r18
+#define CYGNUM_HAL_STACK_FRAME_SIZE (4 * 18)
 
 // Stack needed for a context switch
 #define CYGNUM_HAL_STACK_CONTEXT_SIZE \
-    (38*4 /* offsetof(HAL_SavedRegisters, context_size) */)
+    ((33+CYGARC_VAR_ADDITIONAL_CONTEXT_SIZE)*4 /* offsetof(HAL_SavedRegisters, context_size) */)
 
 // Interrupt + call to ISR, interrupt_end() and the DSR
-#ifdef CYGHWR_HAL_POWERPC_FPU
 #define CYGNUM_HAL_STACK_INTERRUPT_SIZE \
-    (((43*4)+(16*8) /* sizeof(HAL_SavedRegisters) */) + 2 * CYGNUM_HAL_STACK_FRAME_SIZE)
-#else
-#define CYGNUM_HAL_STACK_INTERRUPT_SIZE \
-    ((43*4 /* sizeof(HAL_SavedRegisters) */) + 2 * CYGNUM_HAL_STACK_FRAME_SIZE)
-#endif
+    (((33+CYGARC_VAR_ADDITIONAL_CONTEXT_SIZE)*4 /* sizeof(HAL_SavedRegisters) */) + 5 * CYGNUM_HAL_STACK_FRAME_SIZE)
 
 // We have lots of registers so no particular amount is added in for
 // typical local variable usage.

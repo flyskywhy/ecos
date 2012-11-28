@@ -1,8 +1,8 @@
 //========================================================================
 //
-//      ppc_stub.c
+//      mb_stub.c
 //
-//      Helper functions for stub, generic to all PowerPC processors
+//      Helper functions for stub, generic to all MicroBlaze processors
 //
 //========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,11 +39,12 @@
 //========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):     Red Hat, jskov
-// Contributors:  Red Hat, jskov, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:          1998-08-20
 // Purpose:       
-// Description:   Helper functions for stub, generic to all PowerPC processors
+// Description:   Helper functions for stub, generic to all MicroBlaze processors
 // Usage:         
 //
 //####DESCRIPTIONEND####
@@ -57,7 +58,7 @@
 #ifdef CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS
 
 #define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#include <cyg/hal/ppc_regs.h>
+#include <cyg/hal/mb_regs.h>
 
 #include <cyg/hal/hal_stub.h>
 #include <cyg/hal/hal_arch.h>
@@ -71,117 +72,35 @@
 #include <cyg/hal/dbg-threads-api.h>    // dbg_currthread_id
 #endif
 
-#ifndef OFFSETOF
-#define OFFSETOF(_struct_, _member_) (int)((char *)(&(((_struct_*)0)->_member_))-(char *)((_struct_*)0))
-#endif
-
 /* Given a trap value TRAP, return the corresponding signal. */
 
 int __computeSignal (unsigned int trap_number)
 {
     switch (trap_number)
     {
-    case CYGNUM_HAL_VECTOR_MACHINE_CHECK:
-        /* Machine check */
-    case CYGNUM_HAL_VECTOR_DSI:
-        /* Data access */
-        return SIGSEGV;
-      
-    case CYGNUM_HAL_VECTOR_ISI:
-        /* Instruction access (Ifetch) */
-    case CYGNUM_HAL_VECTOR_ALIGNMENT:
-        /* Data access */
-        return SIGBUS;
-                    
     case CYGNUM_HAL_VECTOR_INTERRUPT:
         /* External interrupt */
       return SIGINT;
 
-    case CYGNUM_HAL_VECTOR_TRACE:
+    case CYGNUM_HAL_VECTOR_BREAK:
         /* Instruction trace */
         return SIGTRAP;
       
-    case CYGNUM_HAL_VECTOR_PROGRAM:
-#ifdef CYGPKG_HAL_POWERPC_PPC40x
-        // The 40x is b0rken, returning 0 for these bits. Translate to
+    case CYGNUM_HAL_VECTOR_USER_EXCEPTION:
         // SIGTRAP to allow thread debugging.
         return SIGTRAP;
-#elif defined(CYGHWR_HAL_POWERPC_BOOK_E)
-        // for Book E processor, we just translate all PROGRAM
-        // exceptions into SIGTRAP so that breakpoints work.
-        return SIGTRAP;
-#else
-        // The register PS contains the value of SRR1 at the time of
-        // exception entry. Bits 11-15 contain information about the
-        // cause of the exception. Bits 16-31 the PS (MSR) state.
-#ifdef USE_BREAKPOINTS_FOR_SINGLE_STEP
-        if (__is_single_step(get_register(PC))) {
-            return SIGTRAP;
-        }
-#endif
-        switch ((get_register (PS) >> 17) & 0xf){
-        case 1:                         /* trap */
-            return SIGTRAP;
-        case 2:                         /* privileged instruction */
-        case 4:                         /* illegal instruction */
-            return SIGILL;
-        case 8:                         /* floating point */
-            return SIGFPE;
-        default:                        /* should never happen! */
-            return SIGILL;
-        }            
-#endif
 
-    case CYGNUM_HAL_VECTOR_RESERVED_A:
+		case CYGNUM_HAL_VECTOR_HW_EXCEPTION:
+        // SIGTRAP to allow thread debugging.
+        return SIGTRAP;
+
+	case CYGNUM_HAL_VECTOR_RESERVED_A:
     case CYGNUM_HAL_VECTOR_RESERVED_B:
+    case CYGNUM_HAL_VECTOR_RESERVED_C:
+    case CYGNUM_HAL_VECTOR_RESERVED_D:
+    case CYGNUM_HAL_VECTOR_RESERVED_E:
         return SIGILL;
-
-    case CYGNUM_HAL_VECTOR_FP_UNAVAILABLE:
-        /* FPU disabled */
-    case CYGNUM_HAL_VECTOR_FP_ASSIST:
-        /* FPU assist */
-        return SIGFPE;
-
-    case CYGNUM_HAL_VECTOR_DECREMENTER:
-        /* Decrementer alarm */
-        return SIGALRM;
-
-    case CYGNUM_HAL_VECTOR_SYSTEM_CALL:
-        /* System call */
-        return SIGSYS;
-
-#if defined(CYGPKG_HAL_POWERPC_MPC8xx) || defined(CYGPKG_HAL_POWERPC_MPC5xx)
-    case CYGNUM_HAL_VECTOR_SW_EMUL:
-        /* A SW_EMUL is generated instead of PROGRAM for illegal
-           instructions. */
-        return SIGILL;
-
-    case CYGNUM_HAL_VECTOR_DATA_BP:
-    case CYGNUM_HAL_VECTOR_INSTRUCTION_BP:
-    case CYGNUM_HAL_VECTOR_PERIPHERAL_BP:
-    case CYGNUM_HAL_VECTOR_NMI:
-        /* Developer port debugging exceptions. */
-        return SIGTRAP;
-
-#if defined(CYGNUM_HAL_VECTOR_ITLB_MISS)	
-    case CYGNUM_HAL_VECTOR_ITLB_MISS:
-        /* Software reload of TLB required. */
-        return SIGTRAP;
-#endif
-#if defined(CYGNUM_HAL_VECTOR_DTLB_MISS)	
-    case CYGNUM_HAL_VECTOR_DTLB_MISS:
-        /* Software reload of TLB required. */
-        return SIGTRAP;
-#endif
-    case CYGNUM_HAL_VECTOR_ITLB_ERROR:
-        /* Invalid instruction access. */
-        return SIGBUS;
-
-    case CYGNUM_HAL_VECTOR_DTLB_ERROR:
-        /* Invalid data access. */
-        return SIGSEGV;
-#endif // defined(CYGPKG_HAL_POWERPC_MPC8xx)
-        
+       
     default:
         return SIGTERM;
     }
@@ -194,7 +113,7 @@ int __get_trap_number (void)
 {
     // The vector is not not part of the GDB register set so get it
     // directly from the save context.
-    return _hal_registers->vector >> CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT;
+    return _hal_registers->vector >> 3;
 }
 
 /* Set the currently-saved pc register value to PC. This also updates NPC
@@ -205,88 +124,6 @@ void set_pc (target_register_t pc)
     put_register (PC, pc);
 }
 
-#ifdef CYGHWR_HAL_POWERPC_FPU
-static int
-reg_offset(regnames_t reg)
-{
-  // We let the compiler determine the offsets in order to avoid all
-  // possible alignment problems
-  int base_offset;
-  // 32 general purpose registers
-  if(reg < F0)   return reg * 4;
-
-  // first sixteen floating point regs
-  base_offset = OFFSETOF(GDB_Registers, f0);
-  if(reg < F16)  return base_offset + ((reg - F0) * 8);
-
-  // last sixteen floating point regs
-  base_offset = OFFSETOF(GDB_Registers, f16);
-  if(reg < PC) 	 return base_offset + ((reg - F16) * 8);
-
-  // Other 32 bit regs
-  if(reg < PS)   return(OFFSETOF(GDB_Registers, pc));
-  if(reg < CND)  return(OFFSETOF(GDB_Registers, msr));
-  if(reg < LR)   return(OFFSETOF(GDB_Registers, cr));
-  if(reg < CNT)  return(OFFSETOF(GDB_Registers, lr));
-  if(reg < XER)  return(OFFSETOF(GDB_Registers, ctr));
-  if(reg < MQ)   return(OFFSETOF(GDB_Registers, xer));
-  
-  return OFFSETOF(GDB_Registers, mq);
-}
-
-// Return the currently-saved value corresponding to register REG of
-// the exception context.
-target_register_t
-get_register (regnames_t reg)
-{
-   target_register_t val;
-   int offset = reg_offset(reg);
-
-   if (REGSIZE(reg) > sizeof(target_register_t))
-   return -1;
-
-   val = _registers[offset/sizeof(target_register_t)];
-
-   return val;
-}
-
-// Store VALUE in the register corresponding to WHICH in the exception
-// context.
-void
-put_register (regnames_t which, target_register_t value)
-{
-   int offset = reg_offset(which);
-
-   if (REGSIZE(which) > sizeof(target_register_t))
-   return;
-
-   _registers[offset/sizeof(target_register_t)] = value;
-}
-
-// Write the contents of register WHICH into VALUE as raw bytes. This
-// is only used for registers larger than sizeof(target_register_t).
-// Return non-zero if it is a valid register.
-int
-get_register_as_bytes (regnames_t which, char *value)
-{
-  int offset = reg_offset(which);
-
-  memcpy (value, (char *)_registers + offset, REGSIZE(which));
-  return 1;
-}
-
-// Alter the contents of saved register WHICH to contain VALUE. This
-// is only used for registers larger than sizeof(target_register_t).
-// Return non-zero if it is a valid register.
-int
-put_register_as_bytes (regnames_t which, char *value)
-{
-  int offset = reg_offset(which);
-
-  memcpy ((char *)_registers + offset, value, REGSIZE(which));
-  return 1;
-}
-#endif
 
 /*----------------------------------------------------------------------
  * Single-step support
@@ -296,7 +133,6 @@ put_register_as_bytes (regnames_t which, char *value)
    This may be done by setting breakpoints or setting a single step flag
    in the saved user registers, for example. */
 
-#ifdef USE_BREAKPOINTS_FOR_SINGLE_STEP
 
 #if (HAL_BREAKINST_SIZE == 1)
 typedef cyg_uint8 t_inst;
@@ -349,102 +185,200 @@ __is_single_step(target_register_t pc)
 // Compute the target address for this instruction, if the instruction
 // is some sort of branch/flow change.
 
-struct xl_form {
-    unsigned int op : 6;
-    unsigned int bo : 5;
-    unsigned int bi : 5;
-    unsigned int reserved : 5;
-    unsigned int xo : 10;
-    unsigned int lk : 1;
-};
-
-struct i_form {
-    unsigned int op : 6;
-    signed   int li : 24;
-    unsigned int aa : 1;
-    unsigned int lk : 1;
+struct a_form {
+	unsigned int op : 6;
+	unsigned int dr : 5;
+	unsigned int sra : 5;
+	unsigned int srb : 5;
 };
 
 struct b_form {
-    unsigned int op : 6;
-    unsigned int bo : 5;
-    unsigned int bi : 5;
-    signed   int bd : 14;
-    unsigned int aa : 1;
-    unsigned int lk : 1;
+	unsigned int op : 6;
+	unsigned int dr : 5;
+	unsigned int sra : 5;
+	unsigned int imm : 16;
 };
 
-union ppc_insn {
+union mb_insn {
     unsigned int   word;
-    struct i_form  i;
+    struct a_form  a;
     struct b_form  b;
-    struct xl_form xl;
 };
 
 static target_register_t
 __branch_pc(target_register_t pc)
 {
-    union ppc_insn insn;
+    union mb_insn insn;
 
+	target_register_t apc = pc;
     insn.word = *(t_inst *)pc;
 
-    // Decode the instruction to determine the instruction which will follow
-    // Note: there are holes in this process, but the important ones work
-    switch (insn.i.op) {
-    case 16:
-	/* bcx */
-	if (insn.b.aa) {
-	    return (target_register_t)(insn.b.bd << 2);
-        } else {
-	    return (target_register_t)((insn.b.bd << 2) + (long)pc);
-        }
-    case 18:
-	/* bx */
-	if (insn.i.aa) {
-	    return (target_register_t)(insn.i.li << 2);
-        } else {
-	    return (target_register_t)((insn.i.li << 2) + (long)pc);
-        }
-    case 19:
-	if (insn.xl.reserved == 0) {
-	    if (insn.xl.xo == 528) {
-		/* bcctrx */
-                return (target_register_t)(get_register(CNT) & ~3);
-	    } else if (insn.xl.xo == 16) {
-		/* bclrx */
-                return (target_register_t)(get_register(LR) & ~3);
-	    }
+	long imm = 0;
+	
+	// if instruction imm is on pc we read imm number and jump to next pc (pc+4)
+	if (insn.b.op == 44 && insn.b.dr == 0 && insn.b.sra == 0){
+		imm = ((long)(insn.b.imm)) << 16;
+		apc +=4;
+		insn.word = *(t_inst *)(apc);
+		
 	}
-	break;
+	
+    switch (insn.a.op) {
+    case 38:
+		if(insn.a.sra == 12) {
+			//brk
+			return (target_register_t)((long)get_register(insn.a.srb - 1));
+		}
+		else {
+			//br
+			if((insn.a.sra & 0x8)!=0)
+				return (target_register_t)(((long)get_register(insn.a.srb - 1)));
+			else
+				return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+		}
+    case 39:
+		switch (insn.a.dr & 0x0F) {
+			case 0:
+				// beq
+				if(((long)get_register(insn.a.sra - 1)) == 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			case 1:
+				// bne
+				if(((long)get_register(insn.a.sra - 1)) != 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			case 2:
+				// blt
+				if(((long)get_register(insn.a.sra - 1)) < 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			case 3:
+				// ble
+				if(((long)get_register(insn.a.sra - 1)) <= 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			case 4:
+				// bgt
+				if(((long)get_register(insn.a.sra - 1)) > 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			case 5:
+				// bge
+				if(((long)get_register(insn.a.sra - 1)) >= 0)
+					return (target_register_t)(((long)get_register(insn.a.srb - 1)) + (long)apc);
+				else
+					break;
+			default:
+				break;
+		}
+		break;
+	case 45:
+		switch (insn.b.dr) {
+			case 16:
+				// rtsd
+				return (target_register_t)(((long)get_register(insn.b.sra - 1)) + imm + (long)(insn.b.imm));
+			case 17:
+				// rtid
+				return (target_register_t)(((long)get_register(insn.b.sra - 1)) + imm + (long)(insn.b.imm));
+			case 18:
+				// rtbd
+				return (target_register_t)(((long)get_register(insn.b.sra - 1)) + imm + (long)(insn.b.imm));
+			case 20:
+				// rted
+				return (target_register_t)(((long)get_register(insn.b.sra - 1)) + imm + (long)(insn.b.imm));
+			default:
+				break;
+		}
+		break;
+    case 46:
+		if(insn.b.sra == 12) {
+			//brki
+			return (target_register_t)((long)(insn.b.imm) + imm);
+		}
+		else {
+			//bri
+			if((insn.b.sra & 0x8)!=0)
+				return (target_register_t)((long)(insn.b.imm) + imm);
+			else
+				return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+		}
+    case 47:
+		switch (insn.b.dr & 0x0F) {
+			case 0:
+				// beq
+				if(((long)get_register(insn.b.sra - 1)) == 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			case 1:
+				// bne
+				if(((long)get_register(insn.b.sra - 1)) != 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			case 2:
+				// blt
+				if(((long)get_register(insn.b.sra - 1)) < 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			case 3:
+				// ble
+				if(((long)get_register(insn.b.sra - 1)) <= 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			case 4:
+				// bgt
+				if(((long)get_register(insn.b.sra - 1)) > 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			case 5:
+				// bge
+				if(((long)get_register(insn.b.sra - 1)) >= 0)
+					return (target_register_t)((long)(insn.b.imm) + imm + (long)apc);
+				else
+					break;
+			default:
+				break;
+		}
+		break;
     default:
-	break;
+		break;
     }
     return (pc+4);
 }
 
 void __single_step(void)
 {
-    target_register_t msr = get_register(PS);
+    target_register_t msr = get_register(MSR);
     target_register_t pc = get_register(PC);
     target_register_t next_pc = __branch_pc(pc);
 
     // Disable interrupts.
-    irq_state = msr & MSR_EE;
-    msr &= ~MSR_EE;
-    put_register (PS, msr);
+    irq_state = msr & MSR_IE;
+    msr &= ~MSR_IE;
+    put_register (MSR, msr);
 
     // Set a breakpoint at the next instruction
-    __insert_break(0, pc+4);
     if (next_pc != (pc+4)) {
         __insert_break(1, next_pc);
     }
+	else __insert_break(0, pc+4);
 }
 
 /* Clear the single-step state. */
 
 void __clear_single_step(void)
 {
-    target_register_t msr = get_register (PS);
+    target_register_t msr = get_register (MSR);
 
     // Restore interrupt state.
     // FIXME: Should check whether the executed instruction changed the
@@ -459,54 +393,13 @@ void __clear_single_step(void)
     // exception will happen.
     irq_state = 0;
 
-    put_register (PS, msr);
+    put_register (MSR, msr);
 
     // Remove breakpoints
     __remove_break(0);
     __remove_break(1);
 }
 
-#else
-
-static target_register_t irq_state = 0;
-
-void __single_step (void)
-{
-    target_register_t msr = get_register (PS);
-
-    // Set single-step flag in the exception context.
-    msr |= (MSR_SE | MSR_BE);
-    // Disable interrupts.
-    irq_state = msr & MSR_EE;
-    msr &= ~MSR_EE;
-
-    put_register (PS, msr);
-}
-
-/* Clear the single-step state. */
-
-void __clear_single_step (void)
-{
-    target_register_t msr = get_register (PS);
-
-    // Clear single-step flag in the exception context.
-    msr &= ~(MSR_SE | MSR_BE);
-    // Restore interrupt state.
-    // FIXME: Should check whether the executed instruction changed the
-    // interrupt state - or single-stepping a MSR changing instruction
-    // may result in a wrong EE. Not a very likely scenario though.
-    msr |= irq_state;
-
-    // This function is called much more than its counterpart
-    // __single_step.  Only re-enable interrupts if they where
-    // disabled during the previous cal to __single_step. Otherwise,
-    // this function only makes "extra sure" that no trace or branch
-    // exception will happen.
-    irq_state = 0;
-
-    put_register (PS, msr);
-}
-#endif
 
 void __install_breakpoints (void)
 {
@@ -525,7 +418,7 @@ void __clear_breakpoints (void)
 int
 __is_breakpoint_function ()
 {
-    return get_register (PC) == (target_register_t)&_breakinst;
+    return get_register (PC) == (target_register_t)HAL_BREAKINST;
 }
 
 

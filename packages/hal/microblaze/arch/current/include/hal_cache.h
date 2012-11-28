@@ -42,8 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:nickg, jskov, hmt
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        1998-02-17
 // Purpose:     Cache control API
 // Description: The macros defined here provide the HAL APIs for handling
@@ -60,7 +61,7 @@
 #include <pkgconf/hal.h>
 #include <cyg/infra/cyg_type.h>
 
-#include <cyg/hal/ppc_regs.h>
+#include <cyg/hal/mb_regs.h>
 
 #include <cyg/hal/var_cache.h>
 

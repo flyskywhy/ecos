@@ -39,10 +39,11 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    gthomas
-// Contributors: gthomas, jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         2000-02-21
-// Purpose:      PowerPC architecture dependent definition generator
+// Purpose:      MicroBlaze architecture dependent definition generator
 // Description:  This file contains code that can be compiled by the target
 //               compiler and used to generate machine specific definitions
 //               suitable for use in assembly code.
@@ -72,7 +73,7 @@
  */
 
 #define DEFINE(sym, val) \
-        asm volatile("\n\t.equ\t" #sym ",%0" : : "i" (val))
+        asm volatile(".global " #sym "\n\t.equ\t" #sym ",%0" : : "i" (val))
 
 int
 main(void)
@@ -99,65 +100,33 @@ main(void)
     DEFINE(CYGARC_JMPBUF_R29, offsetof(hal_jmp_buf_t, r29));
     DEFINE(CYGARC_JMPBUF_R30, offsetof(hal_jmp_buf_t, r30));
     DEFINE(CYGARC_JMPBUF_R31, offsetof(hal_jmp_buf_t, r31));
-    DEFINE(CYGARC_JMPBUF_LR, offsetof(hal_jmp_buf_t, lr));
-    DEFINE(CYGARC_JMPBUF_CR, offsetof(hal_jmp_buf_t, cr));
-#ifdef CYGHWR_HAL_POWERPC_FPU
-    DEFINE(CYGARC_JMPBUF_F14, offsetof(hal_jmp_buf_t, f14));
-    DEFINE(CYGARC_JMPBUF_F15, offsetof(hal_jmp_buf_t, f15));
-    DEFINE(CYGARC_JMPBUF_F16, offsetof(hal_jmp_buf_t, f16));
-    DEFINE(CYGARC_JMPBUF_F17, offsetof(hal_jmp_buf_t, f17));
-    DEFINE(CYGARC_JMPBUF_F18, offsetof(hal_jmp_buf_t, f18));
-    DEFINE(CYGARC_JMPBUF_F19, offsetof(hal_jmp_buf_t, f19));
-    DEFINE(CYGARC_JMPBUF_F20, offsetof(hal_jmp_buf_t, f20));
-    DEFINE(CYGARC_JMPBUF_F21, offsetof(hal_jmp_buf_t, f21));
-    DEFINE(CYGARC_JMPBUF_F22, offsetof(hal_jmp_buf_t, f22));
-    DEFINE(CYGARC_JMPBUF_F23, offsetof(hal_jmp_buf_t, f23));
-    DEFINE(CYGARC_JMPBUF_F24, offsetof(hal_jmp_buf_t, f24));
-    DEFINE(CYGARC_JMPBUF_F25, offsetof(hal_jmp_buf_t, f25));
-    DEFINE(CYGARC_JMPBUF_F26, offsetof(hal_jmp_buf_t, f26));
-    DEFINE(CYGARC_JMPBUF_F27, offsetof(hal_jmp_buf_t, f27));
-    DEFINE(CYGARC_JMPBUF_F28, offsetof(hal_jmp_buf_t, f28));
-    DEFINE(CYGARC_JMPBUF_F29, offsetof(hal_jmp_buf_t, f29));
-    DEFINE(CYGARC_JMPBUF_F30, offsetof(hal_jmp_buf_t, f30));
-    DEFINE(CYGARC_JMPBUF_F31, offsetof(hal_jmp_buf_t, f31));
-#endif
 
+#if 0
     // Exception/interrupt/context save buffer
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
+#ifdef CYGDBG_HAL_MicroBlaze_FRAME_WALLS
     DEFINE(CYGARC_PPCREG_WALL_HEAD, offsetof(HAL_SavedRegisters, wall_head));
     DEFINE(CYGARC_PPCREG_WALL_TAIL, offsetof(HAL_SavedRegisters, wall_tail));
 #endif
-    DEFINE(CYGARC_PPCREG_REGS, offsetof(HAL_SavedRegisters, d[0]));
-#ifdef CYGHWR_HAL_POWERPC_FPU
-    DEFINE(CYGARC_PPCREG_FREGS, offsetof(HAL_SavedRegisters, f[0]));
 #endif
-    DEFINE(CYGARC_PPCREG_CR, offsetof(HAL_SavedRegisters, cr));
-    DEFINE(CYGARC_PPCREG_XER, offsetof(HAL_SavedRegisters, xer));
-    DEFINE(CYGARC_PPCREG_LR, offsetof(HAL_SavedRegisters, lr));
-    DEFINE(CYGARC_PPCREG_CTR, offsetof(HAL_SavedRegisters, ctr));
-    DEFINE(CYGARC_PPCREG_MSR, offsetof(HAL_SavedRegisters, msr));
-    DEFINE(CYGARC_PPCREG_PC, offsetof(HAL_SavedRegisters, pc));
-    DEFINE(CYGARC_PPC_CONTEXT_SIZE, offsetof(HAL_SavedRegisters, context_size));
+	DEFINE(CYGARC_MBREG_REGS, offsetof(HAL_SavedRegisters, d[0]));
+	DEFINE(CYGARC_MBREG_MSR, offsetof(HAL_SavedRegisters, msr));
+	DEFINE(CYGARC_MBREG_PC, offsetof(HAL_SavedRegisters, pc));
+	DEFINE(CYGARC_MBREG_VECTOR, offsetof(HAL_SavedRegisters, vector));
+	HAL_DEFINE_ADDITIONAL_REGS_OFFSETS
+	DEFINE(CYGARC_MB_CONTEXT_SIZE, CYGARC_MB_CONTEXT_SIZE);
+//	DEFINE(CYGARC_MB_CONTEXT_SIZE_NEG, -CYGARC_MB_CONTEXT_SIZE);
     // Below only saved on exceptions/interrupts
-    DEFINE(CYGARC_PPCREG_VECTOR, offsetof(HAL_SavedRegisters, vector));
-    DEFINE(CYGARC_PPC_EXCEPTION_SIZE, sizeof(HAL_SavedRegisters));
+	DEFINE(CYGARC_MB_EXCEPTION_SIZE, sizeof(HAL_SavedRegisters));
 
-    DEFINE(CYGARC_PPC_STACK_FRAME_SIZE, CYGARC_PPC_STACK_FRAME_SIZE);
-    DEFINE(CYGARC_PPC_EXCEPTION_DECREMENT, sizeof(HAL_SavedRegisters));
+	DEFINE(CYGARC_MB_STACK_FRAME_SIZE, CYGARC_MB_STACK_FRAME_SIZE);
+	DEFINE(CYGARC_MB_EXCEPTION_DECREMENT, sizeof(HAL_SavedRegisters));
     
     // Some other exception related definitions
     DEFINE(CYGNUM_HAL_ISR_COUNT, CYGNUM_HAL_ISR_COUNT);
     DEFINE(CYGNUM_HAL_VECTOR_INTERRUPT, CYGNUM_HAL_VECTOR_INTERRUPT);
-    DEFINE(CYGNUM_HAL_VECTOR_DECREMENTER, CYGNUM_HAL_VECTOR_DECREMENTER);
-#ifdef CYGHWR_HAL_POWERPC_BOOK_E
-    DEFINE(CYGNUM_HAL_VECTOR_MACHINE_CHECK, CYGNUM_HAL_VECTOR_MACHINE_CHECK);    
-    DEFINE(CYGNUM_HAL_VECTOR_FIT, CYGNUM_HAL_VECTOR_FIT);    
-    DEFINE(CYGNUM_HAL_VECTOR_WATCHDOG, CYGNUM_HAL_VECTOR_WATCHDOG);    
-    DEFINE(CYGNUM_HAL_VECTOR_CRITICAL_INPUT, CYGNUM_HAL_VECTOR_CRITICAL_INPUT);    
-#endif    
     DEFINE(CYGNUM_HAL_VSR_MAX, CYGNUM_HAL_VSR_MAX);
     DEFINE(CYGNUM_HAL_VSR_COUNT, CYGNUM_HAL_VSR_COUNT);
-
+	DEFINE(HAL_DEFAULT_ISR, &HAL_DEFAULT_ISR);
     // Variant definitions - want these to be included instead.
 #ifdef CYGARC_VARIANT_DEFS
     CYGARC_VARIANT_DEFS

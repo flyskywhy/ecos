@@ -39,9 +39,9 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    nickg, jskov
-// Contributors: nickg, jskov,
-//               jlarmour, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         1999-02-20
 // Purpose:      HAL miscellaneous functions
 // Description:  This file contains miscellaneous functions provided by the
@@ -54,7 +54,7 @@
 #include <pkgconf/hal.h>
 
 #define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#include <cyg/hal/ppc_regs.h>           // SPR definitions
+#include <cyg/hal/mb_regs.h>           // SPR definitions
 
 #include <cyg/infra/cyg_type.h>
 #include <cyg/infra/cyg_trac.h>         // tracing macros
@@ -67,7 +67,7 @@
     defined(CYGPKG_HAL_EXCEPTIONS)
 # include <cyg/hal/hal_intr.h>           // HAL interrupts/exceptions
 #endif
-#include <cyg/hal/hal_mem.h>            // HAL memory handling
+//#include <cyg/hal/hal_mem.h>            // HAL memory handling
 
 //---------------------------------------------------------------------------
 // Functions used during initialization.
@@ -104,7 +104,7 @@ cyg_hal_invoke_constructors (void)
 
 // Override any __eabi the compiler might generate. We don't want
 // constructors to be called twice.
-void __eabi (void) {}
+//void __eabi (void) {}
 
 //---------------------------------------------------------------------------
 // First level C exception handler.
@@ -113,12 +113,10 @@ externC void __handle_exception (void);
 
 externC HAL_SavedRegisters *_hal_registers;
 
-#ifdef CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS
 externC void* volatile __mem_fault_handler;
-#endif
 
 void
-cyg_hal_exception_handler(HAL_SavedRegisters *regs)
+cyg_hal_exception_handler(HAL_SavedRegisters *regs, cyg_uint32 vector)
 {
 #ifdef CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS
 
@@ -136,72 +134,9 @@ cyg_hal_exception_handler(HAL_SavedRegisters *regs)
 
     __handle_exception();
 
-#ifdef CYGPKG_HAL_QUICC
-    {
-        // This is unpleasant: it appears that if we interrupt the board
-        // using ^C coming in on the QUICC's SMC1, by planting a breakpoint
-        // at the interrupt return address, the decrementer interrupt is
-        // not taken when the bp exception returns AND WORSE no other
-        // interrupt is possible until the decrementer fires again.  This
-        // does not apply to simple "incoming character" interrupts; it
-        // seems it has to be combined with an immediate trap on RTI for
-        // this to occur.
-        // 
-        // The solution is to test for decrementer underflow after the
-        // (any) exception, and maybe reinitialize the decrementer.  If the
-        // decrementer interrupt gets taken, that causes decrementer reinit
-        // too, and no harm is done.
-
-        cyg_uint32 result;
-        asm volatile(
-            "mfdec  %0;"
-            : "=r"(result)
-            );
-
-        if ( CYGNUM_HAL_RTC_PERIOD < result ) {
-            // then we missed a tick, but the exception masked it
-            // reset the decrementer here
-            asm volatile(
-                "mtdec  %0;"
-                : : "r"(CYGNUM_HAL_RTC_PERIOD)
-                );
-        }
-    }
-#endif
-
 #elif defined(CYGFUN_HAL_COMMON_KERNEL_SUPPORT) && \
       defined(CYGPKG_HAL_EXCEPTIONS)
-    int vector = regs->vector>>CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT;
 
-    // We should decode the vector and pass a more appropriate
-    // value as the second argument. For now we simply pass a
-    // pointer to the saved registers. We should also divert
-    // breakpoint and other debug vectors into the debug stubs.
-
-#ifndef CYGHWR_HAL_POWERPC_BOOK_E
-    if (vector==CYGNUM_HAL_VECTOR_PROGRAM) {
-        int srr1;
-        CYGARC_MFSPR(CYGARC_REG_SRR1, srr1); // get srr1
-
-        switch ((srr1 >> 17) & 0xf) {
-        case 1:
-            vector = CYGNUM_HAL_EXCEPTION_TRAP;
-            break;
-        case 2:
-            vector = CYGNUM_HAL_EXCEPTION_PRIVILEGED_INSTRUCTION;
-            break;
-        case 4:
-            vector = CYGNUM_HAL_EXCEPTION_ILLEGAL_INSTRUCTION;
-            break;
-        case 8:
-            vector = CYGNUM_HAL_EXCEPTION_FPU;
-            break;
-        default:
-            CYG_FAIL("Unknown PROGRAM exception!!");
-        }
-    }
-#endif
-    
     cyg_hal_deliver_exception( vector, (CYG_ADDRWORD)regs );
 
 #else
@@ -233,16 +168,6 @@ hal_arch_default_isr(CYG_ADDRWORD vector, CYG_ADDRWORD data)
 }
 #endif
 
-// The decrementer default ISR has to do nothing. The reason is that
-// decrementer interrupts cannot be disabled - if a kernel configuration
-// does not use the RTC, but does use external interrupts, the decrementer
-// underflow could cause a CYG_FAIL (as above) even though the user did
-// not expect any decrementer interrupts to happen.
-externC cyg_uint32
-hal_default_decrementer_isr(CYG_ADDRWORD vector, CYG_ADDRWORD data)
-{
-    return 0;
-}
 
 //---------------------------------------------------------------------------
 // Idle thread action
@@ -256,18 +181,6 @@ hal_idle_thread_action( cyg_uint32 count )
     // whether to run any of the architecture action code.
     if (!hal_variant_idle_thread_action(count))
         return;
-
-#if 0
-    do {
-        register cyg_uint32 dec;
-
-        asm volatile(
-            "mfdec  %0;"
-            : "=r"(dec)
-            );
-        diag_printf( "Decrementer %08x\n", dec);
-    } while (0);
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -276,6 +189,7 @@ hal_idle_thread_action( cyg_uint32 count )
 //          externC cyg_memdesc_t cyg_hal_mem_map[];
 // as detailed in hal_cache.h, and the variant HAL providing the
 // MMU mapping/clear functions.
+/*
 externC void
 hal_MMU_init (void)
 {
@@ -293,7 +207,7 @@ hal_MMU_init (void)
         i++;
     }
 }
-
+*/
 //---------------------------------------------------------------------------
 // Initial cache enabling
 // Specific behavior for each platform configured via plf_cache.h
@@ -304,30 +218,30 @@ hal_enable_caches(void)
 #ifndef HAL_CACHE_UNIFIED
         
 #if !(defined(CYG_HAL_STARTUP_RAM) || defined(CYG_HAL_STARTUP_JTAG))
-    // Invalidate caches
+    // Invalidate caches and unlock them
     HAL_DCACHE_INVALIDATE_ALL();
     HAL_ICACHE_INVALIDATE_ALL();
 #endif
 
 #ifdef CYGSEM_HAL_ENABLE_ICACHE_ON_STARTUP
-#ifdef HAL_ICACHE_UNLOCK_ALL
-    HAL_ICACHE_UNLOCK_ALL();
-#endif
+//#ifdef HAL_ICACHE_UNLOCK_ALL
+//    HAL_ICACHE_UNLOCK_ALL();
+//#endif
     HAL_ICACHE_ENABLE();
 #endif
 
 #ifdef CYGSEM_HAL_ENABLE_DCACHE_ON_STARTUP
-#ifdef HAL_DCACHE_UNLOCK_ALL
-    HAL_DCACHE_UNLOCK_ALL();
-#endif
+//#ifdef HAL_DCACHE_UNLOCK_ALL
+//    HAL_DCACHE_UNLOCK_ALL();
+//#endif
     HAL_DCACHE_ENABLE();
-#ifdef HAL_DCACHE_WRITE_MODE
-#ifdef CYGSEM_HAL_DCACHE_STARTUP_MODE_COPYBACK
-    HAL_DCACHE_WRITE_MODE(HAL_DCACHE_WRITEBACK_MODE);
-#else
-    HAL_DCACHE_WRITE_MODE(HAL_DCACHE_WRITETHRU_MODE);
-#endif
-#endif
+//#ifdef HAL_DCACHE_WRITE_MODE
+//#ifdef CYGSEM_HAL_DCACHE_STARTUP_MODE_COPYBACK
+//    HAL_DCACHE_WRITE_MODE(HAL_DCACHE_WRITEBACK_MODE);
+//#else
+//    HAL_DCACHE_WRITE_MODE(HAL_DCACHE_WRITETHRU_MODE);
+//#endif
+//#endif
 #endif
 
 #else // HAL_CACHE_UNIFIED
@@ -358,6 +272,51 @@ hal_null_call(void)
     
     CYG_FAIL("Call via NULL-pointer!");
     for(;;);
+}
+
+/*------------------------------------------------------------------------*/
+/* Determine the index of the ls bit of the supplied mask.                */
+
+externC cyg_uint32 hal_lsbit_index(cyg_uint32 mask)
+{
+	cyg_uint32 n = mask;
+
+	static const signed char tab[64] =
+	{ -1, 0, 1, 12, 2, 6, 0, 13, 3, 0, 7, 0, 0, 0, 0, 14, 10,
+	4, 0, 0, 8, 0, 0, 25, 0, 0, 0, 0, 0, 21, 27 , 15, 31, 11,
+	5, 0, 0, 0, 0, 0, 9, 0, 0, 24, 0, 0 , 20, 26, 30, 0, 0, 0,
+	0, 23, 0, 19, 29, 0, 22, 18, 28, 17, 16, 0
+	};
+
+	n &= ~(n-1UL);
+	n = (n<<16)-n;
+	n = (n<<6)+n;
+	n = (n<<4)+n;
+
+	return tab[n>>26];
+}
+
+/*------------------------------------------------------------------------*/
+/* Determine the index of the ms bit of the supplied mask.                */
+
+externC cyg_uint32 hal_msbit_index(cyg_uint32 mask)
+{
+	cyg_uint32 x = mask;
+	cyg_uint32 w;
+
+	/* Phase 1: make word with all ones from that one to the right */
+	x |= x >> 16;
+	x |= x >> 8;
+	x |= x >> 4;
+	x |= x >> 2;
+	x |= x >> 1;
+
+	/* Phase 2: calculate number of "1" bits in the word        */
+	w = (x & 0x55555555) + ((x >> 1) & 0x55555555);
+	w = (w & 0x33333333) + ((w >> 2) & 0x33333333);
+	w = w + (w >> 4);
+	w = (w & 0x000F000F) + ((w >> 8) & 0x000F000F);
+	return (cyg_uint32)((w + (w >> 16)) & 0xFF) - 1;
 }
 
 //---------------------------------------------------------------------------

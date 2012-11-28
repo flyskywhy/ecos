@@ -2,7 +2,7 @@
 ##
 ##      vectors.S
 ##
-##      PowerPC exception vectors
+##      MicroBlaze exception vectors
 ##
 ##==========================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,10 +39,11 @@
 ##==========================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s):    nickg, jskov
-## Contributors: nickg, jskov
+## Author(s):      Michal Pfeifer
+## Original data:  PowerPC
+## Contributors: 
 ## Date:         1999-02-20
-## Purpose:      PowerPC exception vectors
+## Purpose:      MicroBlaze exception vectors
 ## Description:  This file defines the code placed into the exception
 ##               vectors. It also contains the first level default VSRs
 ##               that save and restore state for both exceptions and
@@ -54,7 +55,7 @@
 
 #===========================================================================
 #
-#       The PowerPC exception handling has changed as of version 1.3.1.
+#       The MicroBlaze exception handling has changed as of version 1.3.1.
 #       The primary motivation for rewriting the code was to bring it more
 #       in line with the other HALs, in particular to allow a RAM application
 #       to cleanly take over only a subset of vectors from a running ROM
@@ -100,12 +101,14 @@
 #endif
 
 #define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#include <cyg/hal/ppc_regs.h>
+#include <cyg/hal/mb_regs.h>
+
+#include <cyg/hal/arch.inc>
 
 #===========================================================================
-                
+
 //        .file   "vectors.S"
-        
+
         .extern hal_interrupt_data
         .extern hal_interrupt_handlers
         .extern hal_interrupt_objects
@@ -115,7 +118,7 @@
         .extern cyg_instrument
         .extern cyg_start
         .extern hal_IRQ_init
-        .extern hal_MMU_init
+//        .extern hal_MMU_init
         .extern hal_enable_caches
         .extern hal_hardware_init
         .extern initialize_stub
@@ -127,298 +130,303 @@
 
 #===========================================================================
 # MSR initialization value
-# zero all bits except:
-# FP = floating point available
-# ME = machine check enabled
-# IP = vectors at 0xFFFxxxxx (ROM startup only)
-# IR = instruction address translation
-# DR = data address translation
-# RI = recoverable interrupt
 
-#define CYG_MSR_COMMON (MSR_FP | MSR_ME | MSR_RI)
+#define CYG_MSR 0
 
-#if (CYGHWR_HAL_POWERPC_VECTOR_BASE == 0xfff00000)
-# define IP_BIT MSR_IP
-#else
-# define IP_BIT 0
-#endif
-
-#ifdef CYGHWR_HAL_POWERPC_ENABLE_MMU
-# define IR_DR_BITS (MSR_IR | MSR_DR)
-#else
-# define IR_DR_BITS 0
-#endif
-
-#define CYG_MSR (CYG_MSR_COMMON | IP_BIT | IR_DR_BITS)
-
-# Include variant macros after MSR definition.        
+# Include variant macros after MSR definition.
 #include <cyg/hal/arch.inc>
-#include <cyg/hal/ppc_offsets.inc>
+#include <cyg/hal/mb_offsets.inc>
 
-
-#===========================================================================
-# If the following option is enabled, we only save registers up to R12.
-# The PowerPC ABI defines registers 13..31 as callee saved and thus we do
-# not need to save them when calling C functions.
-
-#ifdef CYGDBG_HAL_COMMON_INTERRUPTS_SAVE_MINIMUM_CONTEXT
-# define MAX_SAVE_REG    12
-#else
-# define MAX_SAVE_REG    31
-#endif                  
-        
-
-#if defined(CYGHWR_HAL_POWERPC_NEED_VECTORS)
 
 #===========================================================================
 # Start by defining the exceptions vectors that must be placed at
-# locations 0xFFF00000 or 0x00000000. The following code will normally
-# be located at 0xFFF00000 in the ROM. It may optionally be copied out
-# to 0x00000000 if we want to use the RAM vectors. For this reason this code
-# MUST BE POSITION INDEPENDENT.
-        
+# location 0x00000000.
+
         .section ".vectors","ax"
 
 #---------------------------------------------------------------------------
-# Macros for generating an exception vector service routine
+# Macros for generating an VSRs service routine
 
-# Reset vector macro
+# Generic vector macros
 
-        .macro  reset_vector name
-        .p2align CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT
-        .globl  __exception_\name
-__exception_\name:
-#ifdef CYGSEM_HAL_POWERPC_RESET_USES_JUMP        
-        bl      _start               
-#else
-        lwi     r3,_start
-        mtlr    r3
-        blr
-#endif                
 
-        .endm
-        
-# Generic vector macro
-                
-        .macro  exception_vector name
-        .p2align CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT
-        .globl  __exception_\name
-__exception_\name:
-        mtspr   SPRG1,r3                     # stash some work registers away
-        mtspr   SPRG2,r4                    
-        mtspr   SPRG3,r5                    
-        mfcr    r4                           # stash CR
-        li      r5,__exception_\name-rom_vectors       # load low half of vector addr
-        srwi    r5,r5,(CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT-2) # shift right by alignment-2
-        lwi     r3,hal_vsr_table             # table base
-        lwzx    r3,r3,r5                     # address of vsr
-        mflr    r5                           # save link register
-        mtlr    r3                           # put vsr address into it
-        li      r3,__exception_\name-rom_vectors       # reload low half of vector addr
-        blr                                  # go to common code
-        .endm
+rom_vectors:
+	.global	__vcr_vector_reset
+__vcr_vector_reset:
+		brai		_start
+
+#	.p2align 3
+	.global	__vcr_vector_user_exception
+__vcr_vector_user_exception:
+		bri		__call_vcr_user_exception
+		nop
+#	.p2align 3
+
+	.global	__vcr_vector_interrupt
+__vcr_vector_interrupt:
+		bri		__call_vcr_interrupt
+		nop
+#	.p2align 3
+
+	.global	__vcr_vector_break
+__vcr_vector_break:
+		bri		__call_vcr_break
+		nop
+#	.p2align 3
+
+	.global	__vcr_vector_hw_exception
+__vcr_vector_hw_exception:
+		bri		__call_vcr_hw_exception
+		nop
+#	.p2align 3
+	.global	__vcr_vector_reserved_a
+__vcr_vector_reserved_a:
+		bri		__call_vcr_reserved_a
+		nop
+#	.p2align 3
+	.global	__vcr_vector_reserved_b
+__vcr_vector_reserved_b:
+		bri		__call_vcr_reserved_b
+		nop
+#	.p2align 3
+	.global	__vcr_vector_reserved_c
+__vcr_vector_reserved_c:
+		bri		__call_vcr_reserved_c
+		nop
+#	.p2align 3
+	.global	__vcr_vector_reserved_d
+__vcr_vector_reserved_d:
+		bri		__call_vcr_reserved_d
+		nop
+#	.p2align 3
+	.global	__vcr_vector_reserved_e
+__vcr_vector_reserved_e:
+		bri		__call_vcr_reserved_e
+		nop
+
+# Variants may define extra vectors.
+        hal_extra_vectors
+
+
+rom_vectors_end:
+
+
+
+
+#		.macro	vcr_vector name addr
+#		.p2align 3
+#		.global	__vcr_vector_\name
+#__vcr_vector_\name:
+#			bri		\addr
+#		.endm
+
+        .macro  call_vector index
+			swi		r3, r1, -4
+			addi	r3, r0, \index
+			swi		r3, r1, -8
+			swi		r1, r1, -12
+			addi	r1, r1, (-1 * 3 * 4)
+			addi	r3, r0, hal_vsr_table
+			lwi		r3, r3, \index * 4
+			bra		r3
+		.endm
         
 #---------------------------------------------------------------------------
 # Define the exception vectors.
 
 // Some platforms won't let us put the vector code just where we want
 // This macro introduces some lattitude in vector placement
-                        
-#ifdef CYG_HAL_FUDGE_VECTOR_ALIGNMENT        
-        hal_fudge_vector_alignment
-#endif
 
-        hal_fixed_vectors
-        
-rom_vectors:
+        .global  __call_vcr_user_exception
+__call_vcr_user_exception:
+		call_vector		1
+        .global  __call_vcr_interrupt
+__call_vcr_interrupt:
+		call_vector		2
+        .global  __call_vcr_break
+__call_vcr_break:
+		call_vector		3
+        .global  __call_vcr_hw_exception
+__call_vcr_hw_exception:
+		call_vector		4
+        .global  __call_vcr_reserved_a
+__call_vcr_reserved_a:
+		call_vector		5
+        .global  __call_vcr_reserved_b
+__call_vcr_reserved_b:
+		call_vector		6
+        .global  __call_vcr_reserved_c
+__call_vcr_reserved_c:
+		call_vector		7
+        .global  __call_vcr_reserved_d
+__call_vcr_reserved_d:
+		call_vector		8
+        .global  __call_vcr_reserved_e
+__call_vcr_reserved_e:
+		call_vector		9
+
+        # Variants may define extra vectors.		
+		hal_call_extra_vectors
+		
+#rom_vectors:
         # These are the architecture defined vectors that
         # are always present.
-#ifdef CYG_HAL_RESERVED_VECTOR_00000
-        hal_reserved_vector_00000                
-#else
-        exception_vector        reserved_00000
-#endif        
-        reset_vector            reset
-        exception_vector        machine_check
-        exception_vector        data_storage
-        exception_vector        instruction_storage
-        exception_vector        external
-        exception_vector        alignment
-        exception_vector        program
-        exception_vector        floatingpoint_unavailable
-        exception_vector        decrementer
-        exception_vector        reserved_00a00
-        exception_vector        reserved_00b00
-        exception_vector        system_call
-        exception_vector        trace
-        exception_vector        floatingpoint_assist
-        exception_vector        reserved_00f00
+ 
+#		.p2align 3
+#		.global	__vcr_vector_reset
+#__vcr_vector_reset:
+#			bri		_start
+#        vcr_reset       _start
+#        vcr_vector      user_exception, __call_vcr_user_exception
+#        vcr_vector      interrupt, __call_vcr_interrupt
+#        vcr_vector      break, __call_vcr_break
+#        vcr_vector      hw_exception, __call_vcr_hw_exception
+#        vcr_vector      reserved_a, __call_vcr_reserved_a
+#        vcr_vector      reserved_b, __call_vcr_reserved_b
+#        vcr_vector      reserved_c, __call_vcr_reserved_c
+#        vcr_vector      reserved_d, __call_vcr_reserved_d
+#        vcr_vector      reserved_e, __call_vcr_reserved_e
 
-#if defined(CYGHWR_HAL_POWERPC_BOOK_E)
-        # Book E defines some extra vectors
-        exception_vector        critical_input
-        exception_vector        ap_unavailable
-        exception_vector        interval_timer
-        exception_vector        watchdog
-        exception_vector        data_tlb_miss
-        exception_vector        instruction_tlb_miss
-        exception_vector        debug        
-#endif
-        
-        # Variants may define extra vectors.
-        hal_extra_vectors
 
-rom_vectors_end:   
+#rom_vectors_end:   
 
-#else //  CYGHWR_HAL_POWERPC_NEED_VECTORS
-
-        # When vectors are not included this is the primary entry point.
-        .globl  __exception_reset
-__exception_reset:
-        lwi     r3,_start
-        mtlr    r3
-        blr
-        
-#endif //  CYGHWR_HAL_POWERPC_NEED_VECTORS
+		
 
 
 
 #===========================================================================
 # Real startup code. We jump here from the various reset vectors to set up
 # the world.
-        
-        .text   
-        .globl  _start
+
+	.text
+	.globl	_start
 _start:
-        # Initialize CPU to a post-reset state, ensuring the ground doesn''t
-        # shift under us while we try to set things up.
-        hal_cpu_init
+	# Initialize CPU to a post-reset state, ensuring the ground doesn't
+	# shift under us while we try to set things up.
+	hal_cpu_init
 
-        # Set up global offset table
-        lwi     r2,_GLOBAL_OFFSET_TABLE_
+	# Set up global offset table
+	addi	r2, r0, _GLOBAL_OFFSET_TABLE_
 
-        # set up time base register to zero
-        xor     r3,r3,r3
-        mtspr   TBL_W,r3
-        xor     r4,r4,r4
-        mtspr   TBU_W,r4
+	# Call platform specific hardware initialization
+	# This may include memory controller initialization. It is not
+	# safe to access RAM until after this point.
+	bralid	r15, hal_hardware_init	# this is platform dependent
+	nop
 
-        # Call platform specific hardware initialization
-        # This may include memory controller initialization. It is not
-        # safe to access RAM until after this point.
-        bl      hal_hardware_init	# this is platform dependent
-        .globl  _hal_hardware_init_done
+        .globl	_hal_hardware_init_done
 _hal_hardware_init_done:
 
-        hal_vectors_init
-        
-        # set up stack
-        lwi     sp,__interrupt_stack
-        mtspr   SPRG0,sp        # save in sprg0 for later use
+# setup vectors
+#if defined(CYG_HAL_STARTUP_ROM) || (!defined(CYG_HAL_STARTUP_ROM) && defined(CYGSEM_HAL_MICROBLAZE_COPY_VECTORS))
+	addi	r3, r0, rom_vectors
+	xor	r4, r4, r4
+	addi	r5, r0, rom_vectors_end
+	rsub	r6, r3, r5
+	beqi	r6, 1f
+0:      lwi	r6, r3, 0
+	addi	r3, r3, 4
+	swi	r6, r4, 0
+	addi	r4, r4, 4
+	pcmpeq	r6, r3, r5
+        beqi	r6, 0b
+1:
+#endif
 
-        # Set up exception handlers and VSR table, taking care not to
-        # step on any ROM monitor''s toes.
-        hal_mon_init        
+	# set up stack
+	addi	r1, r0, __interrupt_stack
+
+	# Set up exception handlers and VSR table, taking care not to
+	# step on any ROM monitor''s toes.
+	hal_mon_init
 
 #if defined(CYG_HAL_STARTUP_ROM)
-        # Copy data from ROM to ram
-        lwi     r3,__rom_data_start     # r3 = rom start
-        lwi     r4,__ram_data_start     # r4 = ram start
-        lwi     r5,__ram_data_end       # r5 = ram end
+	# Copy data from ROM to ram
+	addi	r3, r0, __rom_data_start	# r3 = rom start
+	addi	r4, r0, __ram_data_start	# r4 = ram start
+	addi	r5, r0, __ram_data_end		# r5 = ram end
 
-        cmplw   r4,r5                   # skip if no data
-        beq     2f
-        sub     r5,r5,r4                # compute number of words to copy
-        srwi    r5,r5,2
-        mtctr   r5
-        subi    r3,r3,4
-        subi    r4,r4,4
-1:      lwzu    r0,4(r3)                # get word from ROM
-        stwu    r0,4(r4)                # store in RAM
-        bdnz    1b
+	rsub    r6, r4, r5                   # skip if no data
+	beqi    r6, 2f
+1:
+	lwi     r6, r3, 0               # get word from ROM
+	swi     r6, r4, 0               # store in RAM
+	addi    r3, r3, 4               # increment by 1 word
+	addi    r4, r4, 4               # increment by 1 word
+	rsub    r6, r4, r5              # compare
+	bgti    r6, 1b                  # loop if not yet done
 2:
 #endif
 
         # clear BSS
-        lwi     r3,__bss_start  # r3 = start
-        lwi     r4,__bss_end    # r4 = end
-        li      r0,0            # r0 = 0
-        cmplw   r3,r4           # skip if no bss
-        beq     2f
-        sub     r4,r4,r3        # compute number of words to clear
-        srwi    r4,r4,2
-        mtctr   r4
-        subi    r3,r3,4
-        
-1:      stwu    r0,4(r3)        # store zero & increment pointer
-        bdnz    1b
+        addi	r3, r0, __bss_start  # r3 = start
+        addi	r4, r0, __bss_end    # r4 = end
+        rsub	r5, r3, r4           # skip if no bss
+        beqi	r5, 2f
+
+1:      swi     r0, r3, 0       # store zero
+        addi    r3, r3, 4       # increment by 1 word
+        rsub   	r5, r3, r4      # compare
+        bgti    r5, 1b          # loop if not yet done
 2:
 
         # clear SBSS
-        lwi     r3,__sbss_start # r3 = start
-        lwi     r4,__sbss_end   # r4 = end
-        cmplw   r3,r4           # skip if no sbss
-        beq     2f
-        sub     r4,r4,r3        # compute number of words to clear
-        srwi    r4,r4,2
-        mtctr   r4
-        subi    r3,r3,4
-        
-1:      stwu    r0,4(r3)        # store zero & increment pointer
-        bdnz    1b
+        addi    r3, r0, __sbss_start # r3 = start
+        addi    r4, r0, __sbss_end   # r4 = end
+        rsub   	r5, r3, r4           # skip if no sbss
+        beqi    r5, 2f
+
+1:      swi     r0, r3, 0       # store zero
+        addi    r3, r3, 4       # increment by 1 word
+        rsub   	r5, r3, r4      # compare
+        bgti    r5, 1b          # loop if not yet done
 2:
 
         # It is now safe to call C functions which may rely on initialized
         # data.
-        
+
         # Set up stack for calls to C code.
-        subi    sp,sp,12                        # make space on stack
-        li      r0,0
-        stw     r0,0(sp)                        # clear back chain
-        stw     r0,8(sp)                        # zero return pc
-        stwu    sp,-CYGARC_PPC_STACK_FRAME_SIZE(sp) # create new stack frame
+        addi    r1, r1, -12                     # make space on stack
+        swi     r0, r1, 0                       # clear back chain
+        swi     r0, r1, 8                       # zero return pc
+		swi		r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # create new stack frame
+		addi	r1, r1, -CYGARC_MB_STACK_FRAME_SIZE
 
-        # Variant HALs may need to do something special before we continue
-        bl      hal_variant_init
+	# Variant HALs may need to do something special before we continue
+	bralid	r15, hal_variant_init
+	nop
 
-        # Platform initialization
-        bl      hal_platform_init
-        
-        # MMU and cache are controlled by the same option since caching
-        # on the PPC [typically] does not make sense without the MMU to mark 
-        # regions which should not be cached.
-#ifdef CYGHWR_HAL_POWERPC_ENABLE_MMU
-        # Initialize MMU.
-        bl      hal_MMU_init
+	# Platform initialization
+	bralid	r15, hal_platform_init
+	nop
 
-        # Enable MMU (if desired) so we can safely enable caches.
-        lwi     r3,CYG_MSR              # interrupts enabled later
-        sync
-        mtmsr   r3
-        sync
-	
-        # Enable caches
-        bl      hal_enable_caches
-#endif // CYGHWR_HAL_POWERPC_ENABLE_MMU
+	# Enable caches
+	bralid	r15, hal_enable_caches
+	nop
 
-        # set up platform specific interrupt environment
-        bl      hal_IRQ_init
+	# set up platform specific interrupt environment
+	bralid	r15, hal_IRQ_init
+	nop
 
-        # call c++ constructors
-        bl      cyg_hal_invoke_constructors
+	# call c++ constructors
+	bralid	r15, cyg_hal_invoke_constructors
+	nop
 
 #ifdef CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS
-        bl      initialize_stub
+	bralid	r15, initialize_stub
+	nop
 #endif
-#if defined(CYGDBG_HAL_DEBUG_GDB_CTRLC_SUPPORT) \
-    || defined(CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT)
-        .extern hal_ctrlc_isr_init
-        bl     hal_ctrlc_isr_init
+#if defined(CYGDBG_HAL_DEBUG_GDB_CTRLC_SUPPORT) || defined(CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT)
+	.extern hal_ctrlc_isr_init
+	bralid	r15, hal_ctrlc_isr_init
+	nop
 #endif
-        
-        bl      cyg_start                       # call cyg_start
-9:      
-        b       9b              # if we return, loop
+	#hal_cpu_int_enable
+
+        bralid	r15, cyg_start		# call cyg_start
+	nop
+
+	bri	0			# jump forever when our program ends
 
 #---------------------------------------------------------------------------
 # This code handles the common part of all exception handlers.
@@ -426,182 +434,211 @@ _hal_hardware_init_done:
 # a "C" routine to do the rest of the work. This work may result
 # in thread switches, and changes to the saved state. When we return
 # here the saved state is restored and execution is continued.
-        
-        .text
 
+        .text
         .globl cyg_hal_default_exception_vsr
 cyg_hal_default_exception_vsr:
         
         # We come here with all register containing their
         # pre-exception values except:
-        # R3    = ls 16 bits of vector address
-        # R4    = saved CR
-        # R5    = saved LR
-        # LR    = VSR address
-        # SPRG1 = old R3
-        # SPRG2 = old R4
-        # SPRG3 = old R5
-        # SRR0  = old PC
-        # SRR1  = old MSR and the exception cause (the POW state is lost!)
+		# SP + 0	= old SP
+		# SP + 4	= vector adress
+		# SP + 8	= old R3
+		# R3 		= VSR adress
 
-        subi    sp,sp,CYGARC_PPC_EXCEPTION_DECREMENT
+        addi    r1, r1, -CYGARC_MB_EXCEPTION_DECREMENT
                                         # leave space for registers and
                                         # a safety margin
-#ifdef CYGPKG_HAL_POWERPC_PPC40x
-// The caches on this processor are always enabled when the MMU is on
-// (and disabled when off).  Thus we need to be careful about cache
-// polution and staleness when changing the MMU state.
-// At this point, the MMU is off due to the exception.  We need to
-// flush the part of the cache which may be touched before the MMU
-// is reenabled so that memory will be consistent when that happens.
-// Of course, this is complicated by the fact that there are no "free"
-// registers at this point in the code.
-        dcbf    0,sp                    // Flushes first line
-        stw     r3,0(sp)                // This is now safe
-        li      r3,CYGARC_PPCREG_VECTOR // Flush lines which will be changed
-        dcbf    r3,sp                   
-        li      r3,CYGARC_PPCREG_CR
-        dcbf    r3,sp                   
-        li      r3,CYGARC_PPCREG_LR
-        dcbf    r3,sp              
-        lwz     r3,0(sp)                // Restore register
-#endif        
 
-        # First, save away some registers
-        stw     r3,CYGARC_PPCREG_VECTOR(sp)    # stash vector
-        stw     r4,CYGARC_PPCREG_CR(sp)        # stash CR
-        stw     r5,CYGARC_PPCREG_LR(sp)        # stash LR
+        swi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4
+        swi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        swi     r5, r1, CYGARC_MBREG_REGS+(5-1)*4
+        swi     r6, r1, CYGARC_MBREG_REGS+(6-1)*4
+        swi     r7, r1, CYGARC_MBREG_REGS+(7-1)*4
+        swi     r8, r1, CYGARC_MBREG_REGS+(8-1)*4
+        swi     r9, r1, CYGARC_MBREG_REGS+(9-1)*4
+        swi     r10, r1, CYGARC_MBREG_REGS+(10-1)*4
+        swi     r11, r1, CYGARC_MBREG_REGS+(11-1)*4
+        swi     r12, r1, CYGARC_MBREG_REGS+(12-1)*4
+        swi     r13, r1, CYGARC_MBREG_REGS+(13-1)*4
+        swi     r14, r1, CYGARC_MBREG_REGS+(14-1)*4
+        swi     r15, r1, CYGARC_MBREG_REGS+(15-1)*4
+        swi     r16, r1, CYGARC_MBREG_REGS+(16-1)*4
+        swi     r17, r1, CYGARC_MBREG_REGS+(17-1)*4
+        swi     r18, r1, CYGARC_MBREG_REGS+(18-1)*4
+        swi     r19, r1, CYGARC_MBREG_REGS+(19-1)*4
+        swi     r20, r1, CYGARC_MBREG_REGS+(20-1)*4
+        swi     r21, r1, CYGARC_MBREG_REGS+(21-1)*4
+        swi     r22, r1, CYGARC_MBREG_REGS+(22-1)*4
+        swi     r23, r1, CYGARC_MBREG_REGS+(23-1)*4
+        swi     r24, r1, CYGARC_MBREG_REGS+(24-1)*4
+        swi     r25, r1, CYGARC_MBREG_REGS+(25-1)*4
+        swi     r26, r1, CYGARC_MBREG_REGS+(26-1)*4
+        swi     r27, r1, CYGARC_MBREG_REGS+(27-1)*4
+        swi     r28, r1, CYGARC_MBREG_REGS+(28-1)*4
+        swi     r29, r1, CYGARC_MBREG_REGS+(29-1)*4
+        swi     r30, r1, CYGARC_MBREG_REGS+(30-1)*4
+        swi     r31, r1, CYGARC_MBREG_REGS+(31-1)*4
+		
+        addi    r20, r1, CYGARC_MB_EXCEPTION_DECREMENT					#recreate and save sp
+		lwi		r3, r20, 0
+		swi     r3, r1, CYGARC_MBREG_REGS+(1-1)*4						#save old sp
+		lwi		r3, r20, 8
+		swi		r3, r1, CYGARC_MBREG_REGS+(3-1)*4
 
-        # Save exception PC and MSR
-        mfsrr0  r3
-        stw     r3,CYGARC_PPCREG_PC(sp)
-        mfsrr1  r3
-        stw     r3,CYGARC_PPCREG_MSR(sp)
-        
-cyg_hal_default_exception_vsr_common:   
-        
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
-        # Mark this frame as an Exception frame
-        lwi     r3,0xDDDDDDE0
-        stw     r3,CYGARC_PPCREG_WALL_HEAD(sp)
-        lwi     r3,0xDDDDDDE1
-        stw     r3,CYGARC_PPCREG_WALL_TAIL(sp)
-#endif
-
-        # Enable MMU & interrupt/FPU environment (as configured)
-        lwi     r3,CYG_MSR
-        sync
-        mtmsr   r3
-        sync
-                
-        mfspr   r3,SPRG1                # save original R3
-        stw     r3,CYGARC_PPCREG_REGS+3*4(sp)
-        mfspr   r4,SPRG2                # save original R4
-        stw     r4,CYGARC_PPCREG_REGS+4*4(sp)
-        mfspr   r5,SPRG3                # save original R5
-        stw     r5,CYGARC_PPCREG_REGS+5*4(sp)
-
-        stw     r0,CYGARC_PPCREG_REGS+0*4(sp)  # save R0
-        stw     r2,CYGARC_PPCREG_REGS+2*4(sp)  # save R2
-        
-        mr      r3,sp                   # recreate original SP
-        addi    r3,r3,CYGARC_PPC_EXCEPTION_DECREMENT
-        stw     r3,CYGARC_PPCREG_REGS+1*4(sp)  # and save it in state
-        
-        # Save registers r6..r12/r31
-        .set    _reg,6
-        .rept   MAX_SAVE_REG+1-6
-        stw     _reg,(CYGARC_PPCREG_REGS+_reg*4)(sp)
-        .set    _reg,_reg+1
-        .endr
-
-        # Save registers used in vsr (r14+r15)
-        stw     r14,(CYGARC_PPCREG_REGS+14*4)(sp)
-        stw     r15,(CYGARC_PPCREG_REGS+15*4)(sp)
-        
+				
+		# vector address from index
+		lwi		r3, r20, 4
+		bslli	r3, r3, 3
+		swi		r3, r1, CYGARC_MBREG_VECTOR
+		
         # get remaining family CPU registers
-        mfxer   r3
-        mfctr   r4
-        # and store them
-        stw     r3,CYGARC_PPCREG_XER(sp)
-        stw     r4,CYGARC_PPCREG_CTR(sp)
+        mfs   r3, rpc
+        mfs   r4, rmsr
 
+        # and store them
+        swi     r3, r1, CYGARC_MBREG_PC
+        swi     r4, r1, CYGARC_MBREG_MSR
+                
         # Save variant registers
-        hal_variant_save sp
+        hal_variant_save r1
 
         # Save FPU registers
-        hal_fpu_save sp
+        //hal_fpu_save r1
 
         # The entire CPU state is now stashed on the stack,
         # call into C to do something with it.
 
-        mr      r3,sp                           # R3 = register dump
-        
-        subi    sp,sp,CYGARC_PPC_STACK_FRAME_SIZE # make a null frame
+        add     r5, r0, r1                           # R5 = register dump
+        //bslli	r6, r20, 2							 # R6 = vector (vsr_num * 4)
+		lwi		r6, r20, 4
+		bslli	r6, r6, 2
+		
+        addi    r1, r1, -CYGARC_MB_STACK_FRAME_SIZE  # make a null frame
 
-        li      r0,0                            # R0 = 0
-        stw     r0,0(sp)                        # backchain = 0
-        stw     r0,8(sp)                        # return pc = 0
+        swi     r0, r1, 0                            # backchain = 0
+        swi     r0, r1, 8                            # return pc = 0
         
-        stwu    sp,-CYGARC_PPC_STACK_FRAME_SIZE(sp) # create new stack frame
-                                                # where C code can save LR
+        swi     r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # create new stack frame
+        addi	r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # where C code can save LR
 
-        lwi     r5,restore_state                # get return link
-        mtlr    r5                              # to link register
+        //addi    r15, r0, restore_state                # get return link
 
         .extern cyg_hal_exception_handler
-        b       cyg_hal_exception_handler       # call C code, r3 = registers
+        //brai     cyg_hal_exception_handler            # call C code, r5 = registers, r6 = vector
+		bralid   r15, cyg_hal_exception_handler              # call C code, r5 = registers, r6 = vector
+		nop
 
-        # When the call returns it will go to restore_state below.
+		# When the call returns it will go to restore_state below.
+		
+		# retrieve CPU state pointer
+        addi    r1, r1, CYGARC_MB_STACK_FRAME_SIZE*2
 
-#if defined(CYGHWR_HAL_POWERPC_BOOK_E)        
-##--------------------------------------------------------------------------
-## Critical exception handling code.
-##
-## Book E processors save the old PC and MSR in CSRR0/1 for certain
-## exceptions. This VSR saves the values from these registers before
-## branching to the common VSR code.
+        # Restore FPU registers
+        //hal_fpu_load r1
+
+        # Restore variant registers
+        hal_variant_load r1
+
+        # restore registers r5..r31
+        //lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r5, r1, CYGARC_MBREG_REGS+(5-1)*4
+        lwi     r6, r1, CYGARC_MBREG_REGS+(6-1)*4
+        lwi     r7, r1, CYGARC_MBREG_REGS+(7-1)*4
+        lwi     r8, r1, CYGARC_MBREG_REGS+(8-1)*4
+        lwi     r9, r1, CYGARC_MBREG_REGS+(9-1)*4
+        lwi     r10, r1, CYGARC_MBREG_REGS+(10-1)*4
+        lwi     r11, r1, CYGARC_MBREG_REGS+(11-1)*4
+        lwi     r12, r1, CYGARC_MBREG_REGS+(12-1)*4
+        lwi     r13, r1, CYGARC_MBREG_REGS+(13-1)*4
+        lwi     r14, r1, CYGARC_MBREG_REGS+(14-1)*4
+        lwi     r15, r1, CYGARC_MBREG_REGS+(15-1)*4
+        lwi     r16, r1, CYGARC_MBREG_REGS+(16-1)*4
+        lwi     r17, r1, CYGARC_MBREG_REGS+(17-1)*4
+        lwi     r18, r1, CYGARC_MBREG_REGS+(18-1)*4
+        lwi     r19, r1, CYGARC_MBREG_REGS+(19-1)*4
+        lwi     r20, r1, CYGARC_MBREG_REGS+(20-1)*4
+        lwi     r21, r1, CYGARC_MBREG_REGS+(21-1)*4
+        lwi     r22, r1, CYGARC_MBREG_REGS+(22-1)*4
+        lwi     r23, r1, CYGARC_MBREG_REGS+(23-1)*4
+        lwi     r24, r1, CYGARC_MBREG_REGS+(24-1)*4
+        lwi     r25, r1, CYGARC_MBREG_REGS+(25-1)*4
+        lwi     r26, r1, CYGARC_MBREG_REGS+(26-1)*4
+        lwi     r27, r1, CYGARC_MBREG_REGS+(27-1)*4
+        lwi     r28, r1, CYGARC_MBREG_REGS+(28-1)*4
+        lwi     r29, r1, CYGARC_MBREG_REGS+(29-1)*4
+        lwi     r30, r1, CYGARC_MBREG_REGS+(30-1)*4
+        lwi     r31, r1, CYGARC_MBREG_REGS+(31-1)*4
+
+        //hal_cpu_int_disable
         
-        .globl cyg_hal_default_critical_exception_vsr
-cyg_hal_default_critical_exception_vsr: 
-        
-        # We come here with all register containing their
-        # pre-exception values except:
-        # R3    = ls 16 bits of vector address
-        # R4    = saved CR
-        # R5    = saved LR
-        # LR    = VSR address
-        # SPRG1 = old R3
-        # SPRG2 = old R4
-        # SPRG3 = old R5
-        # CSRR0 = old PC
-        # CSRR1 = old MSR and the exception cause
+        # restore R2
+        lwi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4
 
-        subi    sp,sp,CYGARC_PPC_EXCEPTION_DECREMENT
-                                        # leave space for registers and
-                                        # a safety margin
+		# load msr
+        lwi     r3, r1, CYGARC_MBREG_MSR
+		//andni	r3, r3, 0x0100
+		mts		rmsr, r3
+		
+		# load vcr vector id
+		addi    r3, r1, CYGARC_MB_EXCEPTION_DECREMENT
+		lwi		r3, r3, 4
+		
+		# iff vcr id <= 3 -> 0
+		addi	r4, r3, -3
+		blei	r4, 0f
 
-        # First, save away some registers
-        stw     r3,CYGARC_PPCREG_VECTOR(sp)    # stash vector
-        stw     r4,CYGARC_PPCREG_CR(sp)        # stash CR
-        stw     r5,CYGARC_PPCREG_LR(sp)        # stash LR
+		#vcr id > 3
+		#iff vcr id == 4 -> 1
+		addi	r4, r3, -4
+		beqi	r4, 1f
 
-        # Save exception PC and MSR
-        mfspr   r3,58
-        stw     r3,CYGARC_PPCREG_PC(sp)
-        mfspr   r3,59
-        stw     r3,CYGARC_PPCREG_MSR(sp)
+		#vcr id == 5, 6, 7, 8 or 9 (reserved)
+		# restore r3, r4 a sp
+		lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r3, r1, CYGARC_MBREG_REGS+(3-1)*4  # load r3 value
+        lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # restore sp
+        rtsd	r15, 8                             # and return
+		nop
+		
+		
+1:		#vcr id == 4 (hw exception)
+		# restore r3, r4 a sp
+		lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r3, r1, CYGARC_MBREG_REGS+(3-1)*4  # load r3 value
+        lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # restore sp
+        rted	r17, 0                             # and return
+		nop
+		
+0:		#vcr id <= 3
+		#iff vcr id == 3 -> 2
+		beqi	r4, 2f
 
-        b cyg_hal_default_exception_vsr_common
+		#vcr id == 1 (user exception)
+		# restore r3, r4 a sp
+		lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r3, r1, CYGARC_MBREG_REGS+(3-1)*4  # load r3 value
+        lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # restore sp
+        rtsd	r15, 8                             # and return
+		nop
+		
+2:		#vcr id == 3 (break)
+		# restore r3, r4 a sp
+		lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r3, r1, CYGARC_MBREG_REGS+(3-1)*4  # load r3 value
+        lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # restore sp
+        rtbd	r16, 0                             # and return
+		nop
+		
 
-#endif        
-        
+
+
 ##--------------------------------------------------------------------------
 ## The following macros are defined depending on whether the Interrupt
 ## system is using isr tables or chaining, and depending on the interrupt
 ## controller in the system.
 
-#ifndef CYGPKG_HAL_POWERPC_INTC_DEFINED
+#ifndef CYGPKG_HAL_MB_INTC_DEFINED
 
 ## This is the simple version. No interrupt controller, CYGARC_PPCREG_VECTOR 
 ## is updated with the decoded interrupt vector. Isr tables/chaining
@@ -610,13 +647,11 @@ cyg_hal_default_critical_exception_vsr:
 
         # decode the interrupt
 	.macro  hal_intc_decode dreg,state
-        lwz     \dreg,CYGARC_PPCREG_VECTOR(\state) # retrieve vector number,
-        rlwinm  \dreg,\dreg,22,31,31               # isolate bit 21 and update
-        stw     \dreg,CYGARC_PPCREG_VECTOR(\state) # vector in state frame.
-        slwi    \dreg,\dreg,2                      # convert to word offset.
-        .endm                              
+		swi     r0, \state, 4					   # vector in state frame.
+        xor    \dreg, \dreg, \dreg                 # word offset.
+    .endm                              
 
-#endif // CYGPKG_HAL_POWERPC_INTC_DEFINED
+#endif // CYGPKG_HAL_MB_INTC_DEFINED
 
 #---------------------------------------------------------------------------
 # Common interrupt handling code.
@@ -626,104 +661,69 @@ cyg_hal_default_interrupt_vsr:
 
         # We come here with all register containing their
         # pre-exception values except:
-        # R3    = ls 16 bits of vector address
-        # R4    = saved CR
-        # R5    = saved LR
-        # LR    = VSR address
-        # SPRG1 = old R3
-        # SPRG2 = old R4
-        # SPRG3 = old R5
-        # SRR0  = old PC
-        # SRR1  = old MSR
+		# SP + 0	= old SP
+		# SP + 4	= index of vector adress
+		# SP + 8	= old R3
+		# R3 		= VSR adress
 
-
-        subi    sp,sp,CYGARC_PPC_EXCEPTION_DECREMENT
+        addi    r1, r1, -CYGARC_MB_EXCEPTION_DECREMENT
                                         # leave space for registers and
                                         # a safety margin
-#ifdef CYGPKG_HAL_POWERPC_PPC40x
-// The caches on this processor are always enabled when the MMU is on
-// (and disabled when off).  Thus we need to be careful about cache
-// polution and staleness when changing the MMU state.
-// At this point, the MMU is off due to the exception.  We need to
-// flush the part of the cache which may be touched before the MMU
-// is reenabled so that memory will be consistent when that happens.
-// Of course, this is complicated by the fact that there are no "free"
-// registers at this point in the code.
-        dcbf    0,sp                    // Flushes first line
-        stw     r3,0(sp)                // This is now safe
-        li      r3,CYGARC_PPCREG_VECTOR // Flush lines which will be changed
-        dcbf    r3,sp                   
-        li      r3,CYGARC_PPCREG_CR
-        dcbf    r3,sp                   
-        li      r3,CYGARC_PPCREG_LR
-        dcbf    r3,sp              
-        lwz     r3,0(sp)                // Restore register
-#endif        
-              
-        stw     r3,CYGARC_PPCREG_VECTOR(sp)    # stash vector
-        stw     r4,CYGARC_PPCREG_CR(sp)        # stash CR
-        stw     r5,CYGARC_PPCREG_LR(sp)        # stash LR
 
-        # Save exception PC and MSR
-        mfsrr0  r3
-        stw     r3,CYGARC_PPCREG_PC(sp)
-        mfsrr1  r3
-        stw     r3,CYGARC_PPCREG_MSR(sp)
-        
-cyg_hal_default_interrupt_vsr_common:   
-                
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
-        # Mark this frame as an interrupt frame
-        lwi     r3,0xDDDDDD10
-        stw     r3,CYGARC_PPCREG_WALL_HEAD(sp)
-        lwi     r3,0xDDDDDD11
-        stw     r3,CYGARC_PPCREG_WALL_TAIL(sp)
-#endif
-
-        # Enable MMU & interrupt/FPU environment as configured
-        lwi     r3,CYG_MSR
-        sync
-        mtmsr   r3
-        sync
-
-        mfspr   r3,SPRG1                # save original R3
-        stw     r3,CYGARC_PPCREG_REGS+3*4(sp)
-        mfspr   r4,SPRG2                # save original R4
-        stw     r4,CYGARC_PPCREG_REGS+4*4(sp)
-        mfspr   r5,SPRG3                # save original R5
-        stw     r5,CYGARC_PPCREG_REGS+5*4(sp)
-
-        stw     r0,CYGARC_PPCREG_REGS+0*4(sp)  # save R0
-        stw     r2,CYGARC_PPCREG_REGS+2*4(sp)  # save R2
-
-        mr      r3,sp                   # recreate original SP
-        addi    r3,r3,CYGARC_PPC_EXCEPTION_DECREMENT
-        stw     r3,CYGARC_PPCREG_REGS+1*4(sp)  # and save it in state
-        
-        # Save registers r6..r12/r31
-        .set    _reg,6
-        .rept   MAX_SAVE_REG+1-6
-        stw     _reg,(CYGARC_PPCREG_REGS+_reg*4)(sp)
-        .set    _reg,_reg+1
-        .endr
-
-        # Save registers used in vsr (r14+r15)
-        stw     r14,CYGARC_PPCREG_REGS+14*4(sp)
-        stw     r15,CYGARC_PPCREG_REGS+15*4(sp)
+        swi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4
+        swi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        swi     r5, r1, CYGARC_MBREG_REGS+(5-1)*4
+        swi     r6, r1, CYGARC_MBREG_REGS+(6-1)*4
+        swi     r7, r1, CYGARC_MBREG_REGS+(7-1)*4
+        swi     r8, r1, CYGARC_MBREG_REGS+(8-1)*4
+        swi     r9, r1, CYGARC_MBREG_REGS+(9-1)*4
+        swi     r10, r1, CYGARC_MBREG_REGS+(10-1)*4
+        swi     r11, r1, CYGARC_MBREG_REGS+(11-1)*4
+        swi     r12, r1, CYGARC_MBREG_REGS+(12-1)*4
+        swi     r13, r1, CYGARC_MBREG_REGS+(13-1)*4
+        swi     r14, r1, CYGARC_MBREG_REGS+(14-1)*4
+        swi     r15, r1, CYGARC_MBREG_REGS+(15-1)*4
+        swi     r16, r1, CYGARC_MBREG_REGS+(16-1)*4
+        swi     r17, r1, CYGARC_MBREG_REGS+(17-1)*4
+        swi     r18, r1, CYGARC_MBREG_REGS+(18-1)*4
+        swi     r19, r1, CYGARC_MBREG_REGS+(19-1)*4
+        swi     r20, r1, CYGARC_MBREG_REGS+(20-1)*4
+        swi     r21, r1, CYGARC_MBREG_REGS+(21-1)*4
+        swi     r22, r1, CYGARC_MBREG_REGS+(22-1)*4
+        swi     r23, r1, CYGARC_MBREG_REGS+(23-1)*4
+        swi     r24, r1, CYGARC_MBREG_REGS+(24-1)*4
+        swi     r25, r1, CYGARC_MBREG_REGS+(25-1)*4
+        swi     r26, r1, CYGARC_MBREG_REGS+(26-1)*4
+        swi     r27, r1, CYGARC_MBREG_REGS+(27-1)*4
+        swi     r28, r1, CYGARC_MBREG_REGS+(28-1)*4
+        swi     r29, r1, CYGARC_MBREG_REGS+(29-1)*4
+        swi     r30, r1, CYGARC_MBREG_REGS+(30-1)*4
+        swi     r31, r1, CYGARC_MBREG_REGS+(31-1)*4
+		
+        addi    r20, r1, CYGARC_MB_EXCEPTION_DECREMENT					#recreate and save sp
+		lwi		r3, r20, 0
+		swi     r3, r1, CYGARC_MBREG_REGS+(1-1)*4						#save old sp
+		lwi		r3, r20, 8
+		swi		r3, r1, CYGARC_MBREG_REGS+(3-1)*4
+		
+		# vector address from index
+		lwi		r3, r20, 4
+		bslli	r3, r3, 3
+		swi		r3, r1, CYGARC_MBREG_VECTOR
 
         # get remaining family CPU registers
-        mfxer   r3
-        mfctr   r4
+        mfs   r3, rpc
+        mfs   r4, rmsr
 
         # and store them
-        stw     r3,CYGARC_PPCREG_XER(sp)
-        stw     r4,CYGARC_PPCREG_CTR(sp)
+        swi     r3, r1, CYGARC_MBREG_PC
+        swi     r4, r1, CYGARC_MBREG_MSR
                 
         # Save variant registers
-        hal_variant_save sp
+        hal_variant_save r1
 
         # Save FPU registers
-        hal_fpu_save sp
+//        hal_fpu_save r1
 
         # The entire CPU state is now stashed on the stack,
         # increment the scheduler lock and call the ISR
@@ -731,48 +731,46 @@ cyg_hal_default_interrupt_vsr_common:
 
 #ifdef CYGFUN_HAL_COMMON_KERNEL_SUPPORT                 
         .extern cyg_scheduler_sched_lock
-        lwi     r3,cyg_scheduler_sched_lock
-        lwz     r4,0(r3)
-        addi    r4,r4,1
-        stw     r4,0(r3)
+		lwi     r4, r0, cyg_scheduler_sched_lock
+        addi    r4, r4, 1
+        swi     r4, r0, cyg_scheduler_sched_lock
 #endif
         
-        mr      r14,sp                          # r14 = register dump
+        add     r19, r0, r1                          # r19 = register dump
         
 #ifdef CYGIMP_HAL_COMMON_INTERRUPTS_USE_INTERRUPT_STACK 
-        lwi     r3,__interrupt_stack            # stack top
-        lwi     r4,__interrupt_stack_base       # stack base
-        sub.    r5,sp,r4                        # sp - base
-        blt     1f                              # if < 0 - not on istack
-        sub.    r5,r3,sp                        # top - sp
-        bgt     2f                              # if > 0 - already on istack
+        addi    r3, r0, __interrupt_stack       # stack top
+        addi    r4, r0, __interrupt_stack_base  # stack base
+        rsub    r5, r4, r1                      # sp - base
+        blti    r5, 1f	    	                # if < 0 - not on istack
+        rsub    r5, r1, r3                      # top - sp
+        bgti    r5, 2f		                    # if > 0 - already on istack
 
-1:      mr      sp,r3                           # switch to istack
+1: 		add     r1, r0, r3                      # switch to istack
 
-2:      stwu    r14,-4(sp)                      # save old SP on stack
-
+2: 		addi	r1, r1, -4						# save old SP on stack
+		swi     r19, r1, 0                     
 #endif
         
-        subi    sp,sp,CYGARC_PPC_STACK_FRAME_SIZE # make a null frame
+        addi    r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # make a null frame
 
-        li      r0,0                            # R0 = 0
-        stw     r0,0(sp)                        # backchain = 0
-        stw     r0,8(sp)                        # return pc = 0
+        swi     r0, r1, 0                        # backchain = 0
+        swi     r0, r1, 8                        # return pc = 0
         
-        stwu    sp,-CYGARC_PPC_STACK_FRAME_SIZE(sp) # create new stack frame
-                                                # where C code can save LR
+        swi     r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # create new stack frame
+		addi	r1, r1, -CYGARC_MB_STACK_FRAME_SIZE  # where C code can save LR
         
 #if defined(CYGPKG_KERNEL_INSTRUMENT) && defined(CYGDBG_KERNEL_INSTRUMENT_INTR)
 
-        lwi     r3,0x0301                       # r3 = type = INTR,RAISE
-        lwz     r4,CYGARC_PPCREG_VECTOR(r14)    # arg1 = vector address
-        srwi    r4,r4,8                         # arg1 = vector number
-        xor     r5,r5,r5                        # arg2 = 0
-        bl      cyg_instrument                  # call instrument function
+        addi    r5, r0, 0x0301                  # r3 = type = INTR,RAISE
+        lwi     r6, r20, 4				        # arg1 = vector address
+        xor     r7,r7,r7                        # arg2 = 0
+        bralid   cyg_instrument                  # call instrument function
+		nop
         
 #endif
 
-        hal_intc_decode r15,r14                # get table index
+        hal_intc_decode r21,r20                # get table index
 
 #if defined(CYGDBG_HAL_DEBUG_GDB_CTRLC_SUPPORT) \
     || defined(CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT)
@@ -781,35 +779,24 @@ cyg_hal_default_interrupt_vsr_common:
 	# plant a breakpoint at some later time.
 	
 	.extern	hal_saved_interrupt_state
-	lwi	r3,hal_saved_interrupt_state
-	stw	r14,0(r3)
+	swi		r19, r0, hal_saved_interrupt_state
 	
 #endif
 
 #ifdef CYGSEM_HAL_COMMON_INTERRUPTS_ALLOW_NESTING
 
-#ifdef CYGPKG_HAL_POWERPC_MPC8xx
-        # The CPM controller allows nested interrupts. However,
-        # it sits on the back of the SIU controller which has no
-        # HW support for this. In effect, SW masking of lower
-        # priority IRQs in the SIU would be required for this to work.
 #endif
 
-#endif
+        lwi     r5, r20, 4					    # retrieve decoded vector #
 
-        lwz     r3,CYGARC_PPCREG_VECTOR(r14)    # retrieve decoded vector #
+        lwi     r8, r21, hal_interrupt_handlers # load routine pointer
 
-        lwi     r6,hal_interrupt_handlers       # get interrupt handler table
-        lwzx    r6,r6,r15                       # load routine pointer
-
-        lwi     r4,hal_interrupt_data           # get interrupt data table
-        lwzx    r4,r4,r15                       # load data pointer
-                                                # R4 = data argument
-        mr      r5,r14                          # R5 = saved registers        
+        lwi     r6, r21, hal_interrupt_data     # load data pointer
+                                                # R6 = data argument
+        add     r7, r0, r19                     # R7 = saved registers        
         
-        mtctr   r6                              # put isr address in ctr
-
-        bctrl                                   # branch to ctr reg and link
+        brald 	r15, r8                         # branch to ctr reg and link
+		nop
 
 #ifdef CYGIMP_HAL_COMMON_INTERRUPTS_USE_INTERRUPT_STACK
 
@@ -821,16 +808,16 @@ cyg_hal_default_interrupt_vsr_common:
         # and put it in SP.
 
         
-        lwz     sp,CYGARC_PPC_STACK_FRAME_SIZE*2(sp) # sp = *sp
+        lwi     r1, r1, CYGARC_MB_STACK_FRAME_SIZE*2	 # sp = *sp
 
-        subi    sp,sp,CYGARC_PPC_STACK_FRAME_SIZE # make a null frame
+        addi    r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # make a null frame
 
-        li      r0,0                            # R0 = 0
-        stw     r0,0(sp)                        # backchain = 0
-        stw     r0,8(sp)                        # return pc = 0
+        swi     r0, r1, 0     			                 # backchain = 0
+        swi     r0, r1, 8		                         # return pc = 0
         
-        stwu    sp,-CYGARC_PPC_STACK_FRAME_SIZE(sp) # create new stack frame
-                                                # where C code can save LR
+        swi		r1, r1, -CYGARC_MB_STACK_FRAME_SIZE
+		addi    r1, r1, -CYGARC_MB_STACK_FRAME_SIZE 	 # create new stack frame
+														 # where C code can save LR
 #endif  
 
         # On return r3 bit 1 will indicate whether a DSR is
@@ -842,127 +829,74 @@ cyg_hal_default_interrupt_vsr_common:
         # calls by the calling convention, so they still contain
         # the register dump and the vector number respectively.
 
-        lwi     r4,hal_interrupt_objects        # get interrupt object table
-        lwzx    r4,r4,r15                       # load object pointer
-        mr      r5,r14                          # arg3 = saved register dump
+		add		r5, r0, r3
+        lwi     r6, r21, hal_interrupt_objects  # load object pointer
+        add     r7, r0, r19                     # arg3 = saved register dump
 
         .extern interrupt_end
-        bl      interrupt_end                   # call into C to finish off 
+        bralid   r15, interrupt_end              # call into C to finish off 
+		nop
 
-restore_state:  
+//restore_state:  
         # All done, restore CPU state and continue
 
         # retrieve CPU state pointer
-        addi    sp,sp,CYGARC_PPC_STACK_FRAME_SIZE*2
+        addi    r1, r1, CYGARC_MB_STACK_FRAME_SIZE*2
 
         # Restore FPU registers
-        hal_fpu_load sp
+        //hal_fpu_load r1
 
         # Restore variant registers
-        hal_variant_load sp
+        hal_variant_load r1
 
-        # get sprs we want to restore
-        # stuff some of them into the CPU
-        lwz     r3,CYGARC_PPCREG_XER(sp)
-        lwz     r4,CYGARC_PPCREG_LR(sp)
-        lwz     r5,CYGARC_PPCREG_CTR(sp)
-        mtxer   r3
-        mtlr    r4
-        mtctr   r5
-
-        # Restore registers used in vsr (r14+r15)
-        lwz     r14,CYGARC_PPCREG_REGS+14*4(r1)
-        lwz     r15,CYGARC_PPCREG_REGS+15*4(r1)
-
-        # restore registers r6..r12/r31
-        .set    _reg,6
-        .rept   MAX_SAVE_REG+1-6
-        lwz     _reg,(CYGARC_PPCREG_REGS+_reg*4)(sp)
-        .set    _reg,_reg+1
-        .endr
+        # restore registers r4..r31
+        lwi     r4, r1, CYGARC_MBREG_REGS+(4-1)*4
+        lwi     r5, r1, CYGARC_MBREG_REGS+(5-1)*4
+        lwi     r6, r1, CYGARC_MBREG_REGS+(6-1)*4
+        lwi     r7, r1, CYGARC_MBREG_REGS+(7-1)*4
+        lwi     r8, r1, CYGARC_MBREG_REGS+(8-1)*4
+        lwi     r9, r1, CYGARC_MBREG_REGS+(9-1)*4
+        lwi     r10, r1, CYGARC_MBREG_REGS+(10-1)*4
+        lwi     r11, r1, CYGARC_MBREG_REGS+(11-1)*4
+        lwi     r12, r1, CYGARC_MBREG_REGS+(12-1)*4
+        lwi     r13, r1, CYGARC_MBREG_REGS+(13-1)*4
+        lwi     r14, r1, CYGARC_MBREG_REGS+(14-1)*4
+        lwi     r15, r1, CYGARC_MBREG_REGS+(15-1)*4
+        lwi     r16, r1, CYGARC_MBREG_REGS+(16-1)*4
+        lwi     r17, r1, CYGARC_MBREG_REGS+(17-1)*4
+        lwi     r18, r1, CYGARC_MBREG_REGS+(18-1)*4
+        lwi     r19, r1, CYGARC_MBREG_REGS+(19-1)*4
+        lwi     r20, r1, CYGARC_MBREG_REGS+(20-1)*4
+        lwi     r21, r1, CYGARC_MBREG_REGS+(21-1)*4
+        lwi     r22, r1, CYGARC_MBREG_REGS+(22-1)*4
+        lwi     r23, r1, CYGARC_MBREG_REGS+(23-1)*4
+        lwi     r24, r1, CYGARC_MBREG_REGS+(24-1)*4
+        lwi     r25, r1, CYGARC_MBREG_REGS+(25-1)*4
+        lwi     r26, r1, CYGARC_MBREG_REGS+(26-1)*4
+        lwi     r27, r1, CYGARC_MBREG_REGS+(27-1)*4
+        lwi     r28, r1, CYGARC_MBREG_REGS+(28-1)*4
+        lwi     r29, r1, CYGARC_MBREG_REGS+(29-1)*4
+        lwi     r30, r1, CYGARC_MBREG_REGS+(30-1)*4
+        lwi     r31, r1, CYGARC_MBREG_REGS+(31-1)*4
 
         hal_cpu_int_disable
-        
+
         # restore R0 and R2
-        lwz     r0,CYGARC_PPCREG_REGS+0*4(sp)
-        lwz     r2,CYGARC_PPCREG_REGS+2*4(sp)
+        lwi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4
 
-        # Here all the registers are loaded except
-        # sp = HAL_SavedRegisters
-        # r3 = ccr
-        # r4 = srr0 = pc
-        # r5 = srr1 = msr
-        #
-        # We have to disable interrupts while srr0 and
-        # srr1 are loaded, since another interrupt will
-        # destroy them.
+		#load msr but with disabled interrupts (will be enable with return instruction)
+        lwi     r3, r1, CYGARC_MBREG_MSR
+		andni	r3, r3, 0x0002
+		mts		rmsr, r3
+		
+        lwi     r3, r1, CYGARC_MBREG_REGS+(3-1)*4  # load r3 value
+        lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # restore sp
 
-        lwz     r3,CYGARC_PPCREG_CR(sp)
-        lwz     r4,CYGARC_PPCREG_PC(sp)
-        lwz     r5,CYGARC_PPCREG_MSR(sp)
-        mtcr    r3                      # set ccr
-        mtsrr0  r4                      # load old pc
-        mtsrr1  r5                      # load old msr
-        
-#ifdef CYGDBG_HAL_POWERPC_FRAME_WALLS
-        # Mark this frame as (almost) dead.
-        lwi     r3,0xDDDDDDD0
-        stw     r3,CYGARC_PPCREG_WALL_HEAD(sp)
-        lwi     r3,0xDDDDDDD1
-        stw     r3,CYGARC_PPCREG_WALL_TAIL(sp)
-#endif
-
-        lwz     r3,CYGARC_PPCREG_REGS+3*4(sp)  # load r3 value
-        lwz     r4,CYGARC_PPCREG_REGS+4*4(sp)  # load r4 value
-        lwz     r5,CYGARC_PPCREG_REGS+5*4(sp)  # load r5 value
-        lwz     sp,CYGARC_PPCREG_REGS+1*4(sp)  # restore sp
-                
-        sync                            # settle things down
-        isync   
-        rfi                             # and return
-
-#if defined(CYGHWR_HAL_POWERPC_BOOK_E)                        
-##---------------------------------------------------------------------------
-## Critical interrupt handling code.
-##
-## Book E processors save the old PC and MSR in CSRR0/1 for certain
-## exceptions. This VSR saves the values from these registers before
-## branching to the common VSR code.
-
-        .globl cyg_hal_default_interrupt_vsr
-cyg_hal_default_critical_interrupt_vsr:
-
-        # We come here with all register containing their
-        # pre-exception values except:
-        # R3    = ls 16 bits of vector address
-        # R4    = saved CR
-        # R5    = saved LR
-        # LR    = VSR address
-        # SPRG1 = old R3
-        # SPRG2 = old R4
-        # SPRG3 = old R5
-        # CSRR0 = old PC
-        # CSRR1 = old MSR
+        rtid	r14, 0                             # and return
+		nop
 
 
-        subi    sp,sp,CYGARC_PPC_EXCEPTION_DECREMENT
-                                        # leave space for registers and
-                                        # a safety margin
-              
-        stw     r3,CYGARC_PPCREG_VECTOR(sp)    # stash vector
-        stw     r4,CYGARC_PPCREG_CR(sp)        # stash CR
-        stw     r5,CYGARC_PPCREG_LR(sp)        # stash LR
 
-        # Save exception PC and MSR
-        mfspr   r3,58                          # Get CSSR0
-        stw     r3,CYGARC_PPCREG_PC(sp)
-        mfspr   r3,59                          # Get CSSR1
-        stw     r3,CYGARC_PPCREG_MSR(sp)
-
-        b cyg_hal_default_interrupt_vsr_common
-        
-#endif
-        
 ##-----------------------------------------------------------------------------
 ## Execute pending DSRs on the interrupt stack with interrupts enabled.
 ## Note: this can only be called from code running on a thread stack
@@ -973,42 +907,48 @@ cyg_hal_default_critical_interrupt_vsr:
 FUNC_START(hal_interrupt_stack_call_pending_DSRs)
         # Change to interrupt stack, save state and set up stack for
         # calls to C code.
-        mr      r3,sp
-        lwi     r4,__interrupt_stack
-        subi    r4,r4,24                        # make space on stack
-        mr      sp,r4
-        stw     r3,12(sp)                       # save old sp
-        mfmsr   r3
-        stw     r3,16(sp)                       # save old MSR
-        mflr    r3
-        stw     r3,20(sp)                       # save old LR
+        add     r3, r0, r1
+        addi    r4, r0,  __interrupt_stack
+		
+        addi    r4, r4, -24                      # make space on stack
+        
+		add     r1, r0, r4
+        swi     r3, r1, 12                      # save old sp
+		mfs   	r3, rmsr
+        swi     r3, r1, 16                      # save old MSR
+        swi     r15, r1, 20                     # save old LR
 
-        li      r0,0
-        stw     r0,0(sp)                        # clear back chain
-        stw     r0,8(sp)                        # zero return pc
+        swi     r0, r1, 0                       # clear back chain
+        swi     r0, r1, 8                       # zero return pc
 
         hal_cpu_int_enable
 
         # Call into kernel which will execute DSRs
-        stwu    sp,-CYGARC_PPC_STACK_FRAME_SIZE(sp)
-        bl      cyg_interrupt_call_pending_DSRs
-        addi    sp,sp,CYGARC_PPC_STACK_FRAME_SIZE
+        swi		r1, r1, -CYGARC_MB_STACK_FRAME_SIZE
+		addi	r1, r1, -CYGARC_MB_STACK_FRAME_SIZE
+		
+		
+        #ppc instr bl      cyg_interrupt_call_pending_DSRs
+		bralid	r15, cyg_interrupt_call_pending_DSRs
+		nop
 
-        lwz     r3,20(sp)                       # restore LR
-        mtlr    r3
-        lwz     r5,12(sp)                       # get SP from saved state
-        lwz     r3,16(sp)                       # restore interrupt setting
-        hal_cpu_int_merge r3,r4
+        addi    r1,r1,CYGARC_MB_STACK_FRAME_SIZE
 
-        mr      sp,r5                           # restore stack pointer
-        blr                                     # and return to caller
-#endif		
+        lwi     r15, r1, 20                     # restore LR
+        lwi     r5, r1, 12                      # get SP from saved state
+        lwi     r3, r1, 16                      # restore interrupt setting
+        hal_cpu_int_merge r3
+		
+	add	r1, r0, r5
+
+	rtsd	r15, 8                          # and return to caller
+	nop
+#endif
 
 #---------------------------------------------------------------------------
 ## Temporary interrupt stack
-        
-        .section ".bss"
 
+	.section ".bss"
 	.balign 16
 	.global cyg_interrupt_stack_base
 cyg_interrupt_stack_base:
@@ -1020,7 +960,6 @@ __interrupt_stack_base:
 	.global cyg_interrupt_stack
 cyg_interrupt_stack:
 __interrupt_stack:
-        
         .long   0,0,0,0,0,0,0,0 
 
 #---------------------------------------------------------------------------

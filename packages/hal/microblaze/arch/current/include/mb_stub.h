@@ -1,10 +1,10 @@
-#ifndef CYGONCE_HAL_PPC_STUB_H
-#define CYGONCE_HAL_PPC_STUB_H
+#ifndef CYGONCE_HAL_MB_STUB_H
+#define CYGONCE_HAL_MB_STUB_H
 //========================================================================
 //
-//      ppc_stub.h
+//      mb_stub.h
 //
-//      PowerPC-specific definitions for generic stub
+//      MicroBlaze-specific definitions for generic stub
 //
 //========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -41,71 +41,37 @@
 //========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):     Red Hat, jskov
-// Contributors:  Red Hat, jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:          1998-08-20
 // Purpose:       
-// Description:   PowerPC-specific definitions for generic stub
+// Description:   MicroBlaze-specific definitions for generic stub
 // Usage:         
 //
 //####DESCRIPTIONEND####
 //
 //========================================================================
 
+#include "var_regs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define NUMREGS    33 + CYGARC_VAR_ADDITIONAL_CONTEXT_SIZE
+
+#define REGSIZE( _x_ ) 4
+
 typedef unsigned long target_register_t;
 
-
-#ifndef CYGHWR_HAL_POWERPC_BOOK_E
-
-// Most PowerPCs use a standard register layout.
-    
-#define NUMREGS    71
-
-#define REGSIZE( _x_ ) (((_x_) >= F0 && (_x_) <= F31) ? 8 : 4)
-    
-#else
-
-// BookE processors only have 70 registers, MQ is not supported. All
-// registers are 32 bit and instead of FP registers there are the top
-// 32 bits of the GPRs. The 64-bit registers are only used by SPE
-// instructions, which we don't currently support.
-    
-#define NUMREGS    70
-
-#define REGSIZE( _x_ ) (4)
-    
-#endif
-    
-    
-#ifdef CYGHWR_HAL_POWERPC_FPU
-// The PowerPC has floating point registers that are larger than what it
-// can hold in a target_register_t
-#define TARGET_HAS_LARGE_REGISTERS
-
-// PowerPC stub has special needs for register handling because flating point
-// registers are bigger than the rest. Special put_register and get_register
-// are provided
-#define CYGARC_STUB_REGISTER_ACCESS_DEFINED 1
-	
-// extra space needed for floating point registers
-#define HAL_STUB_REGISTERS_SIZE ((sizeof(GDB_Registers) + sizeof(target_register_t) - 1)/sizeof(target_register_t))
-#endif
-	
-
 enum regnames {
-    R0, R1, R2, R3, R4, R5, R6, R7, 
+    R1, R2, R3, R4, R5, R6, R7, 
     R8, R9, R10, R11, R12, R13, R14, R15,
     R16, R17, R18, R19, R20, R21, R22, R23, 
     R24, R25, R26, R27, R28, R29, R30, R31, 
-    F0, F1, F2, F3, F4, F5, F6, F7, 
-    F8, F9, F10, F11, F12, F13, F14, F15, 
-    F16, F17, F18, F19, F20, F21, F22, F23, 
-    F24, F25, F26, F27, F28, F29, F30, F31, 
-    PC, PS, CND, LR, CNT, XER, MQ
+    PC, MSR
+	HAL_DEFINE_ADDITIONAL_REGS_NAMES
 };
 
 // For convenience
@@ -152,4 +118,4 @@ extern void __clear_breakpoints (void);
 }   /* extern "C" */
 #endif
 
-#endif // ifndef CYGONCE_HAL_PPC_STUB_H
+#endif // ifndef CYGONCE_HAL_MB_STUB_H

@@ -42,8 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:  nickg
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors:  
 // Date:        1997-09-08
 // Purpose:     Define architecture base types.
 // Usage:       Included by "cyg_type.h", do not use directly
@@ -58,14 +59,14 @@
 #define CYG_BYTEORDER           CYG_MSBFIRST    // Big endian
 
 //-----------------------------------------------------------------------------
-// Powerpc does not usually use labels with underscores.
+// Microblaze does not usually use labels with underscores.
 
 //#define CYG_LABEL_NAME(_name_) _name_
 
 //-----------------------------------------------------------------------------
 // Define the standard variable sizes
 
-// The PowerPC architecture uses the default definitions of the base types,
+// The Microblaze architecture uses the default definitions of the base types,
 // so we do not need to define any here.
 
 //-----------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 # ====================================================================
 #
-#      hal_powerpc.cdl
+#      hal_microblaze.cdl
 #
-#      PowerPC architectural HAL package configuration data
+#      MicroBlaze architectural HAL package configuration data
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,8 +39,8 @@
 # ====================================================================
 ######DESCRIPTIONBEGIN####
 #
-# Author(s):      jskov
-# Original data:  bartv
+# Author(s):      Michal Pfeifer
+# Original data:  PowerPC
 # Contributors:
 # Date:           1999-11-02
 #
@@ -48,65 +48,65 @@
 #
 # ====================================================================
 
-cdl_package CYGPKG_HAL_POWERPC {
-    display  "PowerPC architecture"
+cdl_package CYGPKG_HAL_MICROBLAZE {
+    display  "Microblaze architecture"
     parent        CYGPKG_HAL
     hardware
     include_dir   cyg/hal
-    define_header hal_powerpc.h
+#    define_header hal_microblaze.h
     description   "
-        The PowerPC architecture HAL package provides generic
+        The Microblaze architecture HAL package provides generic
         support for this processor architecture. It is also
         necessary to select a specific target platform HAL
         package."
 
-    cdl_interface CYGINT_HAL_POWERPC_VARIANT {
-        display  "Number of variant implementations in this configuration"
-        no_define
-        requires 1 == CYGINT_HAL_POWERPC_VARIANT
-    }
-
-    compile       hal_misc.c context.S ppc_stub.c hal_intr.c
+    compile       hal_misc.c context.S mb_stub.c hal_intr.c
 
     # The "-o file" is a workaround for CR100958 - without it the
     # output file would end up in the source directory under CygWin.
     # n.b. grep does not behave itself under win32
     make -priority 1 {
-        <PREFIX>/include/cyg/hal/ppc_offsets.inc : <PACKAGE>/src/hal_mk_defs.c
-        $(CC) $(CFLAGS) $(INCLUDE_PATH) -Wp,-MD,ppc_offsets.tmp -o hal_mk_defs.tmp -S $<
+        <PREFIX>/include/cyg/hal/mb_offsets.inc : <PACKAGE>/src/hal_mk_defs.c
+        $(CC) $(CFLAGS) $(INCLUDE_PATH) -Wp,-MD,mb_offsets.tmp -o hal_mk_defs.tmp -S $<
         fgrep .equ hal_mk_defs.tmp | sed s/#// > $@
         @echo $@ ": \\" > $(notdir $@).deps
-        @tail -n +2 ppc_offsets.tmp >> $(notdir $@).deps
+        @tail -n 2 mb_offsets.tmp >> $(notdir $@).deps
         @echo >> $(notdir $@).deps
-        @rm ppc_offsets.tmp hal_mk_defs.tmp
+        @rm mb_offsets.tmp hal_mk_defs.tmp
     }
 
     make {
         <PREFIX>/lib/vectors.o : <PACKAGE>/src/vectors.S
         $(CC) -Wp,-MD,vectors.tmp $(INCLUDE_PATH) $(CFLAGS) -c -o $@ $<
         @echo $@ ": \\" > $(notdir $@).deps
-        @tail -n +2 vectors.tmp >> $(notdir $@).deps
+        @tail -n 2 vectors.tmp >> $(notdir $@).deps
         @echo >> $(notdir $@).deps
         @rm vectors.tmp
     }
 
     make {
-        <PREFIX>/lib/target.ld: <PACKAGE>/src/powerpc.ld
+        <PREFIX>/lib/target.ld: <PACKAGE>/src/microblaze.ld
         $(CC) -E -P -Wp,-MD,target.tmp -DEXTRAS=1 -xc $(INCLUDE_PATH) $(CFLAGS) -o $@ $<
         @echo $@ ": \\" > $(notdir $@).deps
-        @tail -n +2 target.tmp >> $(notdir $@).deps
+        @tail -n 2 target.tmp >> $(notdir $@).deps
         @echo >> $(notdir $@).deps
         @rm target.tmp
     }
 
-    cdl_option CYGSEM_HAL_POWERPC_RESET_USES_JUMP {
+	make -priority 1 {
+		../../../common/current/makefile.tmp : ../../../common/current/makefile
+		mv ../../../common/current/makefile ../../../common/current/makefile.tmp
+		cat ../../../common/current/makefile.tmp | sed -e "s/\$$(CC) \$$(CFLAGS) -nostdlib -Wl,-r -Wl,--whole-archive -o \$$@ \$$</$(COMMAND_PREFIX)ld -nostdlib -r --whole-archive -o \$$@ \$$</" > ../../../common/current/makefile
+	}
+
+    cdl_option CYGSEM_HAL_MICROBLAZE_RESET_USES_JUMP {
         display       "RESET vector jumps to startup"
         default_value 0
         description   "
             Some platforms may need this for ROMRAM startup."
     }
 
-    cdl_option CYGSEM_HAL_POWERPC_COPY_VECTORS {
+    cdl_option CYGSEM_HAL_MICROBLAZE_COPY_VECTORS {
         display       "Copy exception vectors to RAM"
         default_value { (CYG_HAL_STARTUP != "RAM" ||
                          CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS) ? 1 : 0 }
@@ -122,7 +122,7 @@ cdl_package CYGPKG_HAL_POWERPC {
             tight the vectors can be left in ROM."
     }
 
-    cdl_option CYGHWR_HAL_POWERPC_NEED_VECTORS {
+    cdl_option CYGHWR_HAL_MICROBLAZE_NEED_VECTORS {
         display       "Exception vectors inclusion"
         description   "
             If eCos can rely on the target environment to provide
@@ -130,89 +130,45 @@ cdl_package CYGPKG_HAL_POWERPC {
             the additional data in application images. This option controls
             the inclusion of the vector code."
         # Platform HALs and startup configuration controls this setting.
-        calculated { ((CYGHWR_HAL_POWERPC_FORCE_VECTORS ||
+        calculated { ((CYGHWR_HAL_MICROBLAZE_FORCE_VECTORS ||
                        CYG_HAL_STARTUP != "RAM" ||
-                       CYGSEM_HAL_POWERPC_COPY_VECTORS) &&
+                       CYGSEM_HAL_MICROBLAZE_COPY_VECTORS) &&
                       ! CYGSEM_HAL_USE_ROM_MONITOR)
                       ? 1 : 0 }
     }
 
-    cdl_option CYGHWR_HAL_POWERPC_VECTOR_BASE {
-        display       "Exception vectors location"
-        description   "
-            PowerPC exception vectors can reside either at 0x00000000 or
-            0xfff00000. The startup type and platform HAL controls which
-            is used."
-        flavor        data
-        default_value { (! CYGHWR_HAL_POWERPC_FORCE_VECTOR_BASE_LOW && 
-                       (CYGHWR_HAL_POWERPC_FORCE_VECTOR_BASE_HIGH ||
-                       (CYG_HAL_STARTUP != "RAM" &&
-                        ! CYGSEM_HAL_POWERPC_COPY_VECTORS)))
-                      ? 0xfff00000 : 0x00000000 }
-    }
+#    cdl_option CYGHWR_HAL_POWERPC_VECTOR_BASE {
+#        display       "Exception vectors location"
+#        description   "
+#            PowerPC exception vectors can reside either at 0x00000000 or
+#            0xfff00000. The startup type and platform HAL controls which
+#            is used."
+#        flavor        data
+#        default_value { (! CYGHWR_HAL_POWERPC_FORCE_VECTOR_BASE_LOW && 
+#                       (CYGHWR_HAL_POWERPC_FORCE_VECTOR_BASE_HIGH ||
+#                       (CYG_HAL_STARTUP != "RAM" &&
+#                        ! CYGSEM_HAL_POWERPC_COPY_VECTORS)))
+#                      ? 0xfff00000 : 0x00000000 }
+#    }
 
-    cdl_option CYGHWR_HAL_POWERPC_BOOK_E {
-        display       "Enable Book E support"
-        default_value 0
-        description "
-            This option enables PowerPC Book E support in the architecture
-            HAL. Book E defines a number of changes to the PowerPC architecture
-            to better support embedded applications. These changes primarily
-            manifest themselves here in changes to the contents of the MSR and
-            exception delivery."
-    }
+#    cdl_option CYGHWR_HAL_POWERPC_ENABLE_MMU {
+#        display       "Enable MMU"
+#        default_value    { !CYGHWR_HAL_POWERPC_DISABLE_MMU }
+#        description   "
+#            Some platforms do not want the MMU enabled."
+#    }
 
-    cdl_option CYGHWR_HAL_POWERPC_BOOK_E_FIXED_VECTORS {
-        display       "Enable Book E fixed vector support"
-        active_if     CYGHWR_HAL_POWERPC_BOOK_E
-        default_value 0
-        description "
-            This option indicates that the Book E variant only supports
-            a fixed sized vector table of 16 bytes each. This requires some
-            extra handling in the HAL."
-    }
-    
-    cdl_option CYGHWR_HAL_POWERPC_VECTOR_ALIGNMENT {
-        display       "Exception vector aligment"
-        flavor        data
-        default_value (CYGHWR_HAL_POWERPC_BOOK_E ? 6 : 8)
-        description "
-            The standard AIM architecture has exception vectors placed at fixed
-            256 byte intervals. The Book E processors allow these vectors to be
-            placed on any 16 byte offset. To keep the changes to the HAL minimal,
-            the vectors are still placed at fixed intervals, however, this interval
-            has been reduced to 64 bytes."
-    }
+#    cdl_option CYGDBG_HAL_POWERPC_FRAME_WALLS {
+#        display       "Exception stack-frame walls"
+#        default_value 0
+#        description   "
+#            Enable this option to put \"walls\" around the exception
+#            frames. This can ease analyzing the stack contents when
+#            debugging."
+#    }
 
-    cdl_option CYGHWR_HAL_POWERPC_ENABLE_MMU {
-        display       "Enable MMU"
-        default_value { !CYGHWR_HAL_POWERPC_DISABLE_MMU }
-        description   "
-            Some platforms do not want the MMU enabled."
-    }
-
-    cdl_option CYGDBG_HAL_POWERPC_FRAME_WALLS {
-        display       "Exception stack-frame walls"
-        default_value 0
-        description   "
-            Enable this option to put \"walls\" around the exception
-            frames. This can ease analyzing the stack contents when
-            debugging."
-    }
-
-    cdl_option CYGSEM_REDBOOT_HAL_LINUX_BOOT {
-        active_if      { CYGSEM_REDBOOT_PLF_LINUX_BOOT == 1 }
-        display        "Support booting Linux via RedBoot"
-        flavor         bool
-        default_value  1
-        description    "
-           This option enables RedBoot to support booting of a Linux kernel."
-
-        compile -library=libextras.a redboot_linux_exec.c
-    }
-
-    cdl_component CYGPKG_HAL_POWERPC_OPTIONS {
-        display "PowerPC build options"
+    cdl_component CYGPKG_HAL_MICROBLAZE_OPTIONS {
+        display "Microblaze build options"
         flavor  none
         no_define
         description   "
@@ -221,35 +177,35 @@ cdl_package CYGPKG_HAL_POWERPC {
 	    and details of which tests are built."
 
 
-        cdl_option CYGPKG_HAL_POWERPC_CFLAGS_ADD {
+        cdl_option CYGPKG_HAL_MICROBLAZE_CFLAGS_ADD {
             display "Additional compiler flags"
             flavor  data
             no_define
             default_value { "" }
             description   "
                 This option modifies the set of compiler flags for
-                building the PowerPC HAL. These flags are used in addition
+                building the MicroBlaze HAL. These flags are used in addition
                 to the set of global flags."
         }
 
-        cdl_option CYGPKG_HAL_POWERPC_CFLAGS_REMOVE {
+        cdl_option CYGPKG_HAL_MICROBLAZE_CFLAGS_REMOVE {
             display "Suppressed compiler flags"
             flavor  data
             no_define
             default_value { "" }
             description   "
                 This option modifies the set of compiler flags for
-                building the PowerPC HAL. These flags are removed from
+                building the MicroBlaze HAL. These flags are removed from
                 the set of global flags if present."
         }
 
-        cdl_option CYGPKG_HAL_POWERPC_TESTS {
-            display "PowerPC tests"
+        cdl_option CYGPKG_HAL_MICROBLAZE_TESTS {
+            display "Microblaze tests"
             flavor  data
             no_define
             calculated { "" }
             description   "
-                This option specifies the set of tests for the PowerPC HAL."
+                This option specifies the set of tests for the MicroBlaze HAL."
         }
     }
 
@@ -257,6 +213,6 @@ cdl_package CYGPKG_HAL_POWERPC {
         display "Linker script"
         flavor data
 	no_define
-        calculated  { "src/powerpc.ld" }
+        calculated  { "src/microblaze.ld" }
     }
 }

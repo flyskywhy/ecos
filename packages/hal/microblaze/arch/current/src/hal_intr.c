@@ -2,7 +2,7 @@
 //
 //      hal_intr.c
 //
-//      PowerPC interrupt handlers
+//      MicroBlaze interrupt handlers
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,12 +39,13 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    jskov
-// Contributors: jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         1999-02-20
-// Purpose:      PowerPC interrupt handlers
+// Purpose:      MicroBlaze interrupt handlers
 // Description:  This file contains code to handle interrupt related issues
-//               on the PowerPC.
+//               on the MicroBlaze.
 //
 //####DESCRIPTIONEND####
 //
@@ -54,8 +55,6 @@
 
 #include <cyg/hal/hal_intr.h>
 
-static unsigned long ticks_per_us;
-
 externC void
 hal_IRQ_init(void)
 {
@@ -64,40 +63,8 @@ hal_IRQ_init(void)
     hal_variant_IRQ_init();
 
     // Initialize real-time clock (for delays, etc, even if kernel doesn't use it)
+    // Set max period
     HAL_CLOCK_INITIALIZE(CYGNUM_HAL_RTC_PERIOD);
-
-    // Pre-calculate this factor to avoid the extra calculations on each delay
-    ticks_per_us = ((long long)1 * (CYGNUM_HAL_RTC_PERIOD * 100)) / 1000000;
-}
-
-// Delay for some number of useconds.
-externC void 
-hal_delay_us(int us)
-{
-    cyg_int32 old_dec, new_dec;
-    long ticks;
-    int diff;
-
-    // Note: the system constant CYGNUM_HAL_RTC_PERIOD corresponds to 10,000us
-    // Scale the desired number of microseconds to be a number of decrementer ticks
-    if (ticks_per_us > 0) {
-        ticks = us * ticks_per_us;
-    } else {
-        ticks = ((long long)us * (CYGNUM_HAL_RTC_PERIOD * 100)) / 1000000;
-    }
-    asm volatile("mfdec  %0;" : "=r"(old_dec) : );
-    while (ticks > 0) {
-        do {
-            asm volatile("mfdec  %0;" : "=r"(new_dec) : );        
-        } while (old_dec == new_dec);
-        if (new_dec < 0) {
-            HAL_CLOCK_RESET(0, CYGNUM_HAL_RTC_PERIOD);
-        }
-        diff = (old_dec - new_dec);
-        if (diff < 1) diff = 1;
-        old_dec = new_dec;
-        ticks -= diff;
-    }
 }
 
 // -------------------------------------------------------------------------

@@ -42,8 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:nickg, jskov, hmt
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        2000-02-11
 // Purpose:     Memory control API
 // Description: The macros defined here provide the HAL APIs for handling

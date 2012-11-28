@@ -1,8 +1,8 @@
 //==========================================================================
 //
-//	powerpc.ld
+//	microblaze.ld
 //
-//	Linker script for PowerPC
+//	Linker script for MicroBlaze
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,10 +39,11 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s): 	jskov
-// Contributors:jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:	1999-01-18
-// Purpose:	PowerPC Linker script
+// Purpose:	MicroBlaze Linker script
 //
 //####DESCRIPTIONEND####
 //
@@ -51,13 +52,13 @@
 #include <pkgconf/hal.h>
 
 STARTUP(vectors.o)
-ENTRY(__exception_reset)
+ENTRY(__vcr_vector_reset)
 #ifdef EXTRAS
 INPUT(extras.o)
 #endif
 GROUP( CYGBLD_HAL_LINKER_GROUPED_LIBS )
 
-#define ALIGN_LMA 8
+#define ALIGN_LMA 4
 #define FOLLOWING(_section_) AT ((LOADADDR (_section_) + SIZEOF (_section_) + ALIGN_LMA - 1) & ~ (ALIGN_LMA - 1))
 #define LMA_EQ_VMA
 #define FORCE_OUTPUT . = .

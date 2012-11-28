@@ -42,8 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:        nickg
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        1998-02-17
 // Purpose:     Define IO register support
 // Description: The macros defined here provide the HAL APIs for handling
@@ -59,26 +60,14 @@
 //=============================================================================
 
 #include <cyg/infra/cyg_type.h>
-#ifdef CYGBLD_HAL_VAR_IO_H
-#include CYGBLD_HAL_VAR_IO_H
-#endif
 #ifdef CYGBLD_HAL_PLF_IO_H
 #include CYGBLD_HAL_PLF_IO_H
 #endif
 
 //-----------------------------------------------------------------------------
 // Enforce in-order IO for all HAL reads/writes using this macro.
-#ifndef HAL_IO_BARRIER_DEFINED
-#define HAL_IO_BARRIER()                        \
-    asm volatile ( "eieio" : : : "memory" )
-#endif
-
-// Force memory writes to be flushed using this macro. This also
-// invalidates the pipeline, in case those writes affect the pipeline
-// (as with some flash drivers).
-#ifndef HAL_MEMORY_BARRIER_DEFINED
-#define HAL_MEMORY_BARRIER() __asm__ volatile ("sync ; isync " : : : "memory")
-#endif
+//#define HAL_IO_BARRIER()                        
+//    asm volatile ( "eieio" : : : "memory" )
 
 //-----------------------------------------------------------------------------
 // IO Register address.
@@ -93,13 +82,11 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
 #define HAL_READ_UINT8( _register_, _value_ )           \
     CYG_MACRO_START                                     \
     ((_value_) = *((volatile CYG_BYTE *)(_register_))); \
-    HAL_IO_BARRIER ();                                  \
     CYG_MACRO_END
 
 #define HAL_WRITE_UINT8( _register_, _value_ )          \
     CYG_MACRO_START                                     \
     (*((volatile CYG_BYTE *)(_register_)) = (_value_)); \
-    HAL_IO_BARRIER ();                                  \
     CYG_MACRO_END
 
 #define HAL_READ_UINT8_VECTOR( _register_, _buf_, _count_, _step_ )     \
@@ -107,7 +94,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         (_buf_)[_i_] = ((volatile CYG_BYTE *)(_register_))[_j_];        \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
 
@@ -116,7 +102,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         ((volatile CYG_BYTE *)(_register_))[_j_] = (_buf_)[_i_];        \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
 
@@ -128,13 +113,11 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
 #define HAL_READ_UINT16( _register_, _value_ )                  \
     CYG_MACRO_START                                             \
     ((_value_) = *((volatile CYG_WORD16 *)(_register_)));       \
-    HAL_IO_BARRIER ();                                          \
     CYG_MACRO_END
 
 #define HAL_WRITE_UINT16( _register_, _value_ )                 \
     CYG_MACRO_START                                             \
     (*((volatile CYG_WORD16 *)(_register_)) = (_value_));       \
-    HAL_IO_BARRIER ();                                          \
     CYG_MACRO_END
 
 #define HAL_READ_UINT16_VECTOR( _register_, _buf_, _count_, _step_ )    \
@@ -142,7 +125,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         (_buf_)[_i_] = ((volatile CYG_WORD16 *)(_register_))[_j_];      \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
 
@@ -151,7 +133,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         ((volatile CYG_WORD16 *)(_register_))[_j_] = (_buf_)[_i_];      \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
 
@@ -162,13 +143,11 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
 #define HAL_READ_UINT32( _register_, _value_ )                  \
     CYG_MACRO_START                                             \
     ((_value_) = *((volatile CYG_WORD32 *)(_register_)));       \
-    HAL_IO_BARRIER ();                                          \
     CYG_MACRO_END
 
 #define HAL_WRITE_UINT32( _register_, _value_ )                 \
     CYG_MACRO_START                                             \
     (*((volatile CYG_WORD32 *)(_register_)) = (_value_));       \
-    HAL_IO_BARRIER ();                                          \
     CYG_MACRO_END
 
 #define HAL_READ_UINT32_VECTOR( _register_, _buf_, _count_, _step_ )    \
@@ -176,7 +155,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         (_buf_)[_i_] = ((volatile CYG_WORD32 *)(_register_))[_j_];      \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
 
@@ -185,7 +163,6 @@ typedef volatile CYG_ADDRWORD HAL_IO_REGISTER;
     cyg_count32 _i_,_j_;                                                \
     for( _i_ = 0, _j_ = 0; _i_ < (_count_); _i_++, _j_ += (_step_)) {   \
         ((volatile CYG_WORD32 *)(_register_))[_j_] = (_buf_)[_i_];      \
-        HAL_IO_BARRIER ();                                              \
     }                                                                   \
     CYG_MACRO_END
     
