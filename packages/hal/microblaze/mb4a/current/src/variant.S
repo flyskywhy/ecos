@@ -2,7 +2,7 @@
 ##
 ##	variant.S
 ##
-##	PowerPC PPC60x variant code
+##	MicroBlaze 4.00a variant code
 ##
 ##=============================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,17 +39,19 @@
 ##=============================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s): 	jskov
-## Contributors:jskov
+## Author(s):      Michal Pfeifer
+## Original data:  PowerPC
+## Contributors: 
 ## Date:	2000-02-04
-## Purpose:	PowerPC PPC60x variant code
-## Description:	Variant specific code for PowerPC 60x CPUs.
+## Purpose:	MicroBlaze 4.00a variant code
+## Description:	Variant specific code for MicroBlaze CPUs.
 ##
 ######DESCRIPTIONEND####
 ##
 ##=============================================================================
 
 #include <cyg/hal/variant.inc>
+#include <cyg/hal/mb_offsets.inc>
 
 #---------------------------------------------------------------------------
 # Interrupt vector tables.
@@ -58,14 +60,12 @@
 
         .data
 
-        .extern hal_default_decrementer_isr
-        .extern hal_default_isr
+#        .extern hal_default_isr
 
         .globl  hal_interrupt_handlers
 hal_interrupt_handlers:
-        .long   hal_default_decrementer_isr
-        .rept   CYGNUM_HAL_ISR_COUNT-1
-        .long   hal_default_isr
+        .rept   CYGNUM_HAL_ISR_COUNT
+        .long   HAL_DEFAULT_ISR
         .endr
 
         .globl  hal_interrupt_data

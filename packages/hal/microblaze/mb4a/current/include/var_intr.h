@@ -41,12 +41,13 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:nickg, jskov, jlarmour, hmt, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        2000-04-02
 // Purpose:     Variant interrupt support
 // Description: The macros defined here provide the HAL APIs for handling
-//              interrupts and the clock on the PPC60x variant CPUs.
+//              interrupts and the clock on the mb4a variant CPUs.
 // Usage:       Is included via the architecture interrupt header:
 //              #include <cyg/hal/hal_intr.h>
 //              ...
@@ -55,15 +56,7 @@
 //
 //=============================================================================
 
-// Additional trap/exceptions on PPC60x
-#define CYGNUM_HAL_VECTOR_ITLB_MISS        0x10
-#define CYGNUM_HAL_VECTOR_DTLB_LOAD_MISS   0x11
-#define CYGNUM_HAL_VECTOR_DTLB_STORE_MISS  0x12
-#define CYGNUM_HAL_VECTOR_SMI              0x13
-
-#define CYGNUM_HAL_VSR_MAX                 CYGNUM_HAL_VECTOR_SMI
-
-// No builtin interrupt controller in the PPC60x CPUs.
+// No builtin interrupt controller in the mb4a CPUs.
 
 #include <cyg/hal/plf_intr.h>  // Maybe something on the platform though
 

@@ -2,7 +2,7 @@
 //
 //      var_intr.c
 //
-//      PowerPC variant interrupt handlers
+//      MicroBlaze variant interrupt handlers
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,12 +39,13 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    jskov
-// Contributors: jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         2000-02-11
-// Purpose:      PowerPC variant interrupt handlers
+// Purpose:      MicroBlaze variant interrupt handlers
 // Description:  This file contains code to handle interrupt related issues
-//               on the PowerPC variant.
+//               on the MicroBlaze variant.
 //
 //####DESCRIPTIONEND####
 //
@@ -53,10 +54,13 @@
 #include <pkgconf/hal.h>
 #include <cyg/infra/cyg_type.h>
 
+externC void hal_platform_IRQ_init(void);
+
 externC void
 hal_variant_IRQ_init(void)
 {
-    // No special init required for 60x series.
+	// Let the platform do any overrides
+	hal_platform_IRQ_init();
 }
 
 // -------------------------------------------------------------------------

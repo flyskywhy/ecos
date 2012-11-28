@@ -5,7 +5,7 @@
 //
 //      var_regs.h
 //
-//      PowerPC 60x variant CPU definitions
+//      MicroBlaze 4.00a variant CPU definitions
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -42,11 +42,12 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    jskov
-// Contributors: jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         2000-02-04
-// Purpose:      Provide PPC60x register definitions
-// Description:  Provide PPC60x register definitions
+// Purpose:      Provide mb4a register definitions
+// Description:  Provide mb4a register definitions
 //               The short difinitions (sans CYGARC_REG_) are exported only
 //               if CYGARC_HAL_COMMON_EXPORT_CPU_MACROS is defined.
 // Usage:        Included via the acrhitecture register header:
@@ -61,67 +62,135 @@
 #include <cyg/hal/plf_regs.h>  // Get any platform specifics
 
 //--------------------------------------------------------------------------
-// Cache
-#define CYGARC_REG_HID0   1008
-#define _HID0       CYGARC_REG_HID0
-#define _HID0_EMCP  0x80000000  // Enable machine check
-#define _HID0_EBA   0x20000000  // Enable bus address parity
-#define _HID0_EBD   0x10000000  // Enable bus data parity
-#define _HID0_BCLK  0x08000000
-#define _HID0_EICE  0x04000000
-#define _HID0_ECLK  0x02000000
-#define _HID0_PAR   0x01000000
-#define _HID0_DOZE  0x00800000
-#define _HID0_NAP   0x00400000
-#define _HID0_SLEEP 0x00200000
-#define _HID0_DPM   0x00100000
-#define _HID0_ICE   0x00008000  // Enable Instruction Cache
-#define _HID0_DCE   0x00004000  // Enable Data Cache
-#define _HID0_ILOCK 0x00002000  // Instruction Cache Lock
-#define _HID0_DLOCK 0x00001000  // Data Cache Lock
-#define _HID0_ICFI  0x00000800  // Instruction Cache [flash] Invalidate
-#define _HID0_DCFI  0x00000400  // Data Cache [flash] Invalidate
-#define _HID0_IFEM  0x00000080
-#define _HID0_FBIOB 0x00000010
-#define _HID0_ABE   0x00000008
-#define _HID0_NOOPT 0x00000001
+// Additional seved registers for this variant
+#ifdef CYGHWR_HAL_MICROBLAZE_FPU			  					// FPU
+	#define	CYGARC_VAR_SAVEDREGS_FPU	cyg_uint32   fsr;		// Floating Point Status Reg
+	#define CYGARC_VAR_THREAD_INIT_CONTEXT_FPU	(_regs_)->fsr = 0;
+	#define CYGARC_VAR_CONTEXT_SIZE_FPU	1
+	#define HAL_GET_GDB_REGISTERS_FPU	_regval_[34] = (_regs_)->fsr; 
+	#define HAL_SET_GDB_REGISTERS_FPU	(_regs_)->fsr = _regval_[66]; 
+	#define HAL_DEFINE_REGS_OFFSETS_FPU								\
+	DEFINE(CYGARC_MBREG_FSR, offsetof(HAL_SavedRegisters, fsr));
+	#define HAL_DEFINE_REGS_NAMES_FPU	, FSR
+#else
+	#define	CYGARC_VAR_SAVEDREGS_FPU
+	#define CYGARC_VAR_THREAD_INIT_CONTEXT_FPU
+	#define CYGARC_VAR_CONTEXT_SIZE_FPU	0
+	#define HAL_GET_GDB_REGISTERS_FPU	_regval_[66] = 0; 
+	#define HAL_SET_GDB_REGISTERS_FPU 
+	#define HAL_DEFINE_REGS_OFFSETS_FPU									
+	#define HAL_DEFINE_REGS_NAMES_FPU
+#endif 
+  
+#ifdef CYGHWR_HAL_MICROBLAZE_HWEXCEPTION_REGS	  				// HW exceptions
+	#define CYGARC_VAR_SAVEDREGS_HWEXCEPTION			\
+		cyg_uint32   ear;	/* Exception Address Reg */			\
+		cyg_uint32   esr;	/* Exception Status Reg */
+	#define CYGARC_VAR_THREAD_INIT_CONTEXT_HWEXCEPTION	\
+	    (_regs_)->ear = 0;	/* EAR = 0      */   				\
+		(_regs_)->esr = 0;	/* ESR = 0      */   	
+	#define CYGARC_VAR_CONTEXT_SIZE_HWEXCEPTION	2
+	#define HAL_GET_GDB_REGISTERS_HWEXCEPTION			\
+		_regval_[35] = (_regs_)->ear; 					\
+		_regval_[36] = (_regs_)->esr;
+	#define HAL_SET_GDB_REGISTERS_HWEXCEPTION			\
+		(_regs_)->ear = _regval_[35]; 					\
+		(_regs_)->esr = _regval_[36];
+	#define HAL_DEFINE_REGS_OFFSETS_HWEXCEPTION									\
+		DEFINE(CYGARC_MBREG_EAR, offsetof(HAL_SavedRegisters, ear));			\
+		DEFINE(CYGARC_MBREG_ESR, offsetof(HAL_SavedRegisters, esr));
+	#define HAL_DEFINE_REGS_NAMES_HWEXCEPTION	, EAR, ESR
+#else
+	#define CYGARC_VAR_SAVEDREGS_HWEXCEPTION
+	#define CYGARC_VAR_THREAD_INIT_CONTEXT_HWEXCEPTION
+	#define CYGARC_VAR_CONTEXT_SIZE_HWEXCEPTION	0
+	#define HAL_GET_GDB_REGISTERS_HWEXCEPTION			\
+	_regval_[35] = 0; 									\
+	_regval_[36] = 0;
+	#define HAL_SET_GDB_REGISTERS_HWEXCEPTION
+	#define HAL_DEFINE_REGS_OFFSETS_HWEXCEPTION									
+	#define HAL_DEFINE_REGS_NAMES_HWEXCEPTION
+#endif
+
+//HAL saved registers
+#define CYGARC_VAR_ADDITIONAL_SAVEDREGS				\
+	CYGARC_VAR_SAVEDREGS_FPU						\
+	CYGARC_VAR_SAVEDREGS_HWEXCEPTION
+
+//HAL thread context init for additional registers
+#define CYGARC_VAR_ADDITIONAL_THREAD_INIT_CONTEXT	\
+	CYGARC_VAR_THREAD_INIT_CONTEXT_FPU				\
+	CYGARC_VAR_THREAD_INIT_CONTEXT_HWEXCEPTION
+
+//additional context size
+#define CYGARC_VAR_ADDITIONAL_CONTEXT_SIZE			\
+	CYGARC_VAR_CONTEXT_SIZE_FPU +					\
+	CYGARC_VAR_CONTEXT_SIZE_HWEXCEPTION
+
+#define HAL_GET_ADDITIONAL_GDB_REGISTERS			\
+	HAL_GET_GDB_REGISTERS_FPU						\
+	HAL_GET_GDB_REGISTERS_HWEXCEPTION
+
+#define HAL_SET_ADDITIONAL_GDB_REGISTERS			\
+	HAL_SET_GDB_REGISTERS_FPU						\
+	HAL_SET_GDB_REGISTERS_HWEXCEPTION
+
+#define HAL_DEFINE_ADDITIONAL_REGS_OFFSETS			\
+	HAL_DEFINE_REGS_OFFSETS_FPU						\
+	HAL_DEFINE_REGS_OFFSETS_HWEXCEPTION
+	
+#define HAL_DEFINE_ADDITIONAL_REGS_NAMES			\
+	HAL_DEFINE_REGS_NAMES_FPU						\
+	HAL_DEFINE_REGS_NAMES_HWEXCEPTION
+	
+	
+	
+//--------------------------------------------------------------------------
+// Variant dependent SPRs
+#ifdef CYGHWR_HAL_MICROBLAZE_HWEXCEPTION
+	#define CYGARC_REG_EAR	"rear"
+	#define CYGARC_REG_ESR	"resr"
+#endif
+#ifdef CYGHWR_HAL_MICROBLAZE_FPU
+	#define CYGARC_REG_FSR	"rfsr"
+#endif
+
+#ifdef CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
+	#ifdef CYGHWR_HAL_MICROBLAZE_HWEXCEPTION_REGS
+		#define EAR        	CYGARC_REG_EAR
+		#define ESR       	CYGARC_REG_ESR
+	#endif
+	#ifdef CYGHWR_HAL_MICROBLAZE_FPU
+		#define FSR       	CYGARC_REG_FSR
+	#endif
+#endif
+
+
 
 //--------------------------------------------------------------------------
-// BATs
-#ifdef CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#define IBAT0U          528
-#define IBAT0L          529
-#define IBAT1U          530
-#define IBAT1L          531
-#define IBAT2U          532
-#define IBAT2L          533
-#define IBAT3U          534
-#define IBAT3L          535
+// ESR
+#define ESR_ESS		0x00000FE0	// Exception Specific Status
+#define ESR_EC		0x0000001F	// Exception Cause
+// ESS
+#define ESR_WAE		0x00000800	// Word Access Exception
+#define ESR_SAE		0x00000400	// Store Access Exception
+#define ESR_SDR		0x000003E0	// Source/Destination Register
+// EC
+#define ESR_UDA		0x00000001	// Unaligned data access exception
+#define ESR_IOP		0x00000002	// Illegal op-code exception
+#define ESR_IBE		0x00000003	// Instruction bus error exception
+#define ESR_DBE		0x00000004	// Data bus error exception
+#define ESR_DZ		0x00000005	// Divide by zero exception
+#define ESR_FPU		0x00000006	// Floating point unit exception
 
-#define DBAT0U          536
-#define DBAT0L          537
-#define DBAT1U          538
-#define DBAT1L          539
-#define DBAT2U          540
-#define DBAT2L          541
-#define DBAT3U          542
-#define DBAT3L          543
 
-#define UBAT_BEPIMASK   0xfffe0000      // effective address mask
-#define UBAT_BLMASK     0x00001ffc      // block length mask
-#define UBAT_VS         0x00000002      // supervisor mode valid bit
-#define UBAT_VP         0x00000001      // problem mode valid bit
-
-#define LBAT_BRPNMASK   0xfffe0000      // real address mask
-#define LBAT_W          0x00000040      // write-through
-#define LBAT_I          0x00000020      // caching-inhibited
-#define LBAT_M          0x00000010      // memory coherence
-#define LBAT_G          0x00000008      // guarded
-
-#define LBAT_PP_NA      0x00000000      // no access
-#define LBAT_PP_RO      0x00000001      // read-only
-#define LBAT_PP_RW      0x00000002      // read/write
-#endif // ifdef CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
+//--------------------------------------------------------------------------
+// FSR
+#define FSR_DOP		0x00000001	// Denormalized operand error
+#define FSR_UNF		0x00000002	// Underflow
+#define FSR_OVF		0x00000004	// Overflow
+#define FSR_DZ		0x00000008	// Divide-by-zero
+#define FSR_IO		0x00000010	// Invalid operation
 
 //-----------------------------------------------------------------------------
 #endif // ifdef CYGONCE_HAL_VAR_REGS_H

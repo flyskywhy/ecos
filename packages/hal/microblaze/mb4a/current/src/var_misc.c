@@ -39,8 +39,9 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    jskov
-// Contributors: jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:         2000-02-04
 // Purpose:      HAL miscellaneous functions
 // Description:  This file contains miscellaneous functions provided by the
@@ -53,14 +54,18 @@
 #include <pkgconf/hal.h>
 
 #define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#include <cyg/hal/ppc_regs.h>
+#include <cyg/hal/mb_regs.h>
 #include <cyg/infra/cyg_type.h>
+#include <cyg/hal/hal_intr.h>
 
-#include <cyg/hal/hal_mem.h>
+
+//#include <cyg/hal/hal_mem.h>
 
 //--------------------------------------------------------------------------
 void hal_variant_init(void)
 {
+    //hal_if_init();
+	//HAL_CLOCK_INITIALIZE(CYGNUM_HAL_RTC_PERIOD);
 }
 
 
@@ -78,6 +83,7 @@ hal_variant_idle_thread_action( cyg_uint32 count )
 // Takes and returns an int used to ID the MMU resource to use. This ID
 // is increased as resources are used and should be used for subsequent
 // invocations.
+/*
 int
 cyg_hal_map_memory (int id,CYG_ADDRESS virt, CYG_ADDRESS phys, 
                     cyg_int32 size, cyg_uint8 flags)
@@ -135,9 +141,10 @@ cyg_hal_map_memory (int id,CYG_ADDRESS virt, CYG_ADDRESS phys,
 
     return id;
 }
-
+*/
 
 // Initialize MMU to a sane (NOP) state.
+/*
 void
 cyg_hal_clear_MMU (void)
 {
@@ -164,6 +171,7 @@ cyg_hal_clear_MMU (void)
     CYGARC_MTSPR (DBAT3U, ubat);
     CYGARC_MTSPR (DBAT3L, lbat);
 }
+*/
 
 //--------------------------------------------------------------------------
 // End of var_misc.c

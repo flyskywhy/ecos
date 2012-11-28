@@ -41,12 +41,13 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   nickg
-// Contributors:nickg, jskov, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
+// Contributors: 
 // Date:        2000-04-02
 // Purpose:     Variant cache control API
 // Description: The macros defined here provide the HAL APIs for handling
-//              cache control operations on the PPC60x variant CPUs.
+//              cache control operations on the mb4a variant CPUs.
 // Usage:       Is included via the architecture cache header:
 //              #include <cyg/hal/hal_cache.h>
 //              ...
@@ -58,26 +59,32 @@
 #include <pkgconf/hal.h>
 #include <cyg/infra/cyg_type.h>
 
-#include <cyg/hal/ppc_regs.h>
+#include <cyg/hal/mb_regs.h>
 #include <cyg/hal/plf_cache.h>
 
+#include <pkgconf/hal_microblaze_platform.h>
 
 //-----------------------------------------------------------------------------
 // Cache dimensions
 
+// FIXME size of caches is wrong
 // Data cache
 #ifndef HAL_DCACHE_SIZE
-#define HAL_DCACHE_SIZE                 16384   // Size of data cache in bytes
-#define HAL_DCACHE_LINE_SIZE            32      // Size of a data cache line
-#define HAL_DCACHE_WAYS                 4       // Associativity of the cache
+#define HAL_DCACHE_SIZE                 MON_CPU_DCACHE_SIZE   // Size of data cache in bytes
+#define HAL_DCACHE_LINE_SIZE            16      // Size of a data cache line
+#define HAL_DCACHE_WAYS                 1       // Associativity of the cache
 #endif
+#define CYGARC_DCACHE_BASEADDR		MON_CPU_DCACHE_BASE
+#define CYGARC_DCACHE_HIGHADDR		MON_CPU_DCACHE_HIGH
 
 // Instruction cache
 #ifndef HAL_ICACHE_SIZE
-#define HAL_ICACHE_SIZE                 16384   // Size of cache in bytes
-#define HAL_ICACHE_LINE_SIZE            32      // Size of a cache line
-#define HAL_ICACHE_WAYS                 4       // Associativity of the cache
+#define HAL_ICACHE_SIZE			MON_CPU_ICACHE_SIZE    // Size of cache in bytes
+#define HAL_ICACHE_LINE_SIZE		16      // Size of a cache line
+#define HAL_ICACHE_WAYS			1       // Associativity of the cache
 #endif
+#define CYGARC_ICACHE_BASEADDR		MON_CPU_ICACHE_BASE
+#define CYGARC_ICACHE_HIGHADDR		MON_CPU_ICACHE_HIGH
 
 #define HAL_DCACHE_SETS (HAL_DCACHE_SIZE/(HAL_DCACHE_LINE_SIZE*HAL_DCACHE_WAYS))
 #define HAL_ICACHE_SETS (HAL_ICACHE_SIZE/(HAL_ICACHE_LINE_SIZE*HAL_ICACHE_WAYS))
@@ -86,80 +93,60 @@
 // Global control of data cache
 
 // Enable the data cache
-#define HAL_DCACHE_ENABLE()                     \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "or  %0,%0,%2;"               \
-                  "mtspr %1,%0"                 \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_DCE)             \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_DCACHE_ENABLE()			\
+	CYG_MACRO_START				\
+	asm volatile ("msrset	r0, 0x80\n");	\
+	CYG_MACRO_END
 
 // Disable the data cache
-#define HAL_DCACHE_DISABLE()                    \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "andc %0,%0,%2;"              \
-                  "mtspr %1,%0"                 \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_DCE)             \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_DCACHE_DISABLE()			\
+	CYG_MACRO_START				\
+	asm volatile ("msrclr	r0, 0x80\n");	\
+	CYG_MACRO_END
 
 // Invalidate the entire cache
-#define HAL_DCACHE_INVALIDATE_ALL()             \
-    CYG_MACRO_START                             \
-    cyg_int32 _scr1, _scr2;                     \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%2;"                \
-                  "mr %1,%0;"                   \
-                  "or %0,%0,%3;"                \
-                  "mtspr %2,%0;"                \
-                  "mtspr %2,%1"                 \
-                  : "=&r" (_scr1),              \
-                    "=&r" (_scr2)               \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_DCFI)            \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_DCACHE_INVALIDATE_ALL()				\
+	CYG_MACRO_START						\
+	cyg_int32 _msr, _cmp, _adr, _hadr;			\
+	_adr = CYGARC_DCACHE_BASEADDR - 4;			\
+	_hadr = CYGARC_DCACHE_BASEADDR + HAL_DCACHE_SIZE - 4;	\
+	asm volatile (						\
+		"msrclr	%0, 0x80\n"				\
+		"0:\n"						\
+		"rsub	%1, %2, %3\n"				\
+		"bleid	%1, 1f\n"				\
+		"addi	%2, %2, 4\n"				\
+		"brid	0b\n"					\
+		"wdc	%2, r0\n"				\
+		"1:\n"						\
+		"mts	rmsr, %0\n"				\
+		: "=&r"	(_msr),					\
+		  "=&r"	(_cmp)					\
+		: "r" 	(_adr),					\
+		  "r"	(_hadr)					\
+	);							\
+	CYG_MACRO_END
 
 // Synchronize the contents of the cache with memory.
-// Modifications to this macro should mirror modifications to the
-// identically named one in the mpc8260 variant.
-// We step through twice the number of lines in the cache in order
-// to ensure that all dirty lines are flushed to main memory.
-// (Consider the case where one of the dirty lines is in the
-// first 16Kbytes of RAM -- it won't get flushed by loading
-// in words from the first 16Kbytes of RAM).
-#define HAL_DCACHE_SYNC()                                       \
-    CYG_MACRO_START                                             \
-    cyg_int32 i;                                                \
-    cyg_uint32 *__base = (cyg_uint32 *) (0);                    \
-    for(i=0;i< (2 * HAL_DCACHE_SIZE/HAL_DCACHE_LINE_SIZE);i++,__base += HAL_DCACHE_LINE_SIZE/4){                                                 \
-        asm volatile ("lwz %%r0,0(%0);"::"r"(__base):"r0");     \
-    }                                                           \
-    CYG_MACRO_END
+#define HAL_DCACHE_SYNC()											\
+	CYG_MACRO_START												\
+	cyg_int32 i;												\
+	cyg_uint32 *__base = (cyg_uint32 *) (CYGARC_DCACHE_BASEADDR);						\
+	for (i = 0; i < (HAL_DCACHE_SIZE / HAL_DCACHE_LINE_SIZE); i++, __base += HAL_DCACHE_LINE_SIZE/4) {	\
+		asm volatile ("lwi r0, %0, 0\n" : : "r" (__base));						\
+	}													\
+	CYG_MACRO_END
 
 // Query the state of the data cache
-#define HAL_DCACHE_IS_ENABLED(_state_)          \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "and %0,%0,%2;"               \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_DCE)             \
-        );                                      \
-    (_state_) = _scratch != 0;                  \
-    CYG_MACRO_END
+#define HAL_DCACHE_IS_ENABLED(_state_)		\
+	CYG_MACRO_START				\
+	cyg_int32 _scratch;			\
+	asm volatile ("mfs	%0, rmsr\n"	\
+			"andi	%0,%0,0x80\n"	\
+			: "=&r" (_scratch)	\
+	);					\
+	(_state_) = _scratch != 0;		\
+	CYG_MACRO_END
 
 // Set the data cache refill burst size
 //#define HAL_DCACHE_BURST_SIZE(_size_)
@@ -189,144 +176,174 @@
 
 // Write dirty cache lines to memory and invalidate the cache entries
 // for the given address range.
-#define HAL_DCACHE_FLUSH( _base_ , _size_ )                     \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbf 0,%0;sync;" : : "r" (__base));      \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+#define HAL_DCACHE_FLUSH( _base_ , _size_ )
+//    CYG_MACRO_START                                             
+//    cyg_uint32 __base = (cyg_uint32) (_base_);                  
+//    cyg_int32 __size = (cyg_int32) (_size_);                   
+//    while (__size > 0) {                                       
+//        asm volatile ("dcbf 0,%0;sync;" : : "r" (__base));     
+//        __base += HAL_DCACHE_LINE_SIZE;                         
+//        __size -= HAL_DCACHE_LINE_SIZE;                        
+//    }                                                          
+//    CYG_MACRO_END
    
 // Invalidate cache lines in the given range without writing to memory.
-#define HAL_DCACHE_INVALIDATE( _base_ , _size_ )                \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbi 0,%0;sync;" : : "r" (__base));      \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+#define HAL_DCACHE_INVALIDATE( _base_ , _size_ )				\
+	CYG_MACRO_START								\
+	cyg_int32 _msr, _cmp, _adr, _hadr, _siz;				\
+										\
+	/* Compute base and size in cachable mem */				\
+	if(_base_<CYGARC_DCACHE_BASEADDR){					\
+		_adr = CYGARC_DCACHE_BASEADDR - 4;				\
+		_siz = _size_ - CYGARC_DCACHE_BASEADDR + _base_;		\
+	}									\
+	else {									\
+		_adr = _base_- 4;						\
+		_siz = _size_;							\
+	}									\
+	if((_adr + _siz) > CYGARC_DCACHE_HIGHADDR)				\
+		_siz = CYGARC_DCACHE_HIGHADDR - _adr;				\
+	if(_siz > HAL_DCACHE_SIZE)						\
+		_siz = HAL_DCACHE_SIZE;						\
+										\
+	/* Compute base and high addr in cache and round them to 4B addr */	\
+	_hadr = (_adr + _siz) & 0xFFFFFFFC;					\
+	_adr &= 0xFFFFFFFC;							\
+										\
+	asm volatile (								\
+		"msrclr	%0, 0x80\n"						\
+		"0:\n"								\
+		"rsub	%1, %2, %3\n"						\
+		"bleid	%1, 1f\n"						\
+		"addi	%2, %2, 4\n"						\
+		"brid	0b\n"							\
+		"wdc	%2, r0\n"						\
+		"1:\n"								\
+		"mts	rmsr, %0\n"						\
+		: "=&r"	(_msr),							\
+		  "=&r"	(_cmp)							\
+		: "r" 	(_adr),							\
+		  "r"	(_hadr)							\
+	);
 
 // Write dirty cache lines to memory for the given address range.
-#define HAL_DCACHE_STORE( _base_ , _size_ )                     \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbst 0,%0;sync;" : : "r" (__base));     \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+#define HAL_DCACHE_STORE( _base_ , _size_ )
+//    CYG_MACRO_START                                             
+//    cyg_uint32 __base = (cyg_uint32) (_base_);                  
+//    cyg_int32 __size = (cyg_int32) (_size_);                    
+//    while (__size > 0) {                                       
+//        asm volatile ("dcbst 0,%0;sync;" : : "r" (__base));     
+//        __base += HAL_DCACHE_LINE_SIZE;                         
+//        __size -= HAL_DCACHE_LINE_SIZE;                         
+//    }                                                           
+//    CYG_MACRO_END
 
 // Preread the given range into the cache with the intention of reading
 // from it later.
-#define HAL_DCACHE_READ_HINT( _base_ , _size_ )                 \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbt 0,%0;" : : "r" (__base));           \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+// FIXME possible problem with _hadr value 
+#define HAL_DCACHE_READ_HINT( _base_ , _size_ )					\
+	CYG_MACRO_START								\
+	cyg_uint32 _adr, _siz, _hadr;						\
+										\
+	/* Compute base and size in cachable mem */				\
+	if( _base_ < CYGARC_DCACHE_BASEADDR ) {					\
+		_adr = CYGARC_DCACHE_BASEADDR;					\
+		_siz = _size_ - CYGARC_DCACHE_BASEADDR + _base_;		\
+	} else {								\
+		_adr = _base_;							\
+		_siz = _size_;							\
+	}									\
+	if((_adr + _siz - 4) > CYGARC_DCACHE_HIGHADDR)				\
+		_siz = CYGARC_DCACHE_HIGHADDR - _adr + 4;			\
+	if(_siz > HAL_DCACHE_SIZE)						\
+		_siz = HAL_DCACHE_SIZE;						\
+										\
+	/* Compute base and high addr in cache and round them to 4B addr */	\
+	_hadr = (_adr + _siz - 4) & 0xFFFFFFFC;					\
+	_adr &= 0xFFFFFFFC;							\
+										\
+	for (; _adr < _hadr; _adr += (HAL_DCACHE_LINE_SIZE/4)){ 		\
+		asm volatile ("lwi r0, %0, 0\n" : : "r" (_adr));		\
+	}									\
+	CYG_MACRO_END
 
 // Preread the given range into the cache with the intention of writing
 // to it later.
-#define HAL_DCACHE_WRITE_HINT( _base_ , _size_ )                \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbtst 0,%0;" : : "r" (__base));         \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+#define HAL_DCACHE_WRITE_HINT( _base_ , _size_ )                
+//    CYG_MACRO_START                                             
+//    cyg_uint32 __base = (cyg_uint32) (_base_);                  
+//    cyg_int32 __size = (cyg_int32) (_size_);                    
+//    while (__size > 0) {                                       
+//        asm volatile ("dcbtst 0,%0;" : : "r" (__base));         
+//        __base += HAL_DCACHE_LINE_SIZE;                         
+//        __size -= HAL_DCACHE_LINE_SIZE;                         
+//    }                                                           
+//    CYG_MACRO_END
 
 // Allocate and zero the cache lines associated with the given range.
-#define HAL_DCACHE_ZERO( _base_ , _size_ )                      \
-    CYG_MACRO_START                                             \
-    cyg_uint32 __base = (cyg_uint32) (_base_);                  \
-    cyg_int32 __size = (cyg_int32) (_size_);                    \
-    while (__size > 0) {                                        \
-        asm volatile ("dcbz 0,%0;" : : "r" (__base));           \
-        __base += HAL_DCACHE_LINE_SIZE;                         \
-        __size -= HAL_DCACHE_LINE_SIZE;                         \
-    }                                                           \
-    CYG_MACRO_END
+// FIXME this is commented in all arch
+//#define HAL_DCACHE_ZERO( _base_ , _size_ )                      
+//    HAL_DCACHE_INVALIDATE( _base_ , _size_ )
 
 //-----------------------------------------------------------------------------
 // Global control of Instruction cache
 
 // Enable the instruction cache
-#define HAL_ICACHE_ENABLE()                     \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "or  %0,%0,%2;"               \
-                  "mtspr %1,%0"                 \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_ICE)             \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_ICACHE_ENABLE()			\
+	CYG_MACRO_START				\
+	asm volatile ("msrset	r0, 0x20\n");	\
+	CYG_MACRO_END
 
 // Disable the instruction cache
-#define HAL_ICACHE_DISABLE()                    \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "andc %0,%0,%2;"              \
-                  "mtspr %1,%0"                 \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_ICE)             \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_ICACHE_DISABLE()			\
+	CYG_MACRO_START				\
+	asm volatile ("msrclr	r0, 0x20\n");	\
+	CYG_MACRO_END
 
 // Invalidate the entire cache
-#define HAL_ICACHE_INVALIDATE_ALL()             \
-    CYG_MACRO_START                             \
-    cyg_int32 _scr1, _scr2;                     \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%2;"                \
-                  "mr %1,%0;"                   \
-                  "or %0,%0,%3;"                \
-                  "mtspr %2,%0;"                \
-                  "mtspr %2,%1"                 \
-                  : "=&r" (_scr1),              \
-                    "=&r" (_scr2)               \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_ICFI)            \
-        );                                      \
-    CYG_MACRO_END
+#define HAL_ICACHE_INVALIDATE_ALL()				\
+	CYG_MACRO_START						\
+	cyg_int32 _msr, _cmp, _adr, _hadr;			\
+	_adr = CYGARC_ICACHE_BASEADDR - 4;			\
+	_hadr = CYGARC_ICACHE_BASEADDR + HAL_ICACHE_SIZE - 4;	\
+	asm volatile (						\
+		"msrclr	%0, 0x20\n"				\
+		"0:\n"						\
+		"rsub	%1, %2, %3\n"				\
+		"bleid	%1, 1f\n"				\
+		"addi	%2, %2, 4\n"				\
+		"brid	0b\n"					\
+		"wic	%2, r0\n"				\
+		"1:\n"						\
+		"mts	rmsr, %0\n"				\
+		: "=&r"	(_msr),					\
+		  "=&r"	(_cmp)					\
+		: "r" 	(_adr),					\
+		  "r"	(_hadr)					\
+	);							\
+	CYG_MACRO_END
 
 // Synchronize the contents of the cache with memory.
-#define HAL_ICACHE_SYNC()                       \
-  HAL_ICACHE_INVALIDATE_ALL()
+#define HAL_ICACHE_SYNC()											\
+	CYG_MACRO_START												\
+	cyg_int32 i;												\
+	cyg_uint32 *__base = (cyg_uint32 *) (CYGARC_ICACHE_BASEADDR);						\
+	for (i = 0; i < (HAL_ICACHE_SIZE / HAL_ICACHE_LINE_SIZE); i++, __base += HAL_ICACHE_LINE_SIZE/4){	\
+		asm volatile ("lwi r0, %0, 0\n" : : "r" (__base));						\
+	}													\
+	CYG_MACRO_END
 
 // Query the state of the instruction cache
-#define HAL_ICACHE_IS_ENABLED(_state_)          \
-    CYG_MACRO_START                             \
-    cyg_int32 _scratch;                         \
-    asm volatile ("isync;"                      \
-                  "mfspr %0,%1;"                \
-                  "and %0,%0,%2;"               \
-                  : "=&r" (_scratch)            \
-                  : "I" (CYGARC_REG_HID0),      \
-                    "r" (_HID0_ICE)             \
-        );                                      \
-    (_state_) = _scratch != 0;                  \
-    CYG_MACRO_END
+#define HAL_ICACHE_IS_ENABLED(_state_)			\
+	CYG_MACRO_START					\
+	cyg_int32 _scratch;				\
+	asm volatile ("mfs	%0, rmsr\n"		\
+			"andi	%0,%0,0x20\n"		\
+			: "=&r" (_scratch)		\
+	);						\
+	(_state_) = _scratch != 0;			\
+	CYG_MACRO_END
+
 
 // Set the instruction cache refill burst size
 //#define HAL_ICACHE_BURST_SIZE(_size_)
