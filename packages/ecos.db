@@ -7089,5 +7089,31 @@ target spartan3esk {
 		The spartan3esk target provides the packages needed to run
 		eCos on the XILINX Spartan 3E Starter Kit board."
 }
+### start CYGPKG_HAL_MICROBLAZE_XILINX_SPARTAN3E1600_OPB_EDK92
+###############################################################################
+# Generate by ecos_v1.00.a - Copyright (C) Michal Simek 2008 <monstr@monstr.eu>
+###############################################################################
+package CYGPKG_HAL_MICROBLAZE_XILINX_SPARTAN3E1600_OPB_EDK92 {
+	alias	{ "Xilinx Spartan3e1600 opb edk92" hal_microblaze_xilinx_spartan3e1600_opb_edk92 microblaze_xilinx_spartan3e1600_opb_edk92_hal }
+	directory	hal/microblaze/xilinx_spartan3e1600_opb_edk92
+	script		hal_microblaze_xilinx_spartan3e1600_opb_edk92.cdl
+	hardware
+	description " This platform is create by ecos_v1.00.a"
+}
+
+target xilinx_spartan3e1600_opb_edk92 {
+	alias	{ "Xilinx Spartan3e1600 opb edk92" xilinx_spartan3e1600_opb_edk92 }
+	packages {	CYGPKG_HAL_MICROBLAZE
+			CYGPKG_HAL_MICROBLAZE_MB4A
+			CYGPKG_HAL_MICROBLAZE_GENERIC
+			CYGPKG_HAL_MICROBLAZE_XILINX_SPARTAN3E1600_OPB_EDK92
+			CYGPKG_IO_SERIAL_GENERIC_16X5X
+			CYGPKG_IO_SERIAL_MICROBLAZE_UART16550
+			CYGPKG_IO_ETH_DRIVERS
+			CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE
+	}
+	description " This target is create by ecos_v1.00.a"
+}
+### end CYGPKG_HAL_MICROBLAZE_XILINX_SPARTAN3E1600_OPB_EDK92
 # ==========================================================================
 # End of ecos.db
