@@ -7061,5 +7061,33 @@ package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	description	"Xilinx Uart16550 serial driver"
 }
 
+# --------------------------------------------------------------------------
+
+## XILINX Spartan 3E Starter Kit (Microblaze 4a) packages
+package CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK {
+        alias           { "Spartan 3E Starter Kit board - test " hal_microblaze_spartan3esk microblaze_spartan3esk_hal }
+        directory       hal/microblaze/spartan3esk
+        script          hal_microblaze_spartan3esk.cdl
+        hardware
+        description "
+            The SPARTAN3ESK HAL package provides the support needed to run
+            eCos on a XILINX Spartan 3E Starter Kit board."
+}
+
+target spartan3esk {
+	alias           { "Spartan 3E Starter Kit - test" xilinx_spartan3esk }
+	packages        { CYGPKG_HAL_MICROBLAZE
+			CYGPKG_HAL_MICROBLAZE_MB4A
+			CYGPKG_HAL_MICROBLAZE_GENERIC
+			CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK
+			CYGPKG_IO_SERIAL_GENERIC_16X5X
+			CYGPKG_IO_SERIAL_MICROBLAZE_UART16550
+			CYGPKG_IO_ETH_DRIVERS
+			CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE
+	}
+	description "
+		The spartan3esk target provides the packages needed to run
+		eCos on the XILINX Spartan 3E Starter Kit board."
+}
 # ==========================================================================
 # End of ecos.db
