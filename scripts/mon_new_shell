@@ -1,0 +1,65 @@
+#!/bin/sh
+
+if [ "${ECOS_REPOSITORY}" == "" -o ${ECOS_BSP} == "" ]; then
+	echo "Please source ecosenv scripts"
+	exit -1
+fi;
+
+
+help()
+{
+  cat <<HELP
+mon_new_shell -- add shell application to your project
+
+USAGE: mon_new_shell
+
+OPTIONS: 
+
+EXAMPLE: mon_new_shell
+
+RETURN: -1 - ECOS_REPOSITORY is not set
+	-2 - you don't run script inside project
+
+HELP
+  exit 0
+}
+
+
+#only one project in folder is supported
+if [ `ls . | grep ".ecc" | wc -l` -eq 1 ]; then
+
+	export PROJECT=`ls . | grep ".ecc" |sed -e "s/.ecc//g"`
+
+	SHELL=${ECOS_ROOT}/tools/app/shell.tar.gz
+#	echo ${SHELL}
+
+# remove shell directory
+	[ -d shell ] && rm -rf shell
+	gunzip -9c ${SHELL} | tar xf -
+
+#adding reference to project
+	echo "ECOS_INSTALL_DIR = ../${PROJECT}_install" >> shell/Makefile
+
+	make -C shell
+
+
+#	echo "connect mb mdm" > xmd.ini
+#	echo "dow shelltask" >> xmd.ini
+#	echo "run" >> xmd.ini
+#	echo "exit" >> xmd.ini
+
+
+	echo "connect mb mdm" > shell/xmd.ini
+	echo "dow ../shelltask" >> shell/xmd.ini
+	echo "run" >> shell/xmd.ini
+	echo "exit" >> shell/xmd.ini
+
+echo "Shell application was added to your project"
+
+
+
+else
+	echo "Please run script inside project"
+	help
+	exit -2
+fi
