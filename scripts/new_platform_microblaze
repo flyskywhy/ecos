@@ -1,13 +1,13 @@
 #!/bin/sh
 
 #exit codes
-# -1 - source mONeCos distribution
+# -1 - source eCos distribution
 # -2 - missing directories
 # -3 - platform with the same name exists in distribution
 
 
 if [ "${ECOS_REPOSITORY}" == "" -o ${ECOS_BSP} == "" ]; then
-	echo "Please source ecosenv scripts"
+	echo "Please source proj/env.sh scripts"
 	exit -1
 fi;
 
