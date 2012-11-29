@@ -65,7 +65,7 @@
 void hal_variant_init(void)
 {
     //hal_if_init();
-	//HAL_CLOCK_INITIALIZE(CYGNUM_HAL_RTC_PERIOD);
+	HAL_CLOCK_INITIALIZE(CYGNUM_HAL_RTC_PERIOD);
 }
 
 
@@ -175,3 +175,37 @@ cyg_hal_clear_MMU (void)
 
 //--------------------------------------------------------------------------
 // End of var_misc.c
+
+#if (__GNUC__ >= 3)
+// Versions of gcc/g++ after 3.0 (approx.), when configured for Linux
+// native development (specifically, --with-__cxa_enable), have
+// additional dependencies related to the destructors for static
+// objects. When compiling C++ code with static objects the compiler
+// inserts a call to __cxa_atexit() with __dso_handle as one of the
+// arguments. __cxa_atexit() would normally be provided by glibc, and
+// __dso_handle is part of crtstuff.c. Synthetic target applications
+// are linked rather differently, so either a differently-configured
+// compiler is needed or dummy versions of these symbols should be
+// provided. If these symbols are not actually used then providing
+// them is still harmless, linker garbage collection will remove them.
+
+void
+__cxa_atexit(void (*arg1)(void*), void* arg2, void* arg3)
+{
+}
+void*   __dso_handle = (void*) &__dso_handle;
+void*   _Unwind_DeleteException = (void*) &_Unwind_DeleteException;
+void*   _Unwind_SjLj_Resume = (void*) &_Unwind_SjLj_Resume;
+void*   _Unwind_SjLj_Register = (void*) &_Unwind_SjLj_Register;
+void*   _Unwind_SjLj_Unregister = (void*) &_Unwind_SjLj_Unregister;
+void*   _Unwind_GetTextRelBase = (void*) &_Unwind_GetTextRelBase;
+void*   _Unwind_GetDataRelBase = (void*) &_Unwind_GetDataRelBase;
+void*   _Unwind_GetRegionStart = (void*) &_Unwind_GetRegionStart;
+void*   _Unwind_GetLanguageSpecificData = (void*) &_Unwind_GetLanguageSpecificData;
+void*   _Unwind_GetIP = (void*) &_Unwind_GetIP;
+void*   _Unwind_SetGR = (void*) &_Unwind_SetGR;
+void*   _Unwind_SetIP = (void*) &_Unwind_SetIP;
+void*   _Unwind_SjLj_Resume_or_Rethrow = (void*) &_Unwind_SjLj_Resume_or_Rethrow;
+void*   _Unwind_SjLj_RaiseException = (void*) &_Unwind_SjLj_RaiseException;
+
+#endif

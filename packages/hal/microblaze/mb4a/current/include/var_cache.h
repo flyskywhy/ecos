@@ -64,8 +64,17 @@
 
 #include <pkgconf/hal_microblaze_platform.h>
 
+
+
+
+
+#define CYGARC_UNCACHED_ADDRESS(p) (p)
+
 //-----------------------------------------------------------------------------
 // Cache dimensions
+
+
+
 
 // FIXME size of caches is wrong
 // Data cache
@@ -176,16 +185,16 @@
 
 // Write dirty cache lines to memory and invalidate the cache entries
 // for the given address range.
-#define HAL_DCACHE_FLUSH( _base_ , _size_ )
-//    CYG_MACRO_START                                             
-//    cyg_uint32 __base = (cyg_uint32) (_base_);                  
-//    cyg_int32 __size = (cyg_int32) (_size_);                   
-//    while (__size > 0) {                                       
-//        asm volatile ("dcbf 0,%0;sync;" : : "r" (__base));     
-//        __base += HAL_DCACHE_LINE_SIZE;                         
-//        __size -= HAL_DCACHE_LINE_SIZE;                        
-//    }                                                          
-//    CYG_MACRO_END
+/*#define HAL_DCACHE_FLUSH( _base_ , _size_ ) \
+    CYG_MACRO_START \
+    cyg_uint32 __base = (cyg_uint32) (_base_);\
+    cyg_int32 __size = (cyg_int32) (_size_);\
+    while (__size > 0) {\
+        asm volatile ("dcbf 0,%0;sync;" : : "r" (__base));\
+        __base += HAL_DCACHE_LINE_SIZE;\
+        __size -= HAL_DCACHE_LINE_SIZE;\
+    }\
+    CYG_MACRO_END*/
    
 // Invalidate cache lines in the given range without writing to memory.
 #define HAL_DCACHE_INVALIDATE( _base_ , _size_ )				\
@@ -224,8 +233,8 @@
 		  "=&r"	(_cmp)							\
 		: "r" 	(_adr),							\
 		  "r"	(_hadr)							\
-	);
-
+	);											\
+	CYG_MACRO_END
 // Write dirty cache lines to memory for the given address range.
 #define HAL_DCACHE_STORE( _base_ , _size_ )
 //    CYG_MACRO_START                                             

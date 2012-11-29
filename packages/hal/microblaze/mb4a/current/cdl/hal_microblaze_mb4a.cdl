@@ -96,8 +96,8 @@ cdl_package CYGPKG_HAL_MICROBLAZE_MB4A {
 	cdl_option CYGHWR_HAL_MICROBLAZE_FPU {
 		display		"Variant FPU support"
 		flavor		bool
-		default_value 	0
-		active_if	MON_HAL_CPU_FPU
+		default_value 	1
+		active_if	MON_CPU_FPU
 		description	"
 			Allow using FPU but FPU must be enabled in Microblaze options." 
 	}
