@@ -7009,5 +7009,20 @@ target ek-lm3s811 {
             on the Stellaris EK-LM3S811 board from Luminary Micro."
 }
 
+# --------------------------------------------------------------------------
+# Microblaze packages
+
+package CYGPKG_HAL_MICROBLAZE {
+	alias		{ "Microblaze common HAL" hal_microblaze microblaze_hal microblaze_arch_hal }
+	directory	hal/microblaze/arch
+	script		hal_microblaze.cdl
+	hardware
+	description	"
+		The Microblaze architecture HAL package provides generic
+		support for this processor architecture. It is also necessary to
+		select a CPU variant and a specific target platform HAL
+		package."
+}
+
 # ==========================================================================
 # End of ecos.db
