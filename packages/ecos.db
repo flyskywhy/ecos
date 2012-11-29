@@ -7044,5 +7044,13 @@ package CYGPKG_HAL_MICROBLAZE_GENERIC {
 		The Generic support for Microblaze boards"
 }
 
+package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
+	alias		{ "Xilinx Uart16550 serial driver" devs_serial_mb_uart16550 }
+	hardware
+	directory	devs/serial/microblaze/uart16550
+	script		ser_microblaze_uart16550.cdl
+	description	"Xilinx Uart16550 serial driver"
+}
+
 # ==========================================================================
 # End of ecos.db
