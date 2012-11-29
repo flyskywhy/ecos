@@ -1,8 +1,9 @@
 //==========================================================================
 //
-//      dev/if_ppc405.c
+//      dev/if_spartan3esk.c
 //
-//      Ethernet device driver for PowerPC PPC405 boards
+//      Spartan3E Starter Kit ethernet support
+//      Taken from the driver for the Xilinx VIRTEX4 development board
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,27 +40,19 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    gthomas
-// Contributors: gthomas
-// Date:         2003-08-15
+// Author(s):    Michal Pfeifer
+// Contributors:
+// Date:         2003-09-23
+//               2005-04-21
 // Purpose:      
-// Description:  hardware driver for PPC405
+// Description:  eCos hardware driver for Xilinx ML300
 //              
 //
 //####DESCRIPTIONEND####
 //
 //==========================================================================
 
-// Ethernet device driver for PPC405
-
-#include <pkgconf/system.h>
-#include <pkgconf/devs_eth_powerpc_ppc405.h>
-#include <pkgconf/io_eth_drivers.h>
-
-#ifdef CYGPKG_NET
-#include <pkgconf/net.h>
-#endif
-
+#include <pkgconf/devs_eth_microblaze_s3esklite.h>
 #include <cyg/infra/cyg_type.h>
 #include <cyg/infra/diag.h>
 
@@ -68,363 +61,271 @@
 #include <cyg/hal/hal_intr.h>
 #include <cyg/hal/drv_api.h>
 #include <cyg/hal/hal_if.h>
-#include <cyg/hal/ppc_regs.h>
 
 #include <cyg/io/eth/netdev.h>
 #include <cyg/io/eth/eth_drv.h>
-#include <cyg/io/eth_phy.h>
+//#include <cyg/io/eth_phy.h>
+
+#ifdef CYGPKG_NET
+#include <pkgconf/net.h>
+#endif
+
+#include "spartan3esk.h"
+
+#ifdef CYGPKG_REDBOOT
+#include <pkgconf/redboot.h>
+#ifdef CYGSEM_REDBOOT_FLASH_CONFIG
+#include <redboot.h>
+#include <flash_config.h>
+#endif
+#endif
+
+#include <cyg/hal/platform.h>	/* platform setting */
+
+//#define ALIGN_TO_CACHE_LINES(x)  ( (long)((x) + 31) & 0xffffffe0 )
+
+//#define os_printf diag_printf
+
+// CONFIG_ESA and CONFIG_BOOL are defined in redboot/include/flash_config.h
+#ifndef CONFIG_ESA
+#define CONFIG_ESA 6      // ethernet address length ...
+#endif
+
+#ifndef CONFIG_BOOL
+#define CONFIG_BOOL 1
+#endif
+
+static int deferred = 0; // FIXME
 
 //
 // PHY access functions
 //
-static void ppc405_eth_phy_init(void);
-static void ppc405_eth_phy_put_reg(int reg, int phy, unsigned short data);
-static bool ppc405_eth_phy_get_reg(int reg, int phy, unsigned short *val);
+//static void s3esk_eth_phy_init(void);
+//static void s3esk_eth_phy_reset(void);
+//static void s3esk_eth_phy_put_reg(int reg, int phy, unsigned short data);
+//static bool s3esk_eth_phy_get_reg(int reg, int phy, unsigned short *val);
+//#define PHY_DEBUG
 
-#include "ppc405_enet.h"
-#include CYGDAT_DEVS_PPC405_ETH_INL
+//ETH_PHY_REG_LEVEL_ACCESS_FUNS(eth0_phy, 
+//                              s3esk_eth_phy_init,
+//                              s3esk_eth_phy_reset,
+//                              s3esk_eth_phy_put_reg,
+//                              s3esk_eth_phy_get_reg);
 
-#define os_printf diag_printf
+// Align buffers on a cache boundary
+static unsigned char s3esk_eth_rxbufs[CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE];
+static unsigned char s3esk_eth_txbufs[CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE];
 
-// For fetching the ESA from RedBoot
-#include <cyg/hal/hal_if.h>
-#ifndef CONFIG_ESA
-#define CONFIG_ESA 6
-#endif
+static struct s3esk_eth_info s3esk_eth0_info = {
+    MON_EMACLITE_INTR,             // Interrupt vector
+    "eth0_esa",
+    { 0x08, 0x00, 0x3E, 0x28, 0x7A, 0xBA},  // Default ESA
+    s3esk_eth_rxbufs,                      // Rx buffer space
+    s3esk_eth_txbufs                      // Tx buffer space
+//    &eth0_phy,                             // PHY access routines
+};
 
-static void          ppc405_eth_int(struct eth_drv_sc *data);
+ETH_DRV_SC(s3esk_eth0_sc,
+           &s3esk_eth0_info,  // Driver specific data
+           "eth0",             // Name for this interface
+           s3esk_eth_start,
+           s3esk_eth_stop,
+           s3esk_eth_control,
+           s3esk_eth_can_send,
+           s3esk_eth_send,
+           s3esk_eth_recv,
+           s3esk_eth_deliver,
+           s3esk_eth_int,
+           s3esk_eth_int_vector);
 
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+NETDEVTAB_ENTRY(s3esk_netdev, 
+                "s3esk_eth", 
+                s3esk_eth_init, 
+                &s3esk_eth0_sc);
 
-static cyg_interrupt ppc405_emac_interrupt;
-static cyg_handle_t  ppc405_emac_interrupt_handle;
-static cyg_interrupt ppc405_mal_txeob_interrupt;
-static cyg_handle_t  ppc405_mal_txeob_interrupt_handle;
-static cyg_interrupt ppc405_mal_rxeob_interrupt;
-static cyg_handle_t  ppc405_mal_rxeob_interrupt_handle;
-static cyg_interrupt ppc405_mal_txde_interrupt;
-static cyg_handle_t  ppc405_mal_txde_interrupt_handle;
-static cyg_interrupt ppc405_mal_rxde_interrupt;
-static cyg_handle_t  ppc405_mal_rxde_interrupt_handle;
-static cyg_interrupt ppc405_mal_serr_interrupt;
-static cyg_handle_t  ppc405_mal_serr_interrupt_handle;
+#ifdef CYGPKG_REDBOOT
+#include <pkgconf/redboot.h>
+#ifdef CYGSEM_REDBOOT_FLASH_CONFIG
+#include <redboot.h>
+#include <flash_config.h>
+RedBoot_config_option("Network hardware address [MAC]",
+                      eth0_esa,
+                      ALWAYS_ENABLED, true,
+                      CONFIG_ESA, &s3esk_eth0_info.enaddr
+    );
+#endif // CYGSEM_REDBOOT_FLASH_CONFIG
+#endif // CYGPKG_REDBOOT
 
-#define EMAC_INTERRUPT_HANDLER(_int_,_hdlr_)                                                    \
-    cyg_drv_interrupt_create(_int_,                                                             \
-                             0,                                                                 \
-                             (cyg_addrword_t)sc, /*  Data item passed to interrupt handler */   \
-                             (cyg_ISR_t *)ppc405_eth_isr,                                       \
-                             (cyg_DSR_t *)eth_drv_dsr,                                          \
-                             &ppc405_##_hdlr_##_interrupt_handle,                               \
-                             &ppc405_##_hdlr_##_interrupt);                                     \
-    cyg_drv_interrupt_attach(ppc405_##_hdlr_##_interrupt_handle);                               \
-    cyg_drv_interrupt_acknowledge(_int_);                                                       \
-    cyg_drv_interrupt_unmask(_int_);
+
+static void s3esk_eth_int(struct eth_drv_sc *data);
+static void s3esk_eth_RxEvent(void *sc);
+static void s3esk_eth_TxEvent(void *sc);
+//static void s3esk_eth_ErrEvent(void *sc, XStatus code);
 
 // This ISR is called when the ethernet interrupt occurs
+#ifdef CYGPKG_NET
 static int
-ppc405_eth_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *regs)
+s3esk_eth_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *regs)
 {
     struct eth_drv_sc *sc = (struct eth_drv_sc *)data;
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
 
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_MAL_SERR);
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_MAL_TX_EOB);
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_MAL_RX_EOB);
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_MAL_TX_DE);
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_MAL_RX_DE);
-    cyg_drv_interrupt_mask(CYGNUM_HAL_INTERRUPT_EMAC0);
-    qi->ints = vector;
+    cyg_drv_interrupt_mask(qi->int_vector);
     return (CYG_ISR_HANDLED|CYG_ISR_CALL_DSR);  // Run the DSR
 }
 #endif
 
 // Deliver function (ex-DSR) handles the ethernet [logical] processing
 static void
-ppc405_eth_deliver(struct eth_drv_sc *sc)
+s3esk_eth_deliver(struct eth_drv_sc * sc)
 {
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    cyg_uint32 old_ints;
+#ifdef CYGPKG_NET
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    cyg_drv_interrupt_acknowledge(qi->int_vector);
 #endif
-    ppc405_eth_int(sc);
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
-    // Allow interrupts to happen again
-    HAL_DISABLE_INTERRUPTS(old_ints);
-    cyg_drv_interrupt_acknowledge(qi->ints);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_MAL_SERR);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_MAL_TX_EOB);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_MAL_RX_EOB);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_MAL_TX_DE);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_MAL_RX_DE);
-    cyg_drv_interrupt_unmask(CYGNUM_HAL_INTERRUPT_EMAC0);
-    HAL_RESTORE_INTERRUPTS(old_ints);
+    s3esk_eth_int(sc);
+#ifdef CYGPKG_NET
+    cyg_drv_interrupt_unmask(qi->int_vector);
 #endif
+
 }
 
 //
 // PHY unit access
 //
+static XEmacLite *_s3esk_dev;  // Hack - since PHY routines don't provide this
+/* PHY func removed
 static void 
-ppc405_eth_phy_init(void)
+s3esk_eth_phy_init(void)
 {
     // Set up MII hardware - nothing to do on this platform
 }
 
-static void 
-ppc405_eth_phy_put_reg(int reg, int phy, unsigned short data)
+static void
+s3esk_eth_phy_reset(void)
 {
-    unsigned long reg_val;
+    //diag_printf( "Resetting PHY! \n" );
+    //XEmac_mPhyReset(_s3esk_dev->BaseAddress);
+	// nothing to do on this platform - phy reset on OPB-reset
+}
 
-    reg_val = EMAC0_STACR_STAC_WRITE | EMAC0_STACR_OPBC_66;
-    reg_val |= (phy << EMAC0_STACR_PCDA_SHIFT) | reg;
-    reg_val |= (data << EMAC0_STACR_PHYD_SHIFT);
+static void 
+s3esk_eth_phy_put_reg(int reg, int phy, unsigned short data)
+{
 #ifdef PHY_DEBUG
-    os_printf("PHY PUT - reg: %d, phy: %d, val: %04x [%08x]\n", reg, phy, data, reg_val);
+    //os_printf("PHY PUT - reg: %d, phy: %d, val: %04x\n", reg, phy, data);
 #endif
-    while ((EMAC0_STACR & EMAC0_STACR_OC) == 0) ;  // Wait for MII free
-    EMAC0_STACR = reg_val;
-    while ((EMAC0_STACR & EMAC0_STACR_OC) == 0) ;  // Wait for MII complete
+    //XEmac_PhyWrite(_s3esk_dev, phy, reg, data);
 }
 
 static bool 
-ppc405_eth_phy_get_reg(int reg, int phy, unsigned short *val)
+s3esk_eth_phy_get_reg(int reg, int phy, unsigned short *val)
 {
-    unsigned long reg_val;
-
-    reg_val = EMAC0_STACR_STAC_READ | EMAC0_STACR_OPBC_66;
-    reg_val |= (phy << EMAC0_STACR_PCDA_SHIFT) | reg;
+    //if (XEmac_PhyRead(_s3esk_dev, phy, reg, val) == XST_SUCCESS) {
 #ifdef PHY_DEBUG
-    os_printf("PHY GET - reg: %d, phy: %d [%08x] = ", reg, phy, reg_val);
-#endif
-    while ((EMAC0_STACR & EMAC0_STACR_OC) == 0) ;  // Wait for MII free
-    EMAC0_STACR = reg_val;
-    while ((EMAC0_STACR & EMAC0_STACR_OC) == 0) ;  // Wait for MII complete
-    if ((EMAC0_STACR & EMAC0_STACR_PHYE) == 0) {
-        // Operation completed with no error
-        *val = (EMAC0_STACR & EMAC0_STACR_PHYD) >> EMAC0_STACR_PHYD_SHIFT;
-#ifdef PHY_DEBUG
-        os_printf("%04x\n", *val);
+        //os_printf("PHY GET - reg: %d, phy: %d = %x\n", reg, phy, *val);
 #endif
         return true;
-    } else {
-        // No response
-#ifdef PHY_DEBUG
-        os_printf("***ERROR***\n");
-#endif
-        return false;
-    }
+    //} else {
+    //    return false;  // Failed for some reason
+    //}
 }
+*/
 
-//
-// [re]Initialize the ethernet controller
-//   Done separately since shutting down the device requires a 
-//   full reconfiguration when re-enabling.
-//   when 
-static bool
-ppc405_eth_reset(struct eth_drv_sc *sc, unsigned char *enaddr, int flags)
-{
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    volatile mal_bd_t *rxbd, *RxBD, *txbd, *TxBD;
-    unsigned char *RxBUF, *TxBUF;
-    int i, int_state;
-    unsigned long mal_status, mode;
-    unsigned short phy_state = 0;
-
-    // Ignore unless device is idle/stopped
-    if ((EMAC0_MR0 & (EMAC0_MR0_RXI|EMAC0_MR0_TXI)) != (EMAC0_MR0_RXI|EMAC0_MR0_TXI)) {
-        return true;
-    }
-
-    // Make sure interrupts are off while we mess with the device
-    HAL_DISABLE_INTERRUPTS(int_state);
-
-    // Reset EMAC controller
-    EMAC0_MR0 |= EMAC0_MR0_SRST;
-    i = 0;
-    while ((EMAC0_MR0 & EMAC0_MR0_SRST) != 0) {
-        if (++i >= 500000) {
-            os_printf("PPC405 Ethernet does not reset\n");
-            HAL_RESTORE_INTERRUPTS(int_state);
-            return false;
-        }
-    }
-
-    TxBD = qi->txbd_table;
-    txbd = (mal_bd_t *)CYGARC_UNCACHED_ADDRESS(TxBD);
-    RxBD = qi->rxbd_table;
-    rxbd = (mal_bd_t *)CYGARC_UNCACHED_ADDRESS(RxBD);
-    qi->tbase = qi->txbd = qi->tnext = txbd;
-    qi->rbase = qi->rxbd = qi->rnext = rxbd;
-    qi->txactive = 0;
-
-    RxBUF = qi->rxbuf;
-    TxBUF = qi->txbuf;
-
-    // setup buffer descriptors
-    for (i = 0;  i < CYGNUM_DEVS_ETH_POWERPC_PPC405_RxNUM;  i++) {
-        rxbd->length = 0;
-        rxbd->buffer = (unsigned long)RxBUF;
-        rxbd->status = MAL_BD_R | MAL_BD_I;
-        RxBUF += CYGNUM_DEVS_ETH_POWERPC_PPC405_BUFSIZE;
-        rxbd++;
-    }
-    rxbd--;
-    rxbd->status |= MAL_BD_W;  // Last buffer
-    for (i = 0;  i < CYGNUM_DEVS_ETH_POWERPC_PPC405_TxNUM;  i++) {
-        txbd->length = 0;
-        txbd->buffer = (unsigned long)TxBUF;
-        txbd->status = 0;
-        TxBUF += CYGNUM_DEVS_ETH_POWERPC_PPC405_BUFSIZE;
-        txbd++;
-    }
-    txbd--;
-    txbd->status |= MAL_BD_W;  // Last buffer
-
-    // Tell memory access layer where the buffer descriptors are
-    CYGARC_MTDCR(MAL0_TXCARR, MAL_CASR_C0|MAL_CASR_C1);  // Disable/reset channel #0 & #1
-    CYGARC_MTDCR(MAL0_RXCARR, MAL_CASR_C0);  // Disable/reset channel #0
-    CYGARC_MTDCR(MAL0_CFG, MAL_CFG_SR);
-    i = 0;
-    CYGARC_MFDCR(MAL0_CFG, mal_status);
-    while ((mal_status & MAL_CFG_SR) != 0) {
-        if (++i >= 500000) {
-            os_printf("PPC405 MAL does not reset\n");
-            HAL_RESTORE_INTERRUPTS(int_state);
-            return false;
-        }
-    }
-    CYGARC_MTDCR(MAL0_CFG, MAL_CFG_PLBB | MAL_CFG_OPBBL | MAL_CFG_LEA | MAL_CFG_PLBT_DEFAULT);
-    CYGARC_MTDCR(MAL0_TXCTP0R, TxBD);
-    CYGARC_MTDCR(MAL0_RXCTP0R, RxBD);
-    CYGARC_MTDCR(MAL0_RXBS0, (CYGNUM_DEVS_ETH_POWERPC_PPC405_BUFSIZE/16));  // Receive buffer size
-
-    // Set device physical address (ESA)
-    EMAC0_IAHR = (enaddr[0]<<8) | (enaddr[1]<<0);
-    EMAC0_IALR = (enaddr[2]<<24) | (enaddr[3]<<16) | (enaddr[4]<<8) | (enaddr[5]<<0);
-
-    // Operating mode
-    if (!_eth_phy_init(qi->phy)) {
-        return false;
-    }
-    phy_state = _eth_phy_state(qi->phy);
-    os_printf("PPC405 ETH: ");
-    mode = EMAC0_MR1_RFS_4096 | EMAC0_MR1_TFS_2048 | EMAC0_MR1_TR0_MULTI | EMAC0_MR1_APP;
-    if ((phy_state & ETH_PHY_STAT_LINK) != 0) {
-        if ((phy_state & ETH_PHY_STAT_100MB) != 0) {
-            // Link can handle 100Mb
-            mode |= EMAC0_MR1_MF_100MB;
-            os_printf("100Mb");
-            if ((phy_state & ETH_PHY_STAT_FDX) != 0) {
-                mode |= EMAC0_MR1_FDE | EMAC0_MR1_EIFC | EMAC0_MR1_IST;
-                os_printf("/Full Duplex");
-            } 
-        } else {
-            // Assume 10Mb, half duplex
-            mode |= EMAC0_MR1_MF_10MB;
-            os_printf("10Mb");
-        }
-    } else {
-        os_printf("/***NO LINK***");
-        return false;
-    }
-    os_printf("\n");
-    EMAC0_MR1 = mode;
-
-    // Configure receiver
-    EMAC0_RMR = EMAC0_RMR_IAE | EMAC0_RMR_BAE | EMAC0_RMR_RRP | EMAC0_RMR_RFP;
-
-    // Transmit threshold to 256 bytes
-    EMAC0_TRTR = ((256/EMAC0_TRTR_TRT_SCALE)-1) << EMAC0_TRTR_TRT_SHIFT;
-
-    // Receive FIFO watermarks
-    EMAC0_RWMR = (0x1F<<EMAC0_RWMR_RLWM_SHIFT) | (0x10<<EMAC0_RWMR_RHWM_SHIFT);
-
-    // Frame gap
-    EMAC0_IPGVR = 8;
-
-    // Enable MAL
-    CYGARC_MTDCR(MAL0_TXCASR, MAL_CASR_C0);
-    CYGARC_MTDCR(MAL0_RXCASR, MAL_CASR_C0);
-
-    // Reset all interrupts
-    EMAC0_ISR = 0xFFFFFFFF;
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
-    qi->ints = 0;
-#endif
-
-    // Enable interface
-    EMAC0_MR0 |= (EMAC0_MR0_RXE|EMAC0_MR0_TXE);
-
-    // Restore interrupts
-    HAL_RESTORE_INTERRUPTS(int_state);
-    return true;
-}
-
-//
 // Initialize the interface - performed at system startup
 // This function must set up the interface, including arranging to
 // handle interrupts, etc, so that it may be "started" cheaply later.
-//
-
 static bool 
-ppc405_eth_init(struct cyg_netdevtab_entry *tab)
+s3esk_eth_init(struct cyg_netdevtab_entry *dtp)
 {
-    struct eth_drv_sc *sc = (struct eth_drv_sc *)tab->device_instance;
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
+    struct eth_drv_sc *sc = (struct eth_drv_sc *)dtp->device_instance;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    
+	//Xuint32 opt;
+    unsigned char _enaddr[6];
     bool esa_ok;
-    unsigned char enaddr[6];
 
-    ppc405_eth_stop(sc);  // Make sure it's not running yet
-
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
-    // Set up to handle interrupts
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_MAL_SERR, mal_serr);
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_MAL_TX_EOB, mal_txeob);
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_MAL_RX_EOB, mal_rxeob);
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_MAL_TX_DE, mal_txde);
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_MAL_RX_DE, mal_rxde);
-    EMAC_INTERRUPT_HANDLER(CYGNUM_HAL_INTERRUPT_EMAC0, emac);
-#endif
-
-    // Get physical device address
-#ifdef CYGPKG_REDBOOT
-#ifdef CYGSEM_REDBOOT_FLASH_CONFIG
-    esa_ok = flash_get_config(qi->esa_key, enaddr, CONFIG_ESA);
+    // Try to read the ethernet address of the transciever ...
+#if defined(CYGPKG_REDBOOT) && defined(CYGSEM_REDBOOT_FLASH_CONFIG)
+    esa_ok = flash_get_config(qi->esa_key, _enaddr, CONFIG_ESA);
 #else
-    esa_ok = false;
+    esa_ok = CYGACC_CALL_IF_FLASH_CFG_OP(CYGNUM_CALL_IF_FLASH_CFG_GET, 
+                                         qi->esa_key, _enaddr, CONFIG_ESA);
 #endif
-#else
-    esa_ok = CYGACC_CALL_IF_FLASH_CFG_OP(CYGNUM_CALL_IF_FLASH_CFG_GET,         
-                                         qi->esa_key, enaddr, CONFIG_ESA);
-#endif
-    if (!esa_ok) {
-        // Can't figure out ESA
-        os_printf("PPC405_ETH - Warning! ESA unknown\n");
-        memcpy(&enaddr, qi->enaddr, sizeof(enaddr));
+    if (esa_ok) {
+        memcpy(qi->enaddr, _enaddr, sizeof(qi->enaddr));
+    } else {
+        // No 'flash config' data available - use default
+        diag_printf("s3esk_ETH - Warning! Using default ESA for '%s'\n", dtp->name);
     }
-    memcpy(qi->cfg_enaddr, enaddr, sizeof(enaddr));
 
-    // Configure the device
-    if (!ppc405_eth_reset(sc, enaddr, 0)) {
+    // Initialize Xilinx driver
+    if (XEmacLite_Initialize(&qi->dev, XPAR_ETHERNET_MAC_DEVICE_ID) != XST_SUCCESS) {
+        diag_printf("s3esk_ETH - can't initialize\n");
         return false;
     }
+    //if (XEmac_mIsSgDma(&qi->dev)) {
+    //    diag_printf("s3esk_ETH - DMA support?\n");
+    //    return false;
+    //}
+    if (XEmacLite_SelfTest(&qi->dev) != XST_SUCCESS) {
+        diag_printf("s3esk_ETH - self test failed\n");
+        return false;
+    }
+    //XEmac_ClearStats(&qi->dev);
 
-    // Initialize upper level driver
-    (sc->funs->eth_drv->init)(sc, (unsigned char *)&enaddr);
+    // Configure device operating mode
+    //opt = XEM_UNICAST_OPTION | 
+    //    XEM_BROADCAST_OPTION |
+    //    XEM_INSERT_PAD_OPTION |
+    //    XEM_INSERT_FCS_OPTION |
+    //    XEM_STRIP_PAD_FCS_OPTION;
+    //if (XEmac_SetOptions(&qi->dev, opt) != XST_SUCCESS) {
+    //    diag_printf("s3esk_ETH - can't configure mode\n");
+    //    return false;
+    //}
+    //if (XEmacLite_SetMacAddress(&qi->dev, qi->enaddr) != XST_SUCCESS) {
+    //    diag_printf("s3esk_ETH - can't set ESA\n");
+    //    return false;
+    //}
+	XEmacLite_SetMacAddress(&qi->dev, qi->enaddr);
+	
+    // Set up FIFO handling routines - these are callbacks from the
+    // Xilinx driver code which happen at interrupt time
+    XEmacLite_SetSendHandler(&qi->dev, sc, s3esk_eth_TxEvent);
+    XEmacLite_SetRecvHandler(&qi->dev, sc, s3esk_eth_RxEvent);
+    //XEmac_SetErrorHandler(&qi->dev, sc, s3esk_eth_ErrEvent);
+
+#ifdef CYGPKG_NET
+    // Set up to handle interrupts
+    cyg_drv_interrupt_create(qi->int_vector,
+                             0,  // Highest //CYGARC_SIU_PRIORITY_HIGH,
+                             (cyg_addrword_t)sc, //  Data passed to ISR
+                             (cyg_ISR_t *)s3esk_eth_isr,
+                             (cyg_DSR_t *)eth_drv_dsr,
+                             &qi->s3esk_eth_interrupt_handle,
+                             &qi->s3esk_eth_interrupt);
+    cyg_drv_interrupt_attach(qi->s3esk_eth_interrupt_handle);
+    cyg_drv_interrupt_acknowledge(qi->int_vector);
+    cyg_drv_interrupt_unmask(qi->int_vector);
+#endif
+
+    // Operating mode
+    _s3esk_dev = &qi->dev;
     
+	//if (!_eth_phy_init(qi->phy)) {
+    //    return false;
+    //}
+//#ifdef CYGSEM_DEVS_ETH_POWERPC_s3esk_RESET_PHY
+    //_eth_phy_reset(qi->phy);
+//#endif
+
+    // Initialize upper level driver for ecos
+    (sc->funs->eth_drv->init)(sc, (unsigned char *)&qi->enaddr);
+
     return true;
 }
  
-//
-// This function is called to shut down the interface.
-//
-static void
-ppc405_eth_stop(struct eth_drv_sc *sc)
-{
-    EMAC0_MR0 &= ~(EMAC0_MR0_RXE|EMAC0_MR0_TXE);
-}
-
 //
 // This function is called to "start up" the interface.  It may be called
 // multiple times, even when the hardware is already running.  It will be
@@ -432,45 +333,77 @@ ppc405_eth_stop(struct eth_drv_sc *sc)
 // the hardware ready to send/receive packets.
 //
 static void
-ppc405_eth_start(struct eth_drv_sc *sc, unsigned char *enaddr, int flags)
+s3esk_eth_start(struct eth_drv_sc *sc, unsigned char *enaddr, int flags)
 {
-    EMAC0_MR0 |= (EMAC0_MR0_RXE|EMAC0_MR0_TXE);
+	
+/*
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    unsigned short phy_state = 0;
+    
+    // Enable the device
+    XEmac_Start(&qi->dev);
+    phy_state = _eth_phy_state(qi->phy);
+    diag_printf("s3esk ETH: ");
+    if ((phy_state & ETH_PHY_STAT_LINK) != 0) {
+        diag_printf( "Link detected - " );
+        if ((phy_state & ETH_PHY_STAT_100MB) != 0) {
+            // Link can handle 100Mb
+            diag_printf("100Mb");
+            if ((phy_state & ETH_PHY_STAT_FDX) != 0) {
+                diag_printf("/Full Duplex");
+            }
+        } else {
+            // Assume 10Mb, half duplex
+            diag_printf("10Mb");
+        }
+    } else 
+        diag_printf("s3esk ETH: Waiting for link to come up\n" ); 
+    diag_printf("\n");
+	*/
+	struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+	XEmacLite_EnableInterrupts(&qi->dev);
 }
+
+//
+// This function is called to shut down the interface.
+//
+static void
+s3esk_eth_stop(struct eth_drv_sc *sc)
+{
+	//nothing to do
+
+    //struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    
+    // Disable the device : 
+    //if (XEmac_Stop(&qi->dev) != XST_SUCCESS) {
+    //    diag_printf("s3esk_ETH - can't stop device!\n");
+    //}
+	
+	struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+	XEmacLite_DisableInterrupts(&qi->dev);
+}
+
 
 //
 // This function is called for low level "control" operations
 //
 static int
-ppc405_eth_control(struct eth_drv_sc *sc, unsigned long key,
-                  void *data, int length)
+s3esk_eth_control(struct eth_drv_sc *sc, unsigned long key,
+                void *data, int length)
 {
-    os_printf("%s.%d\n", __FUNCTION__, __LINE__);
-    return 1;
-#if 0
-#ifdef ETH_DRV_SET_MC_ALL
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    volatile struct ppc405 *ppc405 = qi->ppc405;
-#endif
+	struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
 
-    switch (key) {
-    case ETH_DRV_SET_MAC_ADDRESS:
-        return 0;
-        break;
-#ifdef ETH_DRV_SET_MC_ALL
-    case ETH_DRV_SET_MC_ALL:
-    case ETH_DRV_SET_MC_LIST:
-        ppc405->RxControl &= ~RxControl_PROM;
-        ppc405->hash[0] = 0xFFFFFFFF;
-        ppc405->hash[1] = 0xFFFFFFFF;
-        return 0;
-        break;
-#endif
-    default:
-        return 1;
-        break;
-    }
-#endif
+	switch (key) {
+  case ETH_DRV_SET_MAC_ADDRESS:
+    XEmacLite_SetMacAddress(&qi->dev, qi->enaddr);
+    return 0;
+    break;
+  default:
+    return 1;
+    break;
+  }
 }
+
 
 //
 // This function is called to see if another packet can be sent.
@@ -478,46 +411,83 @@ ppc405_eth_control(struct eth_drv_sc *sc, unsigned long key,
 // Zero should be returned if the interface is busy and can not send any more.
 //
 static int
-ppc405_eth_can_send(struct eth_drv_sc *sc)
+s3esk_eth_can_send(struct eth_drv_sc *sc)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-
-    return (qi->txactive < CYGNUM_DEVS_ETH_POWERPC_PPC405_TxNUM);
+  return !deferred;
 }
 
 //
 // This routine is called to send data to the hardware.
-
 static void 
-ppc405_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len, 
-               int total_len, unsigned long key)
+s3esk_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len, 
+             int total_len, unsigned long key)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    volatile mal_bd_t *txbd;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
     volatile char *bp;
-    int i, txindex;
+    int i;
 
-    // Find a free buffer
-    txbd = qi->txbd;
+#ifdef CYGPKG_NET
+    cyg_uint32 int_state;
+    HAL_DISABLE_INTERRUPTS(int_state);
+    // FIXME: closer to Send
+#endif
+
+	//can be send max 1500 bytes
+	
     // Set up buffer
-    bp = (volatile char *)CYGARC_UNCACHED_ADDRESS(txbd->buffer);
-    for (i = 0;  i < sg_len;  i++) {
+	qi->txlength = total_len;
+	bp = qi->txbuf;
+	qi->sended = 0;
+	for (i = 0;  i < sg_len;  i++) 
+	{
         memcpy((void *)bp, (void *)sg_list[i].buf, sg_list[i].len);
         bp += sg_list[i].len;
-    } 
-    txbd->length = total_len;
-    txindex = ((unsigned long)txbd - (unsigned long)qi->tbase) / sizeof(*txbd);
-    qi->txkey[txindex] = key;
-    // Send it on it's way
-    txbd->status = (txbd->status & MAL_BD_W) | MAL_BD_R | MAL_BD_L | MAL_BD_I | 
-        MAL_BD_TX_GFCS | MAL_BD_TX_GPAD;
-    qi->txactive++;
-    EMAC0_TMR0 = EMAC0_TMR0_GNP0;  // Start channel 0
-    // Remember the next buffer to try
-    if (txbd->status & MAL_BD_W) {
-        qi->txbd = qi->tbase;
-    } else {
-        qi->txbd = txbd+1;
+    }
+	
+	cyg_uint32 len = qi->txlength - qi->sended;
+	if(len > CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE) len = CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE;
+	
+	//XEmacLite_SetMacAddress(&qi->dev, qi->enaddr);
+	if (XEmacLite_Send(&qi->dev, qi->txbuf + qi->sended, len) != XST_SUCCESS) {
+		deferred = 1;
+    }
+	else
+	{
+		qi->sended += len;
+		if(qi->sended >= qi->txlength) deferred = 0;
+		else deferred = 1;
+	}
+
+    // sg_list can be freed! (maybe deferred)
+    (sc->funs->eth_drv->tx_done)(sc, key, 0);
+#ifdef CYGPKG_NET
+    HAL_RESTORE_INTERRUPTS(int_state);
+#endif
+}
+
+//
+// This function is called when a frame has been sent
+//
+static void
+s3esk_eth_TxEvent(void *_cb)
+{
+    struct eth_drv_sc *sc = (struct eth_drv_sc *)_cb;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+
+    if (deferred) {
+      	cyg_uint32 len = qi->txlength - qi->sended;
+		if(len > CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE) len = CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE;
+		
+		//XEmacLite_SetMacAddress(&qi->dev, qi->enaddr);
+		if (XEmacLite_Send(&qi->dev, qi->txbuf + qi->sended, len) != XST_SUCCESS) {
+			deferred = 1;
+	    }
+		else
+		{
+			qi->sended += len;
+			if(qi->sended >= qi->txlength) deferred = 0;
+			else deferred = 1;
+		}
     }
 }
 
@@ -526,26 +496,20 @@ ppc405_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len,
 // to prepare to unload the packet from the hardware.  Once the length of
 // the packet is known, the upper layer of the driver can be told.  When
 // the upper layer is ready to unload the packet, the internal function
-// 'ppc405_eth_recv' will be called to actually fetch it from the hardware.
+// 's3esk_eth_recv' will be called to actually fetch it from the hardware.
 //
 static void
-ppc405_eth_RxEvent(struct eth_drv_sc *sc)
+s3esk_eth_RxEvent(void *_cb)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    volatile mal_bd_t *rxbd, *rxfirst;
+    struct eth_drv_sc *sc = (struct eth_drv_sc *)_cb;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    Xint32 len;
 
-    rxbd = rxfirst = qi->rnext;
-    while ((rxbd->status & MAL_BD_R) == 0) {
-        qi->rxbd = rxbd;  // Save for callback
-        (sc->funs->eth_drv->recv)(sc, rxbd->length-4);  // Adjust for FCS
-        if (rxbd->status & MAL_BD_W) {
-            rxbd = qi->rbase;
-        } else {
-            rxbd++;
-        }
-    }
-    // Remember where we left off
-    qi->rnext = (mal_bd_t *)rxbd;
+	len = (Xint32)XEmacLite_Recv(&qi->dev, qi->rxbuf);
+	if(len>0){
+		qi->rxlength = len;
+        (sc->funs->eth_drv->recv)(sc, qi->rxlength);
+	}
 }
 
 //
@@ -556,130 +520,48 @@ ppc405_eth_RxEvent(struct eth_drv_sc *sc)
 // efficient processing in the upper layers of the stack.
 //
 static void
-ppc405_eth_recv(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len)
+s3esk_eth_recv(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
     unsigned char *bp;
     int i;
+  
+    bp = (unsigned char *)qi->rxbuf;
 
-    bp = (unsigned char *)CYGARC_UNCACHED_ADDRESS(qi->rxbd->buffer);
     for (i = 0;  i < sg_len;  i++) {
         if (sg_list[i].buf != 0) {
             memcpy((void *)sg_list[i].buf, bp, sg_list[i].len);
             bp += sg_list[i].len;
         }
     }
-    qi->rxbd->status = (qi->rxbd->status & (MAL_BD_W|MAL_BD_I)) | MAL_BD_R;
 }
 
-static void
-ppc405_eth_TxEvent(struct eth_drv_sc *sc)
-{
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    volatile mal_bd_t *txbd;
-    int key, txindex;
-
-    txbd = qi->tnext;
-    while ((txbd->status & (MAL_BD_R|MAL_BD_I)) == MAL_BD_I) {
-        txindex = ((unsigned long)txbd - (unsigned long)qi->tbase) / sizeof(*txbd);
-        if ((key = qi->txkey[txindex]) != 0) {
-            qi->txkey[txindex] = 0;
-            (sc->funs->eth_drv->tx_done)(sc, key, 0);
-        }
-        qi->txactive -= 1;
-        txbd->status &= MAL_BD_W;  //  Only preserve wrap bit
-        if ((txbd->status & MAL_BD_W) != 0) {
-            txbd = qi->tbase;
-        } else {
-            txbd++;
-        }
-        if (txbd == qi->tnext) {
-            break;  // Went through whole list
-        }
-    }
-    // Remember where we left off
-    qi->tnext = (mal_bd_t *)txbd;
-}
+//
+// This function is called when there is some sort of error
+//
+//static void
+//s3esk_eth_ErrEvent(void *sc, XStatus code)
+//{
+//    diag_printf("%s.%d\n", __FUNCTION__, __LINE__);
+//}
 
 //
 // Interrupt processing
 //
-int dump_mal0_esr = 0;
-
 static void          
-ppc405_eth_int(struct eth_drv_sc *sc)
+s3esk_eth_int(struct eth_drv_sc *sc)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    unsigned long event, tx_event, rx_event, tx_deir, rx_deir;
-    bool need_reset = false;
-
-    CYGARC_MFDCR(MAL0_TXEOBISR, tx_event);
-    if (tx_event != 0) {
-        ppc405_eth_TxEvent(sc);
-        CYGARC_MTDCR(MAL0_TXEOBISR, tx_event);
-    }
-    CYGARC_MFDCR(MAL0_RXEOBISR, rx_event);
-    if (rx_event != 0) {
-        ppc405_eth_RxEvent(sc);
-        CYGARC_MTDCR(MAL0_RXEOBISR, rx_event);
-    }
-    if ((event = EMAC0_ISR) != 0) {
-        if ((event & ~(EMAC0_ISR_SE0|EMAC0_ISR_SE1)) != 0) {
-            // Error other than signal quality
-            os_printf("EMAC0_ISR: %x\n", event);
-            if ((event & (EMAC0_ISR_TE0|EMAC0_ISR_TE1)) != 0) {
-                // Some problem with transmit - should be easily recoverable
-                CYGARC_MTDCR(MAL0_TXCASR, MAL_CASR_C0);
-                qi->tnext = qi->tbase;
-            }
-            if ((event & (EMAC0_ISR_OVR|EMAC0_ISR_BP|EMAC0_ISR_RP|EMAC0_ISR_ALE|EMAC0_ISR_BFCS)) != 0) {
-                // Rx errors - reset device
-                need_reset = true;
-            }
-        }
-        EMAC0_ISR = event;  // Reset the bits we handled
-    }
-    CYGARC_MFDCR(MAL0_ESR, event);
-    if ((event & MAL_ESR_INT_MASK) != 0) {
-        CYGARC_MFDCR(MAL0_TXDEIR, tx_deir);
-        CYGARC_MFDCR(MAL0_RXDEIR, rx_deir);
-        if (dump_mal0_esr) {
-            os_printf("MAL0_ESR: %x, Tx: %x, Rx: %x\n", event, tx_deir, rx_deir);
-            os_printf("Tx buffer headers\n");
-            diag_dump_buf((void *)qi->tbase, qi->txnum*sizeof(mal_bd_t));
-            os_printf("Rx buffer headers\n");
-            diag_dump_buf((void *)qi->rbase, qi->rxnum*sizeof(mal_bd_t));
-        }
-        if (tx_deir != 0) {
-            // Fix Tx descriptor problems
-            CYGARC_MTDCR(MAL0_TXDEIR, tx_deir);  // Clear interrupt indicator
-            CYGARC_MTDCR(MAL0_TXCASR, MAL_CASR_C0);
-            qi->tnext = qi->tbase;
-        }
-        if (rx_deir != 0) {
-            // Fix Rx descriptor problems
-            CYGARC_MTDCR(MAL0_RXDEIR, rx_deir);  // Clear interrupt indicator
-            CYGARC_MTDCR(MAL0_RXCASR, MAL_CASR_C0);
-            qi->rnext = qi->rbase;
-        }
-        CYGARC_MTDCR(MAL0_ESR, event);  // Clear events just handled
-    }
-    if (need_reset) {
-        // Something has gone awry - try resetting the device
-        os_printf("\n... PPC405 ethernet - hard reset after failure\n");
-        ppc405_eth_stop(sc);
-        if (!ppc405_eth_reset(sc, qi->cfg_enaddr, 0)) {        
-            os_printf("!! Failed? !!\n");
-        }
-    }
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    XEmacLite_InterruptHandler(&qi->dev);
 }
 
 //
 // Interrupt vector
 //
 static int          
-ppc405_eth_int_vector(struct eth_drv_sc *sc)
+s3esk_eth_int_vector(struct eth_drv_sc *sc)
 {
-    struct ppc405_eth_info *qi = (struct ppc405_eth_info *)sc->driver_private;
-    return qi->int_vector;
+    struct s3esk_eth_info *qi = (struct s3esk_eth_info *)sc->driver_private;
+    return (qi->int_vector);
 }
+
