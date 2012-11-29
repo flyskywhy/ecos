@@ -1,8 +1,8 @@
 //==========================================================================
 //
-//      spartan3esk.h
+//      adapter.h
 //
-//      Spartan3E Starter Kit ethernet support 
+//      Emaclite support
 //      Taken from the Xilinx VIRTEX4 ethernet driver
 //
 //==========================================================================
@@ -52,63 +52,60 @@
 //
 //==========================================================================
 
-#include <xemaclite.h>
-#include <xemaclite_l.h>
-#include <xstatus.h>
+#include "src/xemaclite.h"
+#include "src/xemaclite_l.h"
+#include <pkgconf/hal_microblaze_platform.h>
 
 //
 // Buffer descriptors - internal use with FIFO driver
 //
-#define S3ESK_BD_Rx_Empty      0x8000  // Buffer is empty, S3ESK can fill
-#define S3ESK_BD_Rx_Wrap       0x2000  // Wrap: Last buffer in ring
-#define S3ESK_BD_Rx_Int        0x1000  // Interrupt
-#define S3ESK_BD_Rx_Last       0x0800  // Last buffer in frame
-#define S3ESK_BD_Rx_Miss       0x0100  // Miss: promiscious mode
-#define S3ESK_BD_Rx_BC         0x0080  // Broadcast address
-#define S3ESK_BD_Rx_MC         0x0040  // Multicast address
-#define S3ESK_BD_Rx_LG         0x0020  // Frame length violation
-#define S3ESK_BD_Rx_NO         0x0010  // Non-octet aligned frame
-#define S3ESK_BD_Rx_SH         0x0008  // Short frame
-#define S3ESK_BD_Rx_CR         0x0004  // CRC error
-#define S3ESK_BD_Rx_OV         0x0002  // Overrun
-#define S3ESK_BD_Rx_TR         0x0001  // Frame truncated. late collision
+#define EMACLITE_BD_Rx_Empty      0x8000  // Buffer is empty, S3ESK can fill
+#define EMACLITE_BD_Rx_Wrap       0x2000  // Wrap: Last buffer in ring
+#define EMACLITE_BD_Rx_Int        0x1000  // Interrupt
+#define EMACLITE_BD_Rx_Last       0x0800  // Last buffer in frame
+#define EMACLITE_BD_Rx_Miss       0x0100  // Miss: promiscious mode
+#define EMACLITE_BD_Rx_BC         0x0080  // Broadcast address
+#define EMACLITE_BD_Rx_MC         0x0040  // Multicast address
+#define EMACLITE_BD_Rx_LG         0x0020  // Frame length violation
+#define EMACLITE_BD_Rx_NO         0x0010  // Non-octet aligned frame
+#define EMACLITE_BD_Rx_SH         0x0008  // Short frame
+#define EMACLITE_BD_Rx_CR         0x0004  // CRC error
+#define EMACLITE_BD_Rx_OV         0x0002  // Overrun
+#define EMACLITE_BD_Rx_TR         0x0001  // Frame truncated. late collision
 
-#define S3ESK_BD_Tx_Ready      0x8000  // Frame ready
-#define S3ESK_BD_Tx_Pad        0x4000  // Pad short frames
-#define S3ESK_BD_Tx_Wrap       0x2000  // Wrap: Last buffer in ring
-#define S3ESK_BD_Tx_Int        0x1000  // Interrupt
-#define S3ESK_BD_Tx_Last       0x0800  // Last buffer in frame
-#define S3ESK_BD_Tx_TC         0x0400  // Send CRC after data
-#define S3ESK_BD_Tx_DEF        0x0200  // Defer indication
-#define S3ESK_BD_Tx_HB         0x0100  // Heartbeat
-#define S3ESK_BD_Tx_LC         0x0080  // Late collision
-#define S3ESK_BD_Tx_RL         0x0040  // Retransmission limit
-#define S3ESK_BD_Tx_RC         0x003C  // Retry count 
-#define S3ESK_BD_Tx_UN         0x0002  // Underrun
-#define S3ESK_BD_Tx_CSL        0x0001  // Carrier sense lost
-#define S3ESK_BD_Tx_ERRORS     (FCC_BD_Tx_LC|FCC_BD_Tx_RL|FCC_BD_Tx_RC|FCC_BD_Tx_UN|FCC_BD_Tx_CSL)
+#define EMACLITE_BD_Tx_Ready      0x8000  // Frame ready
+#define EMACLITE_BD_Tx_Pad        0x4000  // Pad short frames
+#define EMACLITE_BD_Tx_Wrap       0x2000  // Wrap: Last buffer in ring
+#define EMACLITE_BD_Tx_Int        0x1000  // Interrupt
+#define EMACLITE_BD_Tx_Last       0x0800  // Last buffer in frame
+#define EMACLITE_BD_Tx_TC         0x0400  // Send CRC after data
+#define EMACLITE_BD_Tx_DEF        0x0200  // Defer indication
+#define EMACLITE_BD_Tx_HB         0x0100  // Heartbeat
+#define EMACLITE_BD_Tx_LC         0x0080  // Late collision
+#define EMACLITE_BD_Tx_RL         0x0040  // Retransmission limit
+#define EMACLITE_BD_Tx_RC         0x003C  // Retry count 
+#define EMACLITE_BD_Tx_UN         0x0002  // Underrun
+#define EMACLITE_BD_Tx_CSL        0x0001  // Carrier sense lost
+#define EMACLITE_BD_Tx_ERRORS     (FCC_BD_Tx_LC|FCC_BD_Tx_RL|FCC_BD_Tx_RC|FCC_BD_Tx_UN|FCC_BD_Tx_CSL)
 
-#define CYGNUM_DEVS_ETH_POWERPC_S3ESK_BUFSIZE XEL_MTU_SIZE
+#define MTU	1500
 //
 // Info kept about interface
 //
-struct s3esk_eth_info { 
+struct emaclite_info { 
     // These fields should be defined by the implementation
     int                       int_vector;
     char                     *esa_key;        // RedBoot 'key' for device ESA
     unsigned char             enaddr[6];
     unsigned char            *rxbuf;          // Rx buffer space
     unsigned char            *txbuf;          // Tx buffer space
-//#ifdef CYGPKG_DEVS_ETH_PHY
-//    eth_phy_access_t         *phy;            // Routines to access PHY
-//#endif
     // The rest of the structure is set up at runtime
     XEmacLite                 dev;
     unsigned short            rxlength;       // Rx buffer length
     unsigned short            txlength;       // Tx buffer length
 #ifdef CYGPKG_NET
-    cyg_interrupt             s3esk_eth_interrupt;
-    cyg_handle_t              s3esk_eth_interrupt_handle;
+    cyg_interrupt             emaclite_interrupt;
+    cyg_handle_t              emaclite_interrupt_handle;
 #endif
 	int						  sended;
 };

@@ -1,6 +1,6 @@
 # ====================================================================
 #
-#      spartan3esk_eth_drivers.cdl
+#      emaclite_eth_drivers.cdl
 #
 #      Hardware specifics for spartan3esk ethernet
 #      Taken from Xilinx VIRTEX4 Board
@@ -50,82 +50,32 @@
 #
 # ====================================================================
 
-cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_S3ESKLITE {
-    display       "Spartan3E Starter Kit ethernet support"
-    description   "Spartan3E Starter Kit ethernet support."
+cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE {
+    display       "Emaclite support"
+    description   "Emaclite support."
 
     parent        CYGPKG_IO_ETH_DRIVERS
     active_if	  CYGPKG_IO_ETH_DRIVERS
     active_if	  CYGPKG_HAL_MICROBLAZE 
     requires      CYGPKG_HAL_MICROBLAZE_GENERIC
-    active_if     MNDHWR_SPARTAN3ESK_EMAC_LITE
+    active_if     MON_EMACLITE_0
 
-    include_dir   .
-    include_files ; # none _exported_ whatsoever
+#    include_dir   .
+#    include_files ; # none _exported_ whatsoever
 
     implements    CYGHWR_NET_DRIVERS
     implements    CYGHWR_NET_DRIVER_ETH0
 
-    compile       -library=libextras.a if_spartan3esk.c
+    compile       -library=libextras.a adapter.c src/xemaclite.c src/xemaclite_intr.c \
+                  src/xemaclite_g.c src/xemaclite_l.c src/xemaclite_selftest.c
 
-    # Debug I/O during network stack initialization is not reliable
-    # requires { !CYGPKG_NET || CYGPKG_NET_FORCE_SERIAL_CONSOLE == 1 }
-
-    #cdl_option CYGNUM_DEVS_ETH_POWERPC_VIRTEX4_BUFSIZE {
-    #    display       "Buffer size"
-    #    flavor        data
-    #    default_value 1536
-    #    description   "
-    #        This option specifies the size of the internal buffers used
-    #        for the PowerPC VIRTEX4/ethernet device."
-    #}
-
-    #cdl_option CYGNUM_DEVS_ETH_POWERPC_VIRTEX4_TxNUM {
-    #    display       "Number of output buffers"
-    #    flavor        data
-    #    legal_values  2 to 64
-    #    default_value 8
-    #    description   "
-    #        This option specifies the number of output buffer packets
-    #        to be used for the PowerPC VIRTEX4/ethernet device."
-    #}
-
-    #cdl_option CYGNUM_DEVS_ETH_POWERPC_VIRTEX4_RxNUM {
-    #    display       "Number of input buffers"
-    #    flavor        data
-    #    legal_values  2 to 64
-    #    default_value 8
-    #    description   "
-    #        This option specifies the number of input buffer packets
-    #        to be used for the PowerPC VIRTEX4/ethernet device."
-    #}
-
-    #cdl_component CYGSEM_DEVS_ETH_POWERPC_VIRTEX4_RESET_PHY {
-    #    display       "Reset and reconfigure PHY"
-    #    flavor        bool
-    #    default_value { CYG_HAL_STARTUP != "RAM" }
-    #    active_if     CYGPKG_DEVS_ETH_PHY
-    #    description "
-    #        This option allows control over the physical transceiver"
-
-    #    cdl_option CYGNUM_DEVS_ETH_POWERPC_VIRTEX4_LINK_MODE {
-    #        display       "Initial link mode"
-    #        flavor        data
-    #        legal_values  { "10Mb" "100Mb" "1000Mb" "Auto" }
-    #        default_value { "Auto" }
-    #        description   "
-    #            This option specifies initial mode for the physical
-    #            link.  The PHY will be reset and then set to this mode."
-    #    }
-    #}
-
-    cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_S3ESKLITE_OPTIONS {
-        display "Spartan3E Starter Kit ethernet driver build options"
+    cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE_OPTIONS {
+        display "Emaclite build options"
         flavor  none
 	no_define
 
-        cdl_option CYGPKG_DEVS_ETH_MICROBLAZE_S3ESKLITE_CFLAGS_ADD {
-            display "Additional compiler flags"
+        cdl_option CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE_CFLAGS_ADD {
+            display "Emaclite compiler flags"
             flavor  data
             no_define
             default_value { "-D_KERNEL -D__ECOS" }

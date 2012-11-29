@@ -11,7 +11,7 @@
 *
 *******************************************************************/
 
-#include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
 #include "xemaclite.h"
 
 /*
@@ -21,10 +21,10 @@
 XEmacLite_Config XEmacLite_ConfigTable[] =
 {
 	{
-		XPAR_EMACLITE_0_DEVICE_ID,
-		XPAR_EMACLITE_0_BASEADDR,
-		XPAR_EMACLITE_0_TX_PING_PONG,
-		XPAR_EMACLITE_0_RX_PING_PONG
+		0,
+		MON_EMACLITE_BASE,
+		MON_EMACLITE_TX_PING_PONG,
+		MON_EMACLITE_RX_PING_PONG
 	}
 };
 

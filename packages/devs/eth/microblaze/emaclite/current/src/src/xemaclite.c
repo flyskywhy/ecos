@@ -39,7 +39,8 @@
 /***************************** Include Files *********************************/
 
 #include "xstatus.h"
-#include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
+
 #include "xio.h"
 #include "xenv.h"
 #include "xemaclite.h"
@@ -535,7 +536,8 @@ XEmacLite_Config *XEmacLite_LookupConfig(Xuint16 DeviceId)
     XEmacLite_Config *CfgPtr = XNULL;
     int i;
 
-    for (i = 0; i < XPAR_XEMACLITE_NUM_INSTANCES; i++)
+/* only one ethernet core is supported */
+    for (i = 0; i < 1; i++)
     {
         if (XEmacLite_ConfigTable[i].DeviceId == DeviceId)
         {
