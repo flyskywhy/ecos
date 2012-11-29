@@ -56,7 +56,7 @@
 ##
 ##=============================================================================
 
-#include <cyg/hal/variant.inc>
+##include <cyg/hal/variant.inc>
 
 #------------------------------------------------------------------------------
 # Some useful coding macros
@@ -104,7 +104,7 @@ name:
 	andi	r4, r4, 0x2
 	mts	rmsr, r4
 	nop
-#endm
+.endm
 
 #endif
 

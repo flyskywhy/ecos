@@ -95,6 +95,7 @@
 #===========================================================================
 
 #include <pkgconf/hal.h>
+#include <pkgconf/hal.h>
 
 #ifdef CYGPKG_KERNEL
 #include <pkgconf/kernel.h>     // CYGPKG_KERNEL_INSTRUMENT
@@ -103,7 +104,7 @@
 #define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
 #include <cyg/hal/mb_regs.h>
 
-#include <cyg/hal/arch.inc>
+##include <cyg/hal/arch.inc>
 
 #===========================================================================
 
@@ -148,6 +149,26 @@
 # Macros for generating an VSRs service routine
 
 # Generic vector macros
+
+##.macro hal_cpu_int_enable
+##	msrset	r0, 0x2
+##	nop
+##.endm
+
+# Disable interrupts
+##.macro hal_cpu_int_disable
+##	msrclr	r0, 0x2
+##	nop
+##.endm
+
+##.macro	hal_cpu_int_merge sr
+##	mfs	r4, rmsr
+##	andni	r4, r4, 0x0002
+##	andi	\sr, \sr, 0x0002
+##	or	r4, r4, \sr
+##	mts	rmsr, r4
+##	nop
+##.endm
 
 
 rom_vectors:
@@ -204,8 +225,8 @@ __vcr_vector_reserved_e:
 		bri		__call_vcr_reserved_e
 		nop
 
-# Variants may define extra vectors.
-        hal_extra_vectors
+## Variants may define extra vectors.
+#        hal_extra_vectors
 
 
 rom_vectors_end:
@@ -266,7 +287,7 @@ __call_vcr_reserved_e:
 		call_vector		9
 
         # Variants may define extra vectors.		
-		hal_call_extra_vectors
+##		hal_call_extra_vectors
 		
 #rom_vectors:
         # These are the architecture defined vectors that
@@ -303,6 +324,19 @@ __call_vcr_reserved_e:
 _start:
 	# Initialize CPU to a post-reset state, ensuring the ground doesn't
 	# shift under us while we try to set things up.
+	#ifdef MON_CPU_MSR_INSTR
+	.macro hal_cpu_init
+	msrclr r0, 0 # MSR = 0
+	nop
+	.endm
+	#else
+	.macro hal_cpu_init
+	addi r3, r0, 0
+	mts rmsr, r3
+	nop
+	.endm
+	#endif
+	
 	hal_cpu_init
 
 	# Set up global offset table
@@ -335,6 +369,137 @@ _hal_hardware_init_done:
 
 	# set up stack
 	addi	r1, r0, __interrupt_stack
+
+
+
+
+
+
+
+
+
+
+
+
+
+##-----------------------------------------------------------------------------
+## mb4a monitor initialization
+
+#ifndef CYGPKG_HAL_MB_MON_DEFINED
+
+#if     defined(CYG_HAL_STARTUP_ROM) ||                 \
+        (       defined(CYG_HAL_STARTUP_RAM) &&         \
+                !defined(CYGSEM_HAL_USE_ROM_MONITOR))
+
+        .macro  hal_mon_init
+        # Initialize the VSR table. This happens whether the
+        # vectors were copied to RAM or not.
+
+        # First fill with exception handlers
+        addi    r3, r0, cyg_hal_default_exception_vsr
+        addi    r4, r0, hal_vsr_table
+        addi    r5, r0, CYGNUM_HAL_VSR_COUNT
+1:      swi		r3, r4, 0
+		addi	r4, r4, 4
+        addi    r5, r5, -1
+        bnei    r5, 1b
+
+        # Then fill in the special vectors
+        addi    r3, r0, cyg_hal_default_interrupt_vsr
+        addi    r4, r0, hal_vsr_table
+        swi     r3, r4, CYGNUM_HAL_VECTOR_INTERRUPT * 4
+        .endm
+
+#elif defined(CYG_HAL_STARTUP_RAM) && defined(CYGSEM_HAL_USE_ROM_MONITOR)
+
+        # Initialize the VSR table entries
+        # We only take control of the interrupt vectors,
+        # the rest are left to the ROM for now...
+
+        .macro  hal_mon_init
+        addi    r3, r0, cyg_hal_default_interrupt_vsr
+        addi    r4, r0, hal_vsr_table
+        swi     r3, r4, CYGNUM_HAL_VECTOR_INTERRUPT * 4
+        .endm
+
+
+#else
+
+        .macro  hal_mon_init
+
+        .endm
+
+#endif
+
+
+#define CYGPKG_HAL_MB_MON_DEFINED
+
+#endif // CYGPKG_HAL_MB_MON_DEFINED
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+       .macro hal_variant_save regs
+			# read regs and store them
+#ifdef CYGHWR_HAL_MICROBLAZE_FPU
+			mfs   r3, rfsr
+			swi   r3, \regs, CYGARC_MBREG_FSR
+#endif
+#ifdef CYGHWR_HAL_MICROBLAZE_HWEXCEPTION
+			mfs   r3, rear
+			mfs   r4, resr
+			swi   r3, \regs, CYGARC_MBREG_EAR
+			swi   r4, \regs, CYGARC_MBREG_ESR
+#endif
+        .endm
+
+        .macro hal_variant_load regs
+			# load regs
+#ifdef CYGHWR_HAL_MICROBLAZE_FPU
+			lwi   r3, \regs, CYGARC_MBREG_FSR
+			mts   r3, rfsr
+#endif
+#ifdef CYGHWR_HAL_MICROBLAZE_HWEXCEPTION
+			// ESR and EAR can't be written
+#endif
+        .endm
+
+##-----------------------------------------------------------------------------
+## Indicate that the ISR tables are defined in variant.S
+
+#define CYG_HAL_MB_ISR_TABLES_DEFINED
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	# Set up exception handlers and VSR table, taking care not to
 	# step on any ROM monitor''s toes.
@@ -392,6 +557,7 @@ _hal_hardware_init_done:
 		swi		r1, r1, -CYGARC_MB_STACK_FRAME_SIZE # create new stack frame
 		addi	r1, r1, -CYGARC_MB_STACK_FRAME_SIZE
 
+
 	# Variant HALs may need to do something special before we continue
 	bralid	r15, hal_variant_init
 	nop
@@ -412,6 +578,9 @@ _hal_hardware_init_done:
 	bralid	r15, cyg_hal_invoke_constructors
 	nop
 
+
+
+
 #ifdef CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS
 	bralid	r15, initialize_stub
 	nop
@@ -421,8 +590,8 @@ _hal_hardware_init_done:
 	bralid	r15, hal_ctrlc_isr_init
 	nop
 #endif
-	#hal_cpu_int_enable
-
+	
+	//##hal_cpu_int_enable
         bralid	r15, cyg_start		# call cyg_start
 	nop
 
@@ -646,10 +815,36 @@ cyg_hal_default_exception_vsr:
 ## Bit 21 biffers between decrementer (0) and external (1).
 
         # decode the interrupt
-	.macro  hal_intc_decode dreg,state
+/*	.macro  hal_intc_decode dreg,state
 		swi     r0, \state, 4					   # vector in state frame.
         xor    \dreg, \dreg, \dreg                 # word offset.
-    .endm                              
+    .endm*/
+
+
+.macro  hal_intc_decode dreg,state
+	#addi	r3, r0, _S3ESK_INTC
+	lwi	\dreg, r0, MON_INTC_BASE # S3ESK_INTC_ISR load isr value
+	lwi	r3, r0, MON_INTC_BASE + 0x8  #_S3ESK_INTC_IER # load ier value
+	and	r3, \dreg, r3
+	andi r3, r3, 0x07
+
+	beqid	r3, 1f					# calculate irq number
+	xor	\dreg, \dreg, \dreg
+0:	srl	r3, r3
+	bneid	r3, 0b
+	addi	\dreg, \dreg, 1
+	
+	addi	\dreg, \dreg, -1
+1:
+#	addi	\dreg, \dreg, 1 #FIXME interrupt first - there is something weird
+	swi	\dreg, \state, 4			# update vector in state frame.
+	bslli	\dreg, \dreg, 2				# convert to byte offset.
+
+	#xor    \dreg, \dreg, \dreg                 # word offset.
+.endm
+
+
+
 
 #endif // CYGPKG_HAL_MB_INTC_DEFINED
 

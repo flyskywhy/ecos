@@ -155,6 +155,7 @@ cyg_hal_exception_handler(HAL_SavedRegisters *regs, cyg_uint32 vector)
 externC cyg_uint32
 hal_default_isr(CYG_ADDRWORD vector, CYG_ADDRWORD data)
 {
+    CYG_TRACE1(true, "Interrupt: %d", vector);
     diag_printf("Interrupt: %d\n", vector);
 
     CYG_FAIL("Spurious Interrupt!!!");
@@ -179,8 +180,8 @@ hal_idle_thread_action( cyg_uint32 count )
 {
     // Execute variant idle thread action, while allowing it to control
     // whether to run any of the architecture action code.
-    if (!hal_variant_idle_thread_action(count))
-        return;
+//    if (!hal_variant_idle_thread_action(count))
+//        return;
 }
 
 //---------------------------------------------------------------------------

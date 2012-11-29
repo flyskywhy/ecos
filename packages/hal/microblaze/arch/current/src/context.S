@@ -54,7 +54,6 @@
 
 #include <pkgconf/hal.h>
         
-#include <cyg/hal/arch.inc>
 #include <cyg/hal/mb_offsets.inc>
 
 #------------------------------------------------------------------------------
@@ -62,6 +61,13 @@
 # Switch thread contexts
 # R5 = address of sp of next thread to execute
 # R6 = address of sp save location of current thread
+#define FUNC_START(name)	\
+	.type	name,@function;	\
+	.globl	name;		\
+name:
+
+#define FUNC_END(name)		\
+	/* nothing for now */
 
 
 FUNC_START(hal_thread_switch_context)
@@ -151,7 +157,14 @@ FUNC_START(hal_thread_load_context)
 	lwi	r31, r1, (CYGARC_MBREG_REGS+(31-1)*4)
 
 	lwi     r5, r1, CYGARC_MBREG_MSR       # merge interrupt state
-	hal_cpu_int_merge r5
+	mfs r4, rmsr
+	andni r4, r4, 0x0002
+	andi r5, r5, 0x0002
+	or r4, r4, r5
+	mts rmsr, r4
+	nop
+
+	####hal_cpu_int_merge r5
 
 	lwi     r2, r1, CYGARC_MBREG_REGS+(2-1)*4  # R2 = TOC
 
@@ -160,6 +173,10 @@ FUNC_START(hal_thread_load_context)
 	lwi     r1, r1, CYGARC_MBREG_REGS+(1-1)*4  # finally restore true SP
 
 	rtsd	r15, 8                             # jump to LR
+	nop
+	nop
+	nop
+	nop
 	nop
 
 #------------------------------------------------------------------------------
