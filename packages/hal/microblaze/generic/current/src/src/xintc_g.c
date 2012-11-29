@@ -79,6 +79,7 @@
 
 #include "xintc.h"
 #include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -105,18 +106,11 @@
  * Refer to the XIntc_Config data structure in xintc.h for details on how this
  * table should be initialized.
  */
-XIntc_Config XIntc_ConfigTable[XPAR_XINTC_NUM_INSTANCES] = {
+XIntc_Config XIntc_ConfigTable[0] = {
 	{
-	 XPAR_INTC_0_DEVICE_ID,	/* Unique ID  of device */
-	 XPAR_INTC_0_BASEADDR,	/* Register base address */
-	 XPAR_INTC_0_ACK_BEFORE,	/* Ack before or after service */
-	 0			/* Device options */
-	 }
-	,
-	{
-	 XPAR_INTC_1_DEVICE_ID,	/* Unique ID  of device */
-	 XPAR_INTC_1_BASEADDR,	/* Register base address */
-	 XPAR_INTC_1_ACK_BEFORE,	/* Ack before or after service */
+	 0x13,	/* Unique ID  of device */
+	 MON_INTC_BASE,	/* Register base address */
+	 0,	/* Ack before or after service */
 	 0			/* Device options */
 	 }
 };

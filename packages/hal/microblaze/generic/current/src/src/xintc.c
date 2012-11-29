@@ -139,6 +139,7 @@ int XIntc_Initialize(XIntc * InstancePtr, u16 DeviceId)
 	 * and reinitialize, but prevents a user from inadvertently initializing
 	 */
 	if (InstancePtr->IsStarted == XIL_COMPONENT_IS_STARTED) {
+			diag_printf("intc not found0... ");
 		return XST_DEVICE_IS_STARTED;
 	}
 
@@ -148,7 +149,8 @@ int XIntc_Initialize(XIntc * InstancePtr, u16 DeviceId)
 	 */
 	CfgPtr = XIntc_LookupConfig(DeviceId);
 	if (CfgPtr == NULL) {
-		return XST_DEVICE_NOT_FOUND;
+		diag_printf("intc not found1... ");
+//		return XST_DEVICE_NOT_FOUND;
 	}
 
 	/*
@@ -587,7 +589,7 @@ XIntc_Config *XIntc_LookupConfig(u16 DeviceId)
 
 	for (Index = 0; Index < XPAR_XINTC_NUM_INSTANCES; Index++) {
 		if (XIntc_ConfigTable[Index].DeviceId == DeviceId) {
-			CfgPtr = &XIntc_ConfigTable[Index];
+			CfgPtr = &XIntc_ConfigTable[0];//[Index];
 			break;
 		}
 	}
