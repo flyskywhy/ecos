@@ -7035,5 +7035,14 @@ package CYGPKG_HAL_MICROBLAZE_MB4A {
 		select a specific target platform HAL package."
 }
 
+package CYGPKG_HAL_MICROBLAZE_GENERIC {
+	alias		{ "Generic support for Microblaze boards" hal_microblaze_generic microblaze_generic_hal }
+	directory	hal/microblaze/generic
+	script		hal_microblaze_generic.cdl
+	hardware
+	description	"
+		The Generic support for Microblaze boards"
+}
+
 # ==========================================================================
 # End of ecos.db
