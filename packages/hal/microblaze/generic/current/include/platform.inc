@@ -41,8 +41,8 @@
 ##=============================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s): 	gthomas
-## Contributors:
+## Author(s):      Michal Pfeifer
+## Original data:  PowerPC
 ## Date:	2002-07-31
 ## Purpose:	Platform specific assembly code
 ## Description:	This file contains various definitions and macros that are
@@ -53,29 +53,29 @@
 ######DESCRIPTIONEND####
 ##
 ##=============================================================================
-##-----------------------------------------------------------------------------
-## MPC82xx interrupt handling.
 
-#ifndef CYGPKG_HAL_POWERPC_INTC_DEFINED
+#ifndef CYGPKG_HAL_MB_INTC_DEFINED
+# decode the interrupt
+.macro  hal_intc_decode dreg,state
+	#addi	r3, r0, _S3ESK_INTC
+	lwi	\dreg, r0, MON_INTC_BASE # S3ESK_INTC_ISR load isr value
+	lwi	r3, r0, MON_INTC_BASE + 0x8  #_S3ESK_INTC_IER # load ier value
+	and	r3, \dreg, r3
 
-        # decode the interrupt
-	.macro  hal_intc_decode dreg,state
-        lwz     \dreg,CYGARC_PPCREG_VECTOR(\state) # retrieve vector number,
-        rlwinm. \dreg,\dreg,22,31,31            # isolate bit 21
-        beq     0f                              # done if decrementer (vec 0)
-        lwi     \dreg,_CSB281_EPIC_IACK         # if external, get vector
-        li      r0,0            
-        lwbrx   \dreg,r0,\dreg                  # EPIC is little endian!
-        cmpi    0,\dreg,0xFF                    # spurious interrupt?
-        beq     restore_state
-        lwi     r3,_CSB281_EPIC_EOI             # clear interrupt?
-        stw     r0,0(r3)
-0:      stw     \dreg,CYGARC_PPCREG_VECTOR(\state) # update vector in state frame.
-        slwi    \dreg,\dreg,2                   # convert to byte offset.
-        .endm                              
+	beqid	r3, 1f					# calculate irq number
+	xor	\dreg, \dreg, \dreg
+0:	srl	r3, r3
+	bneid	r3, 0b
+	addi	\dreg, \dreg, 1
+	addi	\dreg, \dreg, -1
+1:	
+	addi	\dreg, \dreg, 1 #FIXME interrupt first - there is something weird 
+	swi	\dreg, \state, 4			# update vector in state frame.
+	bslli	\dreg, \dreg, 2				# convert to byte offset.
+.endm
 
-#define CYGPKG_HAL_POWERPC_INTC_DEFINED
-#endif // CYGPKG_HAL_POWERPC_INTC_DEFINED
+#define CYGPKG_HAL_MB_INTC_DEFINED
+#endif /* CYGPKG_HAL_MB_INTC_DEFINED */
 
 #------------------------------------------------------------------------------
 #endif // ifndef CYGONCE_HAL_PLATFORM_INC

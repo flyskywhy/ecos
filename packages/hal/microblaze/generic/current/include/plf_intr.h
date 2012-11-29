@@ -5,7 +5,7 @@
 //
 //      plf_intr.h
 //
-//      CSB281 platform specific interrupt definitions
+//      Generic platform specific interrupt definitions
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -42,8 +42,8 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    jskov
-// Contributors: jskov, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
 // Date:         2000-06-13
 // Purpose:      Define platform specific interrupt support
 //              
@@ -62,38 +62,28 @@
 
 //----------------------------------------------------------------------------
 // Platform specific interrupt mapping - interrupt vectors
-#define CYGNUM_HAL_INTERRUPT_IRQ0   0x02
-#define CYGNUM_HAL_INTERRUPT_IRQ1   0x03
-#define CYGNUM_HAL_INTERRUPT_IRQ2   0x04
-#define CYGNUM_HAL_INTERRUPT_IRQ3   0x05
-#define CYGNUM_HAL_INTERRUPT_IRQ4   0x06
-#define CYGNUM_HAL_INTERRUPT_UART0  0x07
-#define CYGNUM_HAL_INTERRUPT_UART1  0x08
-#define CYGNUM_HAL_INTERRUPT_TIMER0 0x09
-#define CYGNUM_HAL_INTERRUPT_TIMER1 0x0A
-#define CYGNUM_HAL_INTERRUPT_TIMER2 0x0B
-#define CYGNUM_HAL_INTERRUPT_TIMER3 0x0C
-#define CYGNUM_HAL_INTERRUPT_I2C    0x0D
-#define CYGNUM_HAL_INTERRUPT_DMA0   0x0E
-#define CYGNUM_HAL_INTERRUPT_DMA1   0x0F
-#define CYGNUM_HAL_INTERRUPT_MSG    0x10
-#define CYGNUM_HAL_ISR_MAX          0x10
+#define CYGHWR_HAL_INTERRUPT_LAYOUT_DEFINED
 
-#define CYGNUM_HAL_INTERRUPT_PCI0   CYGNUM_HAL_INTERRUPT_IRQ0  // PCI slot 0 (disabled)
-#define CYGNUM_HAL_INTERRUPT_PCI1   CYGNUM_HAL_INTERRUPT_IRQ1  // PCI slot 1
-#define CYGNUM_HAL_INTERRUPT_LAN    CYGNUM_HAL_INTERRUPT_IRQ2  // Onboard GD82559
-#define CYGNUM_HAL_INTERRUPT_MOUSE  CYGNUM_HAL_INTERRUPT_IRQ3  // PS/2 mouse
-#define CYGNUM_HAL_INTERRUPT_KBD    CYGNUM_HAL_INTERRUPT_IRQ4  // PS/2 keyboard
+/* maximum number of interrupt */
+#define CYGNUM_HAL_ISR_MAX		MON_INTC_NUM_INTR
+
+//Real-time clock
+#ifndef CYGNUM_HAL_INTERRUPT_RTC
+#define CYGNUM_HAL_INTERRUPT_RTC	MON_TIMER_INTR
+#endif // CYGNUM_HAL_INTERRUPT_RTC
 
 // Platform specific interrupt handling - using EPIC
 #define CYGHWR_HAL_INTERRUPT_CONTROLLER_ACCESS_DEFINED
 
+externC void hal_interrupt_init(void);
 externC void hal_interrupt_mask(int);
 externC void hal_interrupt_unmask(int);
 externC void hal_interrupt_acknowledge(int);
 externC void hal_interrupt_configure(int, int, int);
 externC void hal_interrupt_set_level(int, int);
 
+#define HAL_PLF_INTERRUPT_INIT()                           \
+    hal_interrupt_init()
 #define HAL_INTERRUPT_MASK( _vector_ )                     \
     hal_interrupt_mask( _vector_ ) 
 #define HAL_INTERRUPT_UNMASK( _vector_ )                   \
@@ -105,22 +95,16 @@ externC void hal_interrupt_set_level(int, int);
 #define HAL_INTERRUPT_SET_LEVEL( _vector_, _level_ )       \
     hal_interrupt_set_level( _vector_, _level_ )
 
-
-//--------------------------------------------------------------------------
-// Control-C support.
-
-// Defined by the quicc driver
-// #include <cyg/hal/quicc/quicc_smc1.h>
-
+//-----------------------------------------------------------------------------
+// Symbols used by assembly code
+#define CYGARC_PLATFORM_DEFS
 
 //----------------------------------------------------------------------------
-// Reset.
+/* Reseting board */
 
-// The CSB281 does not have a watchdog (not one we can easily use for this
-// purpose anyway).
-#define HAL_PLATFORM_RESET() CYG_EMPTY_STATEMENT
-
-#define HAL_PLATFORM_RESET_ENTRY 0xfff00100
+externC void _platform_reset(void);
+#define HAL_PLATFORM_RESET() _platform_reset()
+#define HAL_PLATFORM_RESET_ENTRY 0x00000000
 
 //--------------------------------------------------------------------------
 #endif // ifndef CYGONCE_HAL_PLF_INTR_H

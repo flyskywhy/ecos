@@ -1,8 +1,8 @@
 ##=============================================================================
 ##
-##      csb281.S
+##      platform.S
 ##
-##      CSB281 board hardware setup
+##      Platform hardware setup
 ##
 ##=============================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,113 +39,53 @@
 ##=============================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s):   gthomas
-## Contributors:hmt
+## Author(s):		Michal Simek <monstr@monstr.eu>
+## Original data:	PowerPC - Michal Pfeifer
+## Date:		2008-06-08
+## Purpose:		Platform hardware setup
+## Description:	This file contains any code needed to initialize the
+##		hardware.
+##
+######DESCRIPTIONEND####
+#######DESCRIPTIONBEGIN####
+##
+## Author(s):      Michal Pfeifer
+## Original data:  PowerPC
 ## Date:        2002-07-22
-## Purpose:     CSB281 board hardware setup
+## Purpose:     Spartan3esk board hardware setup
 ## Description: This file contains any code needed to initialize the
-##              hardware on a Cogent CSB281 (PowerPC 8245) board.
+##              hardware on a Spartan3esk board.
 ##
 ######DESCRIPTIONEND####
 ##
 ##=============================================================================
 
 #include <pkgconf/system.h>
-#include <pkgconf/hal.h>
-#include <pkgconf/hal_powerpc.h>
-#include <pkgconf/hal_powerpc_csb281.h>
-        
-#include <cyg/hal/arch.inc>		/* register symbols et al */
-#include <cyg/hal/ppc_regs.h>		/* on-chip resource layout, special */
+#include <cyg/hal/arch.inc> /* for definition of function */
 
 #------------------------------------------------------------------------------
-
-// LED macro uses r23, r25: r4 left alone
-#if 0        
-#define LED( x ) \
-	lwi	r25,0xFA100018;         \
-	lwi	r23,(x);                \
-	stb	r23,0(r25)
-#else
-#define LED(x)                          
-#endif
-
-FUNC_START(_led)        
-        lwi     r25,0xFF000000
-        lwz     r26,0(r25)
-        ori     r26,r26,0x18
-        stw     r26,0(r25)
-        blr
-FUNC_END(_led)        
-	
-#------------------------------------------------------------------------------
-                
+/* FIXME this is correct behaviour -> in case initialization
+ * I can use _hal_hardware_init_done label */
 FUNC_START( hal_hardware_init )
-                
-        // Basic hardware initialization
-        mflr    r31
-        bl      10f     // Gets position independent address of table
-HW_init:        
-#ifndef CYG_HAL_STARTUP_RAM
-        .long   0x80000080, 0x00000000  // MSAR1 - SDRAM Bank 0 start
-        .long   0x80000090, 0x0000003F  // MEAR1 - SDRAM Bank 0 end
-        .long   0x800000A0, 0x00000001  // MBEN1 - SDRAM Bank 1 enable
-        .long   0x800000F0, 0x88000000  // MCCR1 - SDRAM control (no GO)
-        .long   0x800000F4, 0x1E00023C  // MCCR2 - Timing
-        .long   0x800000F8, 0xB6000000  // MCCR3
-        .long   0x800000FC, 0x35B03334  // MCCR4
-        .long   0x800000F0, 0x88080000  // MCCR1 - SDRAM control (GO)
-        .long   0x800000D0, 0xB4000000  // ERCR1
-        .long   0x800000D4, 0xBCF7B1E3  // ERCR2
-        .long   0x800000D8, 0x7000000D  // RCS2  - 0x70000000..0x71FFFFFF
-        .long   0x800000DC, 0x7800000D  // RCS3  - 0x78000000..0x79FFFFFF
-#endif        
-        .long   0x80000078, _CSB281_EUMBBAR  // EUMBBAR - machine registers
-        .long   0x800000A8, 0xFF141110  // PICR1 - RCS0 local, Big Endian, DEC/TB
-        .long   0x800000AC, 0x08000000  // PICR2
-        .long   0x80000070, 0x0000001A  // ODCR  - SDRAM driver control
-        .long   0
-10:     nop
-        mflr    r3              // Pointer to initialization table
-        subi    r3,r3,4
-        lwi     r4,_CSB281_PCI_CONFIG_ADDR
-        lwi     r5,_CSB281_PCI_CONFIG_DATA
-20:     lwzu    r6,4(r3)        // Register address
-        lwzu    r7,4(r3)        // Data
-        cmpi    0,r6,0
-        beq     30f             // end of table?
-        stwbrx  r6,0,r4         // Set address
-        stwbrx  r7,0,r5         // value
-        b       20b
-30:     mtlr    r31        
-		
-	# set the decrementer to maxint
-	lwi	r2,0
-	not	r2,r2
-	mtdec	r2
-
-#ifdef CYG_HAL_STARTUP_ROMRAM
-        // Copy image from ROM to RAM
-        mflr    r3              
-        lwi     r4,0xFF000000
-        lwi     r5,0x00FFFFFF   // ROM/FLASH base
-        and     r3,r3,r5        // segment relative
-        lwi     r6,_hal_hardware_init_done
-        mtlr    r6
-        sub     r6,r3,r6        // Absolute address
-        add     r6,r6,r4        // FLASH address
-        lwi     r7,0            // where to copy to
-        lwi     r8,__ram_data_end
-10:     lwz     r5,0(r6)
-        stw     r5,0(r7)
-        addi    r6,r6,4
-        addi    r7,r7,4
-        cmplw   r7,r8
-        bne     10b
-#endif
-
-	blr
+	rtsd	r15, 8
+	nop
 FUNC_END( hal_hardware_init )
 
+/* hang function for - never end */
+	.globl  _hang
+	bri	0
+
+#ifdef CYG_HAL_STARTUP_ROMRAM
+	.section .boot,"ax"
+	.global _boot
+_boot:
+
+        .section .boot0,"ax"
+        .global _boot0
+_boot0:
+	braid	_start
+	nop
+#endif
+
 #------------------------------------------------------------------------------
-# end of csb281.S
+# end of platform.S

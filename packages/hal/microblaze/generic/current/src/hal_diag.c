@@ -39,8 +39,8 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   hmt
-// Contributors:hmt, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
 // Date:        1999-06-08
 // Purpose:     HAL diagnostic output
 // Description: Implementations of HAL diagnostic I/O support.
@@ -49,15 +49,17 @@
 //
 //=============================================================================
 
+#define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
 #include <pkgconf/hal.h>
 
 #include <cyg/infra/cyg_type.h>         // base types
 #include <cyg/infra/cyg_trac.h>         // tracing macros
 #include <cyg/infra/cyg_ass.h>          // assertion macros
+#include <cyg/infra/diag.h>
 
 #include <cyg/hal/hal_io.h>             // IO macros
 #include <cyg/hal/hal_diag.h>
-#include <cyg/hal/hal_misc.h>           // cyg_hal_is_break()
+#include <cyg/hal/hal_misc.h>           // cyg_hal_is_break()                          
 #include <cyg/hal/hal_intr.h>           // Interrupt macros
 #include <cyg/hal/drv_api.h>
 
@@ -65,276 +67,226 @@
 #include <cyg/hal/hal_stub.h>           // hal_output_gdb_string
 #endif
 
-#include <cyg/hal/ppc_regs.h>
+//#include <cyg/hal/mb_regs.h>
+
+#include "src/xuartns550.h"
+#include <pkgconf/hal_microblaze_platform.h>
 
 //=============================================================================
 // Serial driver
 //=============================================================================
 
-//-----------------------------------------------------------------------------
-// There are two serial ports.
-#define CYG_DEV_SERIAL_BASE_A    0xF0004500 // port A
-#define CYG_DEV_SERIAL_BASE_B    0xF0004600 // port B
-
-//-----------------------------------------------------------------------------
-// Default baud rate is 38400
-#define _MEMCLK (CYGHWR_HAL_POWERPC_MEM_SPEED*1000000)
-#define _BAUD   CYGNUM_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_BAUD
-#define CYG_DEV_SERIAL_RS232_T1_VALUE_B38400  (((_MEMCLK/16)/_BAUD) >> 8)
-#define CYG_DEV_SERIAL_RS232_T2_VALUE_B38400  (((_MEMCLK/16)/_BAUD) & 0xFF)
-
-//-----------------------------------------------------------------------------
-// Define the serial registers. The 8245 has a 16552 UART builtin.
-//
-#define CYG_DEV_SERIAL_RBR   0x00  // receiver buffer register, read, dlab = 0
-#define CYG_DEV_SERIAL_THR   0x00 // transmitter holding register, write, dlab = 0
-#define CYG_DEV_SERIAL_DLL   0x00 // divisor latch (LS), read/write, dlab = 1
-#define CYG_DEV_SERIAL_IER   0x01 // interrupt enable register, read/write, dlab = 0
-#define CYG_DEV_SERIAL_DLM   0x01 // divisor latch (MS), read/write, dlab = 1
-#define CYG_DEV_SERIAL_IIR   0x02 // interrupt identification register, read, dlab = 0
-#define CYG_DEV_SERIAL_FCR   0x02 // fifo control register, write, dlab = 0
-#define CYG_DEV_SERIAL_AFR   0x02 // alternate function register, read/write, dlab = 1
-#define CYG_DEV_SERIAL_LCR   0x03 // line control register, read/write
-#define CYG_DEV_SERIAL_MCR   0x04
-#define CYG_DEV_SERIAL_MCR_A 0x04
-#define CYG_DEV_SERIAL_MCR_B 0x04
-#define CYG_DEV_SERIAL_LSR   0x05 // line status register, read
-#define CYG_DEV_SERIAL_MSR   0x06 // modem status register, read
-#define CYG_DEV_SERIAL_SCR   0x07 // scratch pad register
-#define CYG_DEV_SERIAL_DCR   0x11 // device control (UART vs DUART)
-
-// The interrupt enable register bits.
-#define SIO_IER_ERDAI   0x01            // enable received data available irq
-#define SIO_IER_ETHREI  0x02            // enable THR empty interrupt
-#define SIO_IER_ELSI    0x04            // enable receiver line status irq
-#define SIO_IER_EMSI    0x08            // enable modem status interrupt
-
-// The interrupt identification register bits.
-#define SIO_IIR_IP      0x01            // 0 if interrupt pending
-#define SIO_IIR_ID_MASK 0x0e            // mask for interrupt ID bits
-#define ISR_Tx  0x02
-#define ISR_Rx  0x04
-
-// The line status register bits.
-#define SIO_LSR_DR      0x01            // data ready
-#define SIO_LSR_OE      0x02            // overrun error
-#define SIO_LSR_PE      0x04            // parity error
-#define SIO_LSR_FE      0x08            // framing error
-#define SIO_LSR_BI      0x10            // break interrupt
-#define SIO_LSR_THRE    0x20            // transmitter holding register empty
-#define SIO_LSR_TEMT    0x40            // transmitter register empty
-#define SIO_LSR_ERR     0x80            // any error condition
-
-// The modem status register bits.
-#define SIO_MSR_DCTS  0x01              // delta clear to send
-#define SIO_MSR_DDSR  0x02              // delta data set ready
-#define SIO_MSR_TERI  0x04              // trailing edge ring indicator
-#define SIO_MSR_DDCD  0x08              // delta data carrier detect
-#define SIO_MSR_CTS   0x10              // clear to send
-#define SIO_MSR_DSR   0x20              // data set ready
-#define SIO_MSR_RI    0x40              // ring indicator
-#define SIO_MSR_DCD   0x80              // data carrier detect
-
-// The line control register bits.
-#define SIO_LCR_WLS0   0x01             // word length select bit 0
-#define SIO_LCR_WLS1   0x02             // word length select bit 1
-#define SIO_LCR_STB    0x04             // number of stop bits
-#define SIO_LCR_PEN    0x08             // parity enable
-#define SIO_LCR_EPS    0x10             // even parity select
-#define SIO_LCR_SP     0x20             // stick parity
-#define SIO_LCR_SB     0x40             // set break
-#define SIO_LCR_DLAB   0x80             // divisor latch access bit
-
-// The FIFO control register
-#define SIO_FCR_FEN    0x01             // enable xmit and rcvr fifos
-#define SIO_FCR_RFR    0x02             // clear RCVR FIFO
-#define SIO_FCR_TFR    0x04             // clear XMIT FIFO
-
-// DUART control
-#define SIO_DCR_SDM    0x01             // Special DUART mode
-
 
 //-----------------------------------------------------------------------------
 typedef struct {
-    cyg_uint8* base;
-    cyg_int32 msec_timeout;
-    int isr_vector;
+    cyg_int32  dev_id;
+    cyg_int32  msec_timeout;
+    int        isr_vector;
+    bool       dev_ok;
+    int        int_state;
+    int        *ctrlc;
+    unsigned char inq[16];
+    unsigned char *qp;
+    int            qlen;
+    XUartNs550 dev; //structure for uart16550 driver
 } channel_data_t;
+
+
+// initialize part of structure
+static channel_data_t channels[] = {
+     { 0, 1000, MON_UART16550_0_INTR },
+};
+
+static void cyg_hal_plf_serial_isr_handler(channel_data_t *chan, int event, int len);
 
 //-----------------------------------------------------------------------------
 static void
-init_serial_channel(const channel_data_t* __ch_data)
+init_serial_channel(channel_data_t *chan)
 {
-    cyg_uint8* base = __ch_data->base;
-    cyg_uint8 lcr, iir;
+#ifdef MON_UART16550_0
+    XStatus stat;
+    XUartNs550Format fmt;
+    Xuint16 opt;
+//	int *led;
+//	led = 0x40200000;
 
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_IER, 0);
+//	(&chan->dev)->BaseAddress=0x40400000;
 
-    // Disable and clear FIFOs (need to enable to clear).
-    HAL_READ_UINT8(base+CYG_DEV_SERIAL_IIR, iir);
-    if ((iir & 0xC0) == 0) {
-        HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_FCR, (SIO_FCR_FEN | SIO_FCR_RFR | SIO_FCR_TFR));
-        HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_FCR, 0);
+//   XUartNs550_SetBaud(XPAR_RS232_DTE_BASEADDR, XPAR_XUARTNS550_CLOCK_HZ, 9600);
+//   XUartNs550_mSetLineControlReg(XPAR_RS232_DTE_BASEADDR, XUN_LCR_8_DATA_BITS);
+
+    stat = XUartNs550_Initialize(&chan->dev, chan->dev_id);
+    if (stat != XST_SUCCESS) {
+//	*led = 0xfff;
+        return;  // What else can be done?
     }
 
-    // 8-1-no parity.
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_LCR, SIO_LCR_WLS0 | SIO_LCR_WLS1);
-
-    // Set speed to 38400.
-    HAL_READ_UINT8(base+CYG_DEV_SERIAL_LCR, lcr);
-    lcr |= SIO_LCR_DLAB;
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_LCR, lcr);
-
-
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_DLL,
-                    CYG_DEV_SERIAL_RS232_T2_VALUE_B38400);
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_DLM,
-                    CYG_DEV_SERIAL_RS232_T1_VALUE_B38400);
-    lcr &= ~SIO_LCR_DLAB;
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_LCR, lcr);
-
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_DCR, SIO_DCR_SDM);
-
-    // Enable FIFOs (and clear them).
-    if ((iir & 0xC0) == 0) {
-        HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_FCR, (SIO_FCR_FEN | SIO_FCR_RFR | SIO_FCR_TFR));
+//	*led = *led + 0x2;
+    // Configure the port
+    fmt.BaudRate = CYGNUM_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_BAUD;
+    fmt.DataBits = XUN_FORMAT_8_BITS;
+    fmt.Parity = XUN_FORMAT_NO_PARITY;
+    fmt.StopBits = XUN_FORMAT_1_STOP_BIT;
+    stat = XUartNs550_SetDataFormat(&chan->dev, &fmt);
+    if (stat != XST_SUCCESS) {
+//	*led = *led + 0x4;
+        return;  // What else can be done?
     }
+    opt = XUN_OPTION_FIFOS_ENABLE | XUN_OPTION_RESET_TX_FIFO | XUN_OPTION_RESET_RX_FIFO;
+    opt = 0;
+    stat = XUartNs550_SetOptions(&chan->dev, opt);
+    if (stat != XST_SUCCESS) {
+//	*led = *led + 0x8;
+      return;  // What else can be done?
+    }
+    XUartNs550_SetHandler(&chan->dev, cyg_hal_plf_serial_isr_handler, (void *)chan);
+    XUartNs550_SetFifoThreshold(&chan->dev, XUN_FIFO_TRIGGER_01);
+    chan->qlen = 0;  // No characters buffered
+    chan->dev_ok = true;
+//	*led = *led + 0x10;
+#endif
 }
 
-static void
-cyg_hal_plf_serial_error(void *__ch_data, cyg_uint8 lsr)
+cyg_uint8 XUartLite_RecvByte2()
 {
-    // Ignore?
+	while (  ( XIo_In32(MON_UARTLITE_0_BASE + 0x8) & 0x01 ) != 0x01 );
+
+	return (cyg_uint8)XIo_In32(MON_UARTLITE_0_BASE);
 }
+
+void XUartLite_SendByte2(char Data)
+{
+	while ((XIo_In32(MON_UARTLITE_0_BASE + 0x8) & 0x08) == 0x08);
+
+	XIo_Out32(MON_UARTLITE_0_BASE + 0x4, Data);
+}
+
 
 static cyg_bool
-cyg_hal_plf_serial_getc_nonblock(void* __ch_data, cyg_uint8* ch)
+cyg_hal_plf_serial_getc_nonblock(channel_data_t *chan, cyg_uint8 *ch)
 {
-    cyg_uint8* base = ((channel_data_t*)__ch_data)->base;
-    cyg_uint8 lsr;
+#ifdef MON_UARTLITE_0
 
-    HAL_READ_UINT8(base+CYG_DEV_SERIAL_LSR, lsr);
-    if ((lsr & SIO_LSR_ERR) != 0) {
-        cyg_hal_plf_serial_error(__ch_data, lsr);
+	*ch = XUartLite_RecvByte2();
+	return true;
+#else
+
+    if (!chan->dev_ok) return false;
+    if (chan->qlen == 0) {
+        // See if any characters are now available
+        chan->qp = chan->inq;
+//        chan->qlen = XUartNs550_Recv(&chan->dev, chan->qp, sizeof(chan->inq));
+
     }
-    if ((lsr & SIO_LSR_DR) == 0)
-        return false;
-
-    HAL_READ_UINT8(base+CYG_DEV_SERIAL_RBR, *ch);
-
-    return true;
+    if (chan->qlen) {
+        *ch = *chan->qp++;
+        chan->qlen--;
+        return true;
+    }
+    return false;
+#endif
 }
+
+
 
 
 cyg_uint8
-cyg_hal_plf_serial_getc(void* __ch_data)
+cyg_hal_plf_serial_getc(channel_data_t *chan)
 {
     cyg_uint8 ch;
-    CYGARC_HAL_SAVE_GP();
 
-    while(!cyg_hal_plf_serial_getc_nonblock(__ch_data, &ch));
-
-    CYGARC_HAL_RESTORE_GP();
+    while(!cyg_hal_plf_serial_getc_nonblock(chan, &ch));
     return ch;
 }
 
+
+
 void
-cyg_hal_plf_serial_putc(void* __ch_data, cyg_uint8 c)
+cyg_hal_plf_serial_putc(channel_data_t *chan, cyg_uint8 c)
 {
-    cyg_uint8* base = ((channel_data_t*)__ch_data)->base;
-    cyg_uint8 lsr;
-    CYGARC_HAL_SAVE_GP();
+#if 0
+	int *uart_tx;
+	int *uart_stat;
 
-    do {
-        HAL_READ_UINT8(base+CYG_DEV_SERIAL_LSR, lsr);
-    } while ((lsr & SIO_LSR_THRE) == 0);
+	uart_tx = MON_UARTLITE_0_BASE + 0x4;
+	uart_stat = MON_UARTLITE_0_BASE + 0x8;
 
-    HAL_WRITE_UINT8(base+CYG_DEV_SERIAL_THR, c);
+	unsigned retries = 10000;
+	while (retries-- && (*uart_stat & (1<<3)))
+		;
 
-    // Hang around until the character has been safely sent.
-    do {
-        HAL_READ_UINT8(base+CYG_DEV_SERIAL_LSR, lsr);
-    } while ((lsr & SIO_LSR_THRE) == 0);
+	/* Only attempt the iowrite if we didn't timeout */
+	if(retries)
+		*uart_tx = c & 0xff;
 
-    CYGARC_HAL_RESTORE_GP();
-}
 
-static const channel_data_t channels[2] = {
-    { (cyg_uint8*)CYG_DEV_SERIAL_BASE_A, 1000, CYGNUM_HAL_INTERRUPT_UART0},
-#if (CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS > 1)
-    { (cyg_uint8*)CYG_DEV_SERIAL_BASE_B, 1000, CYGNUM_HAL_INTERRUPT_UART1},
+	if (!chan->dev_ok) { 
+		return;
+	}
 #endif
-};
+#ifdef MON_UARTLITE_0
+	XUartLite_SendByte2(c);
+#endif
 
-static void
-cyg_hal_plf_serial_write(void* __ch_data, const cyg_uint8* __buf, 
-                         cyg_uint32 __len)
-{
-    CYGARC_HAL_SAVE_GP();
-
-    while(__len-- > 0)
-        cyg_hal_plf_serial_putc(__ch_data, *__buf++);
-
-    CYGARC_HAL_RESTORE_GP();
+#ifdef MON_UART16550_0
+    XUartNs550_Send(&chan->dev, &c, 1);
+    // Wait for character to get out
+    while (XUartNs550_IsSending(&chan->dev)) ;
+#endif
 }
 
 static void
-cyg_hal_plf_serial_read(void* __ch_data, cyg_uint8* __buf, cyg_uint32 __len)
+cyg_hal_plf_serial_write(channel_data_t *chan, cyg_uint8* buf, 
+                         cyg_uint32 len)
 {
-    CYGARC_HAL_SAVE_GP();
+    while(len-- > 0)
+        cyg_hal_plf_serial_putc(chan, *buf++);
+}
 
-    while(__len-- > 0)
-        *__buf++ = cyg_hal_plf_serial_getc(__ch_data);
-
-    CYGARC_HAL_RESTORE_GP();
+static void
+cyg_hal_plf_serial_read(channel_data_t *chan, cyg_uint8* buf, cyg_uint32 len)
+{
+    while(len-- > 0)
+        *buf++ = cyg_hal_plf_serial_getc(chan);
 }
 
 cyg_bool
-cyg_hal_plf_serial_getc_timeout(void* __ch_data, cyg_uint8* ch)
+cyg_hal_plf_serial_getc_timeout(channel_data_t *chan, cyg_uint8* ch)
 {
     int delay_count;
-    channel_data_t* chan = (channel_data_t*)__ch_data;
     cyg_bool res;
-    CYGARC_HAL_SAVE_GP();
 
     delay_count = chan->msec_timeout * 10; // delay in .1 ms steps
     for(;;) {
-        res = cyg_hal_plf_serial_getc_nonblock(__ch_data, ch);
+        res = cyg_hal_plf_serial_getc_nonblock(chan, ch);
         if (res || 0 == delay_count--)
             break;
-        
         CYGACC_CALL_IF_DELAY_US(100);
     }
-
-    CYGARC_HAL_RESTORE_GP();
     return res;
 }
 
 static int
-cyg_hal_plf_serial_control(void *__ch_data, __comm_control_cmd_t __func, ...)
+cyg_hal_plf_serial_control(channel_data_t *chan, __comm_control_cmd_t func, ...)
 {
-    static int irq_state = 0;
-    channel_data_t* chan = (channel_data_t*)__ch_data;
-    cyg_uint8 ier;
+    Xuint16 opt;
     int ret = 0;
-    CYGARC_HAL_SAVE_GP();
 
-    switch (__func) {
+    if (!chan->dev_ok) return ret;
+
+    switch (func) {
     case __COMMCTL_IRQ_ENABLE:
+        opt = XUartNs550_GetOptions(&chan->dev) | XUN_OPTION_DATA_INTR;
+        XUartNs550_SetOptions(&chan->dev, opt);
         HAL_INTERRUPT_UNMASK(chan->isr_vector);
-        HAL_INTERRUPT_SET_LEVEL(chan->isr_vector, 1);
-        HAL_READ_UINT8(chan->base+CYG_DEV_SERIAL_IER, ier);
-        ier |= SIO_IER_ERDAI;
-        HAL_WRITE_UINT8(chan->base+CYG_DEV_SERIAL_IER, ier);
-        irq_state = 1;
+        chan->int_state = 1;
         break;
     case __COMMCTL_IRQ_DISABLE:
-        ret = irq_state;
-        irq_state = 0;
-        HAL_INTERRUPT_MASK(chan->isr_vector);
-        HAL_READ_UINT8(chan->base+CYG_DEV_SERIAL_IER, ier);
-        ier &= ~SIO_IER_ERDAI;
-        HAL_WRITE_UINT8(chan->base+CYG_DEV_SERIAL_IER, ier);
+        ret = chan->int_state;
+        chan->int_state = 0;
+        opt = XUartNs550_GetOptions(&chan->dev) & ~XUN_OPTION_DATA_INTR;
+        XUartNs550_SetOptions(&chan->dev, opt);
+        HAL_INTERRUPT_MASK(chan->isr_vector);        
         break;
     case __COMMCTL_DBG_ISR_VECTOR:
         ret = chan->isr_vector;
@@ -343,54 +295,60 @@ cyg_hal_plf_serial_control(void *__ch_data, __comm_control_cmd_t __func, ...)
     {
         va_list ap;
 
-        va_start(ap, __func);
+        va_start(ap, func);
 
         ret = chan->msec_timeout;
         chan->msec_timeout = va_arg(ap, cyg_uint32);
 
         va_end(ap);
-    }        
+    }
     default:
         break;
     }
-    CYGARC_HAL_RESTORE_GP();
     return ret;
 }
 
 static int
-cyg_hal_plf_serial_isr(void *__ch_data, int* __ctrlc, 
-                       CYG_ADDRWORD __vector, CYG_ADDRWORD __data)
+cyg_hal_plf_serial_isr(channel_data_t *chan, int *ctrlc, 
+                       CYG_ADDRWORD vector, CYG_ADDRWORD data)
 {
-    channel_data_t* chan = (channel_data_t*)__ch_data;
-    cyg_uint8 _iir;
-    int res = 0;
-    CYGARC_HAL_SAVE_GP();
-
-    HAL_READ_UINT8(chan->base+CYG_DEV_SERIAL_IIR, _iir);
-    _iir &= SIO_IIR_ID_MASK;
-
-    *__ctrlc = 0;
-    if ( ISR_Rx == _iir ) {
-        cyg_uint8 c, lsr;
-        HAL_READ_UINT8(chan->base+CYG_DEV_SERIAL_LSR, lsr);
-        if (lsr & SIO_LSR_DR) {
-
-            HAL_READ_UINT8(chan->base+CYG_DEV_SERIAL_RBR, c);
-
-            if( cyg_hal_is_break( &c , 1 ) )
-                *__ctrlc = 1;
-        }
-
-        // Acknowledge the interrupt
-        HAL_INTERRUPT_ACKNOWLEDGE(chan->isr_vector);
-        res = CYG_ISR_HANDLED;
-    }
-
-    CYGARC_HAL_RESTORE_GP();
-    return res;
+    chan->ctrlc = ctrlc;
+    XUartNs550_InterruptHandler(&chan->dev);
+    HAL_INTERRUPT_ACKNOWLEDGE(chan->isr_vector);
+    return CYG_ISR_HANDLED;
 }
 
 static void
+cyg_hal_plf_serial_isr_handler(channel_data_t *chan,
+                               int event, int len)
+{
+    int res;
+    char ch;
+
+	int *led;
+	led = 0x81400000;
+	*led = 0x40;
+
+    *chan->ctrlc = 0;
+    switch (event) {
+    case XUN_EVENT_RECV_ERROR:
+    case XUN_EVENT_RECV_TIMEOUT:
+    case XUN_EVENT_MODEM:
+        diag_printf("%s.%d - chan: %p, event: %d\n", __FUNCTION__, __LINE__, chan, event);
+        break;
+    case XUN_EVENT_RECV_DATA:
+        res = XUartNs550_Recv(&chan->dev, &ch, 1);
+        if (cyg_hal_is_break(&ch , 1))
+            *chan->ctrlc = 1;
+        break;
+    case XUN_EVENT_SENT_DATA:
+        return;
+    default:
+    	break;
+    }
+}                               
+
+void
 cyg_hal_plf_serial_init(void)
 {
     hal_virtual_comm_table_t* comm;
@@ -398,15 +356,9 @@ cyg_hal_plf_serial_init(void)
 
     // Disable interrupts.
     HAL_INTERRUPT_MASK(channels[0].isr_vector);
-#if (CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS > 1)
-    HAL_INTERRUPT_MASK(channels[1].isr_vector);
-#endif
 
     // Init channels
     init_serial_channel(&channels[0]);
-#if (CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS > 1)
-    init_serial_channel(&channels[1]);
-#endif
 
     // Setup procs in the vector table
 
@@ -421,20 +373,6 @@ cyg_hal_plf_serial_init(void)
     CYGACC_COMM_IF_CONTROL_SET(*comm, cyg_hal_plf_serial_control);
     CYGACC_COMM_IF_DBG_ISR_SET(*comm, cyg_hal_plf_serial_isr);
     CYGACC_COMM_IF_GETC_TIMEOUT_SET(*comm, cyg_hal_plf_serial_getc_timeout);
-
-#if (CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS > 1)
-    // Set channel 1
-    CYGACC_CALL_IF_SET_CONSOLE_COMM(1);
-    comm = CYGACC_CALL_IF_CONSOLE_PROCS();
-    CYGACC_COMM_IF_CH_DATA_SET(*comm, &channels[1]);
-    CYGACC_COMM_IF_WRITE_SET(*comm, cyg_hal_plf_serial_write);
-    CYGACC_COMM_IF_READ_SET(*comm, cyg_hal_plf_serial_read);
-    CYGACC_COMM_IF_PUTC_SET(*comm, cyg_hal_plf_serial_putc);
-    CYGACC_COMM_IF_GETC_SET(*comm, cyg_hal_plf_serial_getc);
-    CYGACC_COMM_IF_CONTROL_SET(*comm, cyg_hal_plf_serial_control);
-    CYGACC_COMM_IF_DBG_ISR_SET(*comm, cyg_hal_plf_serial_isr);
-    CYGACC_COMM_IF_GETC_TIMEOUT_SET(*comm, cyg_hal_plf_serial_getc_timeout);
-#endif
     
     // Restore original console
     CYGACC_CALL_IF_SET_CONSOLE_COMM(cur);

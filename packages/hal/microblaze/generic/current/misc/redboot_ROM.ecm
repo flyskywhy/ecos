@@ -9,16 +9,16 @@ cdl_savefile_command cdl_interface { value_source user_value wizard_value inferr
 
 cdl_configuration eCos {
     description "" ;
-    hardware    csb281 ;
+    hardware    microblaze_system ;
     template    redboot ;
-    package -hardware CYGPKG_HAL_POWERPC current ;
-    package -hardware CYGPKG_HAL_POWERPC_PPC60x current ;
-    package -hardware CYGPKG_HAL_POWERPC_CSB281 current ;
-    package -hardware CYGPKG_DEVS_FLASH_STRATA current ;
-    package -hardware CYGPKG_DEVS_FLASH_CSB281 current ;
-    package -hardware CYGPKG_IO_PCI current ;
-    package -hardware CYGPKG_DEVS_ETH_CSB281 current ;
-    package -hardware CYGPKG_DEVS_ETH_INTEL_I82559 current ;
+    package -hardware CYGPKG_HAL_MICROBLAZE current ;
+    package -hardware CYGPKG_HAL_MICROBLAZE_MB4A current ;
+    package -hardware CYGPKG_HAL_MICROBLAZE_GENERIC current ;
+    #package -hardware CYGPKG_DEVS_FLASH_STRATA current ;
+    #package -hardware CYGPKG_DEVS_FLASH_CSB281 current ;
+    #package -hardware CYGPKG_IO_PCI current ;
+    package -hardware CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE current ;
+    #package -hardware CYGPKG_DEVS_ETH_INTEL_I82559 current ;
     package -template CYGPKG_HAL current ;
     package -template CYGPKG_INFRA current ;
     package -template CYGPKG_REDBOOT current ;
@@ -26,7 +26,7 @@ cdl_configuration eCos {
     package -template CYGPKG_LIBC_STRING current ;
     package -template CYGPKG_CRC current ;
     package CYGPKG_NS_DNS current ;
-    package CYGPKG_IO_FLASH current ;
+    #package CYGPKG_IO_FLASH current ;
     package CYGPKG_IO_ETH_DRIVERS current ;
 };
 
@@ -74,13 +74,13 @@ cdl_option CYGBLD_REDBOOT_MIN_IMAGE_SIZE {
     user_value 0x00040000
 };
 
-cdl_option CYGBLD_REDBOOT_FLASH_BOOT_OFFSET {
-    user_value 0x01F00000
-};
+#cdl_option CYGBLD_REDBOOT_FLASH_BOOT_OFFSET {
+#    user_value 0x01F00000
+#};
 
-cdl_option CYGSEM_REDBOOT_FLASH_COMBINED_FIS_AND_CONFIG {
-    user_value 1
-};
+#cdl_option CYGSEM_REDBOOT_FLASH_COMBINED_FIS_AND_CONFIG {
+#    user_value 1
+#};
 
 cdl_option CYGBLD_ISO_STRTOK_R_HEADER {
     inferred_value 1 <cyg/libc/string/string.h>

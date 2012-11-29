@@ -1,8 +1,8 @@
 # ====================================================================
 #
-#      hal_powerpc_csb281.cdl
+#      hal_microblaze_generic.cdl
 #
-#      PowerPC/CSB281 board HAL package configuration data
+#      Generic HAL package configuration data
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,8 +39,8 @@
 # ====================================================================
 ######DESCRIPTIONBEGIN####
 #
-# Author(s):      jskov
-# Original data:  hmt
+# Author(s):      Michal Pfeifer
+# Original data:  PowerPC
 # Contributors:   gthomas
 # Date:           1999-11-02
 #
@@ -48,17 +48,14 @@
 #
 # ====================================================================
 
-cdl_package CYGPKG_HAL_POWERPC_CSB281 {
-    display       "Cogent CSB281 (PowerPC 8245) board"
-    parent        CYGPKG_HAL_POWERPC
-    requires      CYGPKG_HAL_POWERPC_PPC60x
-    define_header hal_powerpc_csb281.h
+cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
+    display       "Platform generic support"
     include_dir   cyg/hal
+    parent        CYGPKG_HAL_MICROBLAZE
     description   "
-        The CSB281 HAL package provides the support needed to run
-        eCos on a Cogent PowerPC 8245 board."
+        Generic support."
 
-    compile       hal_diag.c hal_aux.c csb281.S
+    compile       plf_io.c hal_diag.c hal_aux.c platform.S
 
     implements    CYGINT_HAL_DEBUG_GDB_STUBS
     implements    CYGINT_HAL_DEBUG_GDB_STUBS_BREAK
@@ -67,13 +64,8 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
 #    implements    CYGINT_HAL_USE_ROM_MONITOR_UNSUPPORTED
 
     define_proc {
-        puts $::cdl_system_header "#define CYGBLD_HAL_TARGET_H   <pkgconf/hal_powerpc_ppc60x.h>"
-        puts $::cdl_system_header "#define CYGBLD_HAL_PLATFORM_H <pkgconf/hal_powerpc_csb281.h>"
+        puts $::cdl_system_header "#define CYGBLD_HAL_PLATFORM_H <pkgconf/hal_microblaze_platform.h>"
         puts $::cdl_system_header "#define CYGBLD_HAL_PLF_IO_H   <cyg/hal/plf_io.h>"
-
-	puts $::cdl_header "#define HAL_PLATFORM_CPU    \"PowerPC 8245\""
-        puts $::cdl_header "#define HAL_PLATFORM_BOARD  \"Cogent CSB281\""
-        puts $::cdl_header "#define HAL_PLATFORM_EXTRA  \"\""
     }
 
     cdl_component CYG_HAL_STARTUP {
@@ -90,65 +82,10 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
            the existence of a debug environment, such as GDB stubs."
     }
 
-    cdl_option CYGHWR_HAL_POWERPC_CPU_SPEED {
-        display          "Development board clock speed (MHz)"
-        flavor           data
-        legal_values     333
-        default_value    333
-        description      "
-           CSB281 Development Boards have various system clock speeds
-           depending on the processor fitted.  Select the clock speed
-           appropriate for your board so that the system can set the serial
-           baud rate correctly, amongst other things."
-   }
-
-    cdl_option CYGHWR_HAL_POWERPC_MEM_SPEED {
-        display          "Development board memory bus speed (MHz)"
-        flavor           data
-        legal_values     83
-        default_value    83
-        description      "
-           CSB281 Development Boards have various system clock speeds
-           depending on the processor fitted.  Select the clock speed
-           appropriate for your board so that the system can set the serial
-           baud rate correctly, amongst other things."
-   }
-
-    cdl_component CYGSEM_CSB281_LCD_SUPPORT {
-        display        "Support LCD"
-        flavor         bool
-        default_value  1
-        compile        lcd_support.c sed135x_16bit.c
-        description    "
-          Enabling this option will enable the use the LCD/CRT as a 
-          simple framebuffer, suitable for use with a windowing
-          package."
-
-        cdl_component CYGSEM_CSB281_LCD_COMM {
-            display        "Support LCD/keyboard for comminication channel"
-            active_if      CYGPKG_REDBOOT
-            flavor         bool
-            default_value  1
-            description    "
-              Enabling this option will use the LCD/CRT and keyboard for a
-              communications channel, suitable for RedBoot, etc."
-
-            cdl_option  CYGOPT_CSB281_LCD_COMM_LOGO {
-                display       "Logo location"
-                flavor        booldata
-                legal_values  { "TOP" "BOTTOM" }
-                default_value { "TOP" }
-                description   "
-                    Use this option to control where the logo is placed
-                    on the LCD/CRT screen."
-            }
-        }
-    }
-
    cdl_option CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS {
        display      "Number of communication channels on the board"
        flavor       data
-       calculated   2+CYGSEM_CSB281_LCD_COMM
+       calculated   1
    }
 
    cdl_option CYGNUM_HAL_VIRTUAL_VECTOR_DEBUG_CHANNEL {
@@ -158,7 +95,7 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
        legal_values     0 to CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS-1
        default_value    0
        description      "
-           The CSB281 board has only one serial port. This option
+           The board has only one serial port. This option
            chooses which port will be used to connect to a host
            running GDB."
     }
@@ -170,7 +107,7 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
         legal_values     0 to CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS-1
         default_value    0
         description      "
-           The CSB281 board has only one serial port.  This option
+           The board has only one serial port.  This option
            chooses which port will be used for diagnostic output."
     }
 
@@ -180,26 +117,10 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
         legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
                       4800 7200 9600 14400 19200 38400 57600 115200 230400
         }
-        default_value 38400
+        default_value 9600
         description   "
             This option specifies the default baud rate (speed) for the 
             HAL diagnostic port."
-    }
-
-    # This option is only used when USE_ROM_MONITOR is enabled - but
-    # it cannot be a sub-option to that option, since the code uses the
-    # definition in a preprocessor comparison.
-    cdl_option CYGNUM_HAL_VIRTUAL_VECTOR_ROM_DEBUG_CHANNEL {
-        display          "Debug serial port used by ROM monitor"
-        flavor data
-        legal_values     0 to CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS-1
-        default_value    0
-        description      "
-            The CSB281 board has only one serial port.  This
-            option tells the code which port is in use by the ROM
-            monitor. It should only be necessary to change this
-            option if a non-standard configurated eCos GDB stub is
-            used."
     }
 
     # Real-time clock/counter specifics
@@ -222,25 +143,31 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
         cdl_option CYGNUM_HAL_RTC_PERIOD {
             display       "Real-time clock period"
             flavor        data
-            default_value { (((CYGHWR_HAL_POWERPC_MEM_SPEED*1000000)/4)/CYGNUM_HAL_RTC_DENOMINATOR) }
+            default_value { ((MON_SYSTEM_CLK *1000000) / 100) }
+        }
+        cdl_option CYGHWR_HAL_RTC_USE_AUTO_RESET {
+            display       "Real-time clock timer use autoreset"
+            flavor        bool
+            default_value 1
+            description   "
+                This is best for precise time counting. If is autoreset true
+                hal_clock_reset function do nothing if timer is running."
         }
     }
     
     cdl_component CYGBLD_GLOBAL_OPTIONS {
         display "Global build options"
         flavor  none
+        parent  CYGPKG_NONE
         description   "
 	    Global build options including control over
 	    compiler flags, linker flags and choice of toolchain."
-
-
-        parent  CYGPKG_NONE
 
         cdl_option CYGBLD_GLOBAL_COMMAND_PREFIX {
             display "Global command prefix"
             flavor  data
             no_define
-            default_value { "powerpc-eabi" }
+            default_value { "microblaze-uclinux" }
             description "
                 This option specifies the command prefix used when
                 invoking the build tools."
@@ -250,7 +177,9 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
             display "Global compiler flags"
             flavor  data
             no_define
-            default_value { CYGBLD_GLOBAL_WARNFLAGS . "-msoft-float -mcpu=603e -g -O2 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions " }
+# -fvtable-gc -Woverloaded-virtual -Wstrict-prototypes    not supported in gcc
+            default_value { CYGBLD_GLOBAL_WARNFLAGS . "-msoft-float -mcpu=v4.00.a \
+				-g -O2 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions -I. " }
             description   "
                 This option controls the global compiler flags which
                 are used to compile all packages by
@@ -262,7 +191,9 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
             display "Global linker flags"
             flavor  data
             no_define
-            default_value { "-msoft-float -mcpu=603e -g -nostdlib -Wl,--gc-sections -Wl,-static" }
+            default_value { "-msoft-float -mcpu=v4.00.a -g -nostdlib -Wl,--gc-sections -Wl,-static" }
+#            default_value { "-msoft-float -mcpu=v4.00.a -g -nostdlib" }
+#            default_value { "-mcpu=v4.00.a -nostdlib" }
             description   "
                 This option controls the global linker flags. Individual
                 packages may define options which override these global flags."
@@ -295,8 +226,8 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
         }
     }
 
-    cdl_component CYGPKG_HAL_POWERPC_CSB281_OPTIONS {
-        display "CSB281 build options"
+    cdl_component CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_OPTIONS {
+        display "SPARTAN3ESK build options"
         flavor  none
         description   "
 	    Package specific build options including control over
@@ -304,35 +235,26 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
 	    and details of which tests are built."
 
 
-        cdl_option CYGPKG_HAL_POWERPC_CSB281_CFLAGS_ADD {
+        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_ADD {
             display "Additional compiler flags"
             flavor  data
             no_define
             default_value { "" }
             description   "
                 This option modifies the set of compiler flags for
-                building the CSB281 HAL. These flags are used in addition
+                building HAL. These flags are used in addition
                 to the set of global flags."
         }
 
-        cdl_option CYGPKG_HAL_POWERPC_CSB281_CFLAGS_REMOVE {
+        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_REMOVE {
             display "Suppressed compiler flags"
             flavor  data
             no_define
             default_value { "" }
             description   "
                 This option modifies the set of compiler flags for
-                building the CSB281 HAL. These flags are removed from
+                building HAL. These flags are removed from
                 the set of global flags if present."
-        }
-
-        cdl_option CYGPKG_HAL_POWERPC_CSB281_TESTS {
-            display "CSB281 tests"
-            flavor  data
-            no_define
-            default_value { "" }
-            description   "
-                This option specifies the set of tests for the CSB281 HAL."
         }
     }
 
@@ -340,18 +262,16 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
         display "Memory layout"
         flavor data
         no_define
-        calculated { CYG_HAL_STARTUP == "RAM" ? "powerpc_csb281_ram" : \
-                     CYG_HAL_STARTUP == "ROMRAM" ? "powerpc_csb281_romram" : \
-                                                "powerpc_csb281_rom" }
+        calculated { CYG_HAL_STARTUP == "RAM" ? "microblaze_generic_ram" :
+                                                "microblaze_generic_rom" }
 
         cdl_option CYGHWR_MEMORY_LAYOUT_LDI {
             display "Memory layout linker script fragment"
             flavor data
             no_define
             define -file system.h CYGHWR_MEMORY_LAYOUT_LDI
-            calculated { CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_powerpc_csb281_ram.ldi>" : \
-                         CYG_HAL_STARTUP == "ROMRAM" ? "<pkgconf/mlt_powerpc_csb281_romram.ldi>" : \
-                                                    "<pkgconf/mlt_powerpc_csb281_rom.ldi>" }
+            calculated { CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_microblaze_generic_ram.ldi>" :
+                                                    "<pkgconf/mlt_microblaze_generic_rom.ldi>" }
         }
 
         cdl_option CYGHWR_MEMORY_LAYOUT_H {
@@ -359,9 +279,8 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
             flavor data
             no_define
             define -file system.h CYGHWR_MEMORY_LAYOUT_H
-            calculated { CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_powerpc_csb281_ram.h>" : \
-                         CYG_HAL_STARTUP == "ROMRAM" ? "<pkgconf/mlt_powerpc_csb281_romram.h>" : \
-                                                    "<pkgconf/mlt_powerpc_csb281_rom.h>" }
+            calculated { CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_microblaze_generic_ram.h>" :
+                                                    "<pkgconf/mlt_microblaze_generic_rom.h>" }
         }
     }
 
@@ -389,21 +308,21 @@ cdl_package CYGPKG_HAL_POWERPC_CSB281 {
             This option lists the target's requirements for a valid Redboot
             configuration."
 
-        cdl_option CYGSEM_REDBOOT_PLF_LINUX_BOOT {
-            active_if      CYGBLD_BUILD_REDBOOT_WITH_EXEC
-            display        "Support booting Linux via RedBoot"
-            flavor         bool
-            default_value  1
-            description    "
-               This option enables RedBoot to support booting of a Linux kernel."
-
-            compile plf_redboot_linux_exec.c
-        }
+#        cdl_option CYGSEM_REDBOOT_PLF_LINUX_BOOT {
+#            active_if      CYGBLD_BUILD_REDBOOT_WITH_EXEC
+#            display        "Support booting Linux via RedBoot"
+#            flavor         bool
+#            default_value  1
+#            description    "
+#               This option enables RedBoot to support booting of a Linux kernel."
+#
+#            compile plf_redboot_linux_exec.c
+#        }
 
         cdl_option CYGBLD_BUILD_REDBOOT_BIN {
             display       "Build Redboot ROM binary image"
             active_if     CYGBLD_BUILD_REDBOOT
-            default_value 1
+            default_value 0
             no_define
             description "This option enables the conversion of the Redboot ELF
                          image to a binary image suitable for ROM programming."

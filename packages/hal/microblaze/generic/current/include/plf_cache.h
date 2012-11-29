@@ -42,8 +42,8 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   jskov
-// Contributors:jskov
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
 // Date:        2000-01-26
 // Purpose:     Platform cache control API
 // Description: The macros defined here provide the platform specific

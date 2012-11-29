@@ -42,10 +42,10 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   jskov
-// Contributors:jskov, gthomas
+// Author(s):      Michal Pfeifer
+// Original data:  PowerPC
 // Date:        1999-02-12
-// Purpose:     Platform HAL stub support for Cogent CSB281 PowerPC/8245 board.
+// Purpose:     Platform HAL stub support for Spartan3esk board.
 // Usage:       #include <cyg/hal/plf_stub.h>
 //              
 //####DESCRIPTIONEND####
@@ -58,7 +58,7 @@
 
 #include <cyg/infra/cyg_type.h>         // CYG_UNUSED_PARAM
 
-#include <cyg/hal/ppc_stub.h>           // architecture stub support
+#include <cyg/hal/mb_stub.h>           // architecture stub support
 
 //----------------------------------------------------------------------------
 // Define some platform specific communication details. This is mostly
