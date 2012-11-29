@@ -7044,6 +7044,15 @@ package CYGPKG_HAL_MICROBLAZE_GENERIC {
 		The Generic support for Microblaze boards"
 }
 
+# Supported drivers
+package CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE {
+	alias		{ "Xilinx Ethernet MAC Lite driver" devs_eth_emaclite }
+	hardware
+	directory	devs/eth/microblaze/emaclite
+	script		emaclite_eth_drivers.cdl
+	description	"Xilinx Ethernet MAC Lite driver"
+}
+
 package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	alias		{ "Xilinx Uart16550 serial driver" devs_serial_mb_uart16550 }
 	hardware
