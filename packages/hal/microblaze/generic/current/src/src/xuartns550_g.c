@@ -11,7 +11,7 @@
 *
 *******************************************************************/
 
-#include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
 #include "xuartns550.h"
 
 /*
@@ -21,9 +21,9 @@
 XUartNs550_Config XUartNs550_ConfigTable[] =
 {
 	{
-		XPAR_UARTNS550_0_DEVICE_ID,
-		XPAR_UARTNS550_0_BASEADDR,
-		XPAR_UARTNS550_0_CLOCK_HZ
+		0,
+		MON_UART16550_0_BASE,
+		MON_CPU_SYSTEM_CLK
 	}
 };
 

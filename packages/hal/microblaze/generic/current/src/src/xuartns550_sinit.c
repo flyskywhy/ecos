@@ -40,7 +40,7 @@
 /***************************** Include Files ********************************/
 
 #include "xstatus.h"
-#include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
 #include "xuartns550_i.h"
 
 /************************** Constant Definitions ****************************/
@@ -84,8 +84,8 @@ XUartNs550_Config *XUartNs550_LookupConfig(Xuint16 DeviceId)
     XUartNs550_Config *CfgPtr = XNULL;
 
     int i;
-
-    for (i=0; i < XPAR_XUARTNS550_NUM_INSTANCES; i++)
+/* MS only one port is enable */
+    for (i=0; i < 1; i++)
     {
         if (XUartNs550_ConfigTable[i].DeviceId == DeviceId)
         {

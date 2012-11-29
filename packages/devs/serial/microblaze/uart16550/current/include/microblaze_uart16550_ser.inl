@@ -1,8 +1,9 @@
 //==========================================================================
 //
-//      io/serial/powerpc/powerpc_ppc405_ser.inl
+//      io/serial/microblaze/microblaze_uart16550_ser.inl
 //
-//      PPC405GP/EP Serial I/O definitions
+//      Spartan3E Starter Kit Serial I/O definitions
+//      Based on Xilinx VIRTEX4 Serial I/O definitions
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,10 +40,10 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):    gthomas
+// Author(s):    Michal Pfeifer
 // Contributors: 
-// Date:         2003-09-16
-// Purpose:      PowerPC PPC405GP/EP serial drivers
+// Date:         2000-04-19
+// Purpose:      Xilinx VIRTEX4 Serial I/O module (interrupt driven version)
 // Description: 
 //
 //####DESCRIPTIONEND####
@@ -50,67 +51,67 @@
 //==========================================================================
 
 #include <cyg/hal/hal_intr.h>
-#define CYGARC_HAL_COMMON_EXPORT_CPU_MACROS
-#include <cyg/hal/ppc_regs.h>
 
+#include <cyg/hal/platform.h>	/* platform setting */
+
+#include <pkgconf/hal_microblaze_platform.h>
 //-----------------------------------------------------------------------------
 // Baud rate specification
 
-static unsigned int select_baud[] = {
-    9999, // Unused -- marker
-    50,
-    75,
-    110,
-    134,
-    150,
-    200,
-    300,
-    600,
-    1200,
-    1800,
-    2400,
-    3600,
-    4800,
-    7200,
-    9600,
-    14400,
-    19200,
-    38400,
-    57600,
-    115200,
-    230400
+#define BAUD_RATE(n) (MON_CPU_SYSTEM_CLK/(n*16))
+
+static unsigned short select_baud[] = {
+    0,                   // Unused
+    0,                   // 50
+    0,                   // 75
+    BAUD_RATE(110),      // 110
+    0,                   // 134.5
+    BAUD_RATE(150),      // 150
+    0,                   // 200
+    BAUD_RATE(300),      // 300
+    BAUD_RATE(600),      // 600
+    BAUD_RATE(1200),     // 1200
+    BAUD_RATE(1800),     // 1800
+    BAUD_RATE(2400),     // 2400
+    BAUD_RATE(3600),     // 3600
+    BAUD_RATE(4800),     // 4800
+    BAUD_RATE(7200),     // 7200
+    BAUD_RATE(9600),     // 9600
+    BAUD_RATE(14400),    // 14400
+    BAUD_RATE(19200),    // 19200
+    BAUD_RATE(38400),    // 38400
+    BAUD_RATE(57600),    // 57600
+    BAUD_RATE(115200),   // 115200
 };
 
-externC int cyg_var_baud_generator(int baud);
-#define CYG_IO_SERIAL_GENERIC_16X5X_BAUD_GENERATOR cyg_var_baud_generator
+// Note: the +3 offset here is because the generic driver accesses the registers
+// as bytes and the bytes are aligned on the 0x03 offset with 32 bit words.
+#define BYTELANE_OFFSET 3
 
-#ifdef CYGPKG_IO_SERIAL_POWERPC_PPC405_SERIAL0
-#if defined(CYGHWR_HAL_POWERPC_PPC4XX_405GP)
-static pc_serial_info ppc405_serial_info0 = {_PPC405GP_UART0, CYGNUM_HAL_INTERRUPT_UART0};
-#endif
-#if defined(CYGHWR_HAL_POWERPC_PPC4XX_405EP)
-static pc_serial_info ppc405_serial_info0 = {_PPC405EP_UART0, CYGNUM_HAL_INTERRUPT_UART0};
-#endif
-#if CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL0_BUFSIZE > 0
-static unsigned char ppc405_serial_out_buf0[CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL0_BUFSIZE];
-static unsigned char ppc405_serial_in_buf0[CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL0_BUFSIZE];
+#ifdef CYGPKG_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0
+//magic offset 0x1000
+static pc_serial_info s3esk_serial_info0 = {MON_UART16550_0_BASE + 0x1000 + BYTELANE_OFFSET,
+                                            MON_UART16550_0_INTR};
+#if CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BUFSIZE > 0
+static unsigned char s3esk_serial_out_buf0[CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BUFSIZE];
+static unsigned char s3esk_serial_in_buf0[CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BUFSIZE];
 
-static SERIAL_CHANNEL_USING_INTERRUPTS(ppc405_serial_channel0,
+static SERIAL_CHANNEL_USING_INTERRUPTS(s3esk_serial_channel0,
                                        pc_serial_funs, 
-                                       ppc405_serial_info0,
-                                       CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL0_BAUD),
+                                       s3esk_serial_info0,
+                                       CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BAUD),
                                        CYG_SERIAL_STOP_DEFAULT,
                                        CYG_SERIAL_PARITY_DEFAULT,
                                        CYG_SERIAL_WORD_LENGTH_DEFAULT,
                                        CYG_SERIAL_FLAGS_DEFAULT,
-                                       &ppc405_serial_out_buf0[0], sizeof(ppc405_serial_out_buf0),
-                                       &ppc405_serial_in_buf0[0], sizeof(ppc405_serial_in_buf0)
+                                       &s3esk_serial_out_buf0[0], sizeof(s3esk_serial_out_buf0),
+                                       &s3esk_serial_in_buf0[0], sizeof(s3esk_serial_in_buf0)
     );
 #else
-static SERIAL_CHANNEL(ppc405_serial_channel0,
+static SERIAL_CHANNEL(s3esk_serial_channel0,
                       pc_serial_funs, 
-                      ppc405_serial_info0,
-                      CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL0_BAUD),
+                      s3esk_serial_info0,
+                      CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BAUD),
                       CYG_SERIAL_STOP_DEFAULT,
                       CYG_SERIAL_PARITY_DEFAULT,
                       CYG_SERIAL_WORD_LENGTH_DEFAULT,
@@ -118,58 +119,14 @@ static SERIAL_CHANNEL(ppc405_serial_channel0,
     );
 #endif
 
-DEVTAB_ENTRY(ppc405_serial_io0, 
-             CYGDAT_IO_SERIAL_POWERPC_PPC405_SERIAL0_NAME,
+DEVTAB_ENTRY(s3esk_serial_io0, 
+             CYGDAT_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_NAME,
              0,                     // Does not depend on a lower level interface
              &cyg_io_serial_devio, 
              pc_serial_init, 
              pc_serial_lookup,     // Serial driver may need initializing
-             &ppc405_serial_channel0
+             &s3esk_serial_channel0
     );
-#endif //  CYGPKG_IO_SERIAL_POWERPC_PPC405_SERIAL0
+#endif //  CYGPKG_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0
 
-#ifdef CYGPKG_IO_SERIAL_POWERPC_PPC405_SERIAL1
-#if defined(CYGHWR_HAL_POWERPC_PPC4XX_405GP)
-static pc_serial_info ppc405_serial_info1 = {_PPC405GP_UART1, CYGNUM_HAL_INTERRUPT_UART1};
-#endif
-#if defined(CYGHWR_HAL_POWERPC_PPC4XX_405EP)
-static pc_serial_info ppc405_serial_info1 = {_PPC405EP_UART1, CYGNUM_HAL_INTERRUPT_UART1};
-#endif
-#if CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL1_BUFSIZE > 0
-static unsigned char ppc405_serial_out_buf1[CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL1_BUFSIZE];
-static unsigned char ppc405_serial_in_buf1[CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL1_BUFSIZE];
-
-static SERIAL_CHANNEL_USING_INTERRUPTS(ppc405_serial_channel1,
-                                       pc_serial_funs, 
-                                       ppc405_serial_info1,
-                                       CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL1_BAUD),
-                                       CYG_SERIAL_STOP_DEFAULT,
-                                       CYG_SERIAL_PARITY_DEFAULT,
-                                       CYG_SERIAL_WORD_LENGTH_DEFAULT,
-                                       CYG_SERIAL_FLAGS_DEFAULT,
-                                       &ppc405_serial_out_buf1[0], sizeof(ppc405_serial_out_buf1),
-                                       &ppc405_serial_in_buf1[0], sizeof(ppc405_serial_in_buf1)
-    );
-#else
-static SERIAL_CHANNEL(ppc405_serial_channel1,
-                      pc_serial_funs, 
-                      ppc405_serial_info1,
-                      CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_POWERPC_PPC405_SERIAL1_BAUD),
-                      CYG_SERIAL_STOP_DEFAULT,
-                      CYG_SERIAL_PARITY_DEFAULT,
-                      CYG_SERIAL_WORD_LENGTH_DEFAULT,
-                      CYG_SERIAL_FLAGS_DEFAULT
-    );
-#endif
-
-DEVTAB_ENTRY(ppc405_serial_io1, 
-             CYGDAT_IO_SERIAL_POWERPC_PPC405_SERIAL1_NAME,
-             0,                     // Does not depend on a lower level interface
-             &cyg_io_serial_devio, 
-             pc_serial_init, 
-             pc_serial_lookup,     // Serial driver may need initializing
-             &ppc405_serial_channel1
-    );
-#endif //  CYGPKG_IO_SERIAL_POWERPC_PPC405_SERIAL1
-
-// EOF powerpc_ppc405_ser.inl
+// EOF powerpc_virtex4_ser.inl
