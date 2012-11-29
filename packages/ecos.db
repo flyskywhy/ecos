@@ -7024,5 +7024,16 @@ package CYGPKG_HAL_MICROBLAZE {
 		package."
 }
 
+package CYGPKG_HAL_MICROBLAZE_MB4A {
+	alias		{ "Microblaze 4.00.a variant HAL" hal_microblaze_mb4a microblaze_mb4a_hal }
+	directory	hal/microblaze/mb4a/
+	script		hal_microblaze_mb4a.cdl
+	hardware
+		description	"
+		The Microblaze 4.00.a variant HAL package provides generic support
+		for this processor variant. It is also necessary to
+		select a specific target platform HAL package."
+}
+
 # ==========================================================================
 # End of ecos.db
