@@ -1,4 +1,4 @@
-/* $Id: xbasic_types.h,v 1.13 2005/09/26 19:11:51 trujillo Exp $ */
+/* $Id: xbasic_types.h,v 1.19.10.3 2009/10/19 16:36:59 haibing Exp $ */
 /******************************************************************************
 *
 *       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
@@ -15,7 +15,7 @@
 *       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
 *       FOR A PARTICULAR PURPOSE.
 *
-*       (c) Copyright 2002-2004 Xilinx Inc.
+*       (c) Copyright 2002-2007 Xilinx Inc.
 *       All rights reserved.
 *
 ******************************************************************************/
@@ -43,12 +43,14 @@
 * 1.00a rpm  11/07/03 Added XNullHandler function as a stub interrupt handler
 * 1.00a rpm  07/21/04 Added XExceptionHandler typedef for processor exceptions
 * 1.00a xd   11/03/04 Improved support for doxygen.
+* 1.00a wre  01/25/07 Added Linux style data types u32, u16, u8, TRUE, FALSE
+* 1.00a rpm  04/02/07 Added ifndef KERNEL around u32, u16, u8 data types
 * </pre>
 *
 ******************************************************************************/
 
-#ifndef XBASIC_TYPES_H      /* prevent circular inclusions */
-#define XBASIC_TYPES_H      /* by using protection macros */
+#ifndef XBASIC_TYPES_H	/* prevent circular inclusions */
+#define XBASIC_TYPES_H	/* by using protection macros */
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,16 +62,23 @@ extern "C" {
 
 /************************** Constant Definitions *****************************/
 
-/** Xboolean true */
-#define XTRUE       1
-/** Xboolean false */
-#define XFALSE      0
+#ifndef TRUE
+#  define TRUE		1
+#endif
+
+#ifndef FALSE
+#  define FALSE		0
+#endif
 
 #ifndef NULL
-#define NULL 0
+#define NULL		0
 #endif
-/** Null */
-#define XNULL NULL
+
+/** Xilinx NULL, TRUE and FALSE legacy support. Deprecated. */
+#define XNULL		NULL
+#define XTRUE		TRUE
+#define XFALSE		FALSE
+
 
 #define XCOMPONENT_IS_READY     0x11111111  /**< component has been initialized */
 #define XCOMPONENT_IS_STARTED   0x22222222  /**< component has been started */
@@ -88,26 +97,39 @@ extern void XAssert(char *, int);
 
 /**************************** Type Definitions *******************************/
 
-/** @name Primitive types
- * These primitive types are created for transportability.
- * They are dependent upon the target architecture.
+/** @name Legacy types
+ * Deprecated legacy types.
  * @{
  */
-typedef unsigned char   Xuint8;     /**< unsigned 8-bit */
-typedef char            Xint8;      /**< signed 8-bit */
-typedef unsigned short  Xuint16;    /**< unsigned 16-bit */
-typedef short           Xint16;     /**< signed 16-bit */
-typedef unsigned long   Xuint32;    /**< unsigned 32-bit */
-typedef long            Xint32;     /**< signed 32-bit */
-typedef float           Xfloat32;   /**< 32-bit floating point */
-typedef double          Xfloat64;   /**< 64-bit double precision floating point */
-typedef unsigned long   Xboolean;   /**< boolean (XTRUE or XFALSE) */
+typedef unsigned char	Xuint8;		/**< unsigned 8-bit */
+typedef char		Xint8;		/**< signed 8-bit */
+typedef unsigned short	Xuint16;	/**< unsigned 16-bit */
+typedef short		Xint16;		/**< signed 16-bit */
+typedef unsigned long	Xuint32;	/**< unsigned 32-bit */
+typedef long		Xint32;		/**< signed 32-bit */
+typedef float		Xfloat32;	/**< 32-bit floating point */
+typedef double		Xfloat64;	/**< 64-bit double precision FP */
+typedef unsigned long	Xboolean;	/**< boolean (XTRUE or XFALSE) */
 
 typedef struct
 {
-    Xuint32 Upper;
-    Xuint32 Lower;
+	Xuint32 Upper;
+	Xuint32 Lower;
 } Xuint64;
+
+/** @name New types
+ * New simple types.
+ * @{
+ */
+#ifndef __KERNEL__
+#ifndef XIL_TYPES_H
+typedef Xuint32         u32;
+typedef Xuint16         u16;
+typedef Xuint8          u8;
+#endif
+#else
+#include <linux/types.h>
+#endif
 
 /*@}*/
 
@@ -115,19 +137,19 @@ typedef struct
  * This data type defines an interrupt handler for a device.
  * The argument points to the instance of the component
  */
-typedef void (*XInterruptHandler)(void *InstancePtr);
+typedef void (*XInterruptHandler) (void *InstancePtr);
 
 /**
  * This data type defines an exception handler for a processor.
  * The argument points to the instance of the component
  */
-typedef void (*XExceptionHandler)(void *InstancePtr);
+typedef void (*XExceptionHandler) (void *InstancePtr);
 
 /**
  * This data type defines a callback to be invoked when an
  * assert occurs. The callback is invoked only when asserts are enabled
  */
-typedef void (*XAssertCallback)(char* FilenamePtr, int LineNumber);
+typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
@@ -273,5 +295,4 @@ void XNullHandler(void *NullParameter);
 }
 #endif
 
-#endif          /* end of protection macro */
-
+#endif	/* end of protection macro */
