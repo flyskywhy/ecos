@@ -11,6 +11,7 @@
 *
 *******************************************************************/
 
+#include <pkgconf/hal_microblaze_platform.h>
 #include "xparameters.h"
 #include "xlltemac.h"
 
@@ -20,14 +21,14 @@
 
 XLlTemac_Config XLlTemac_ConfigTable[] = {
 	{
-	 XPAR_XPS_LL_TEMAC34_0_DEVICE_ID,
-	 XPAR_XPS_LL_TEMAC34_0_BASEADDR,
+	 0,
+	 MON_TEMAC_0_BASEADDR,
 	 1,
 	 1,
 	 1,
-	 0,0,0,0,0,0,0,
-	 XPAR_XPS_LL_TEMAC34_0_LLINK0_CONNECTED_TYPE,
-	 XPAR_XPS_LL_TEMAC34_0_LLINK0_CONNECTED_BASEADDR,
-	 0,0,0,0
+	 0,0,0,0,0,0,0,0,
+	 2,//XPAR_XPS_LL_TEMAC34_0_LLINK0_CONNECTED_TYPE,
+	 MON_DMA_EMAC_BASEADDR,
+	 0,0,0
 	}
 };
