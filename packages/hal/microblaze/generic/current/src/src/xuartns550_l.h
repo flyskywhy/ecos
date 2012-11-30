@@ -1,22 +1,42 @@
-/* $Id: xuartns550_l.h,v 1.1 2006/02/17 22:43:40 moleres Exp $ */
+/* $Id: xuartns550_l.h,v 1.1.2.3 2009/12/04 08:42:35 svemula Exp $ */
 /******************************************************************************
 *
-*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
-*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
-*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
-*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
-*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*       FOR A PARTICULAR PURPOSE.
+* (c) Copyright 2002-2009 Xilinx, Inc. All rights reserved.
 *
-*       (c) Copyright 2002 Xilinx Inc.
-*       All rights reserved.
+* This file contains confidential and proprietary information of Xilinx, Inc.
+* and is protected under U.S. and international copyright and other
+* intellectual property laws.
+*
+* DISCLAIMER
+* This disclaimer is not a license and does not grant any rights to the
+* materials distributed herewith. Except as otherwise provided in a valid
+* license issued to you by Xilinx, and to the maximum extent permitted by
+* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
+* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
+* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
+* and (2) Xilinx shall not be liable (whether in contract or tort, including
+* negligence, or under any other theory of liability) for any loss or damage
+* of any kind or nature related to, arising under or in connection with these
+* materials, including for any direct, or any indirect, special, incidental,
+* or consequential loss or damage (including loss of data, profits, goodwill,
+* or any type of loss or damage suffered as a result of any action brought by
+* a third party) even if such damage or loss was reasonably foreseeable or
+* Xilinx had been advised of the possibility of the same.
+*
+* CRITICAL APPLICATIONS
+* Xilinx products are not designed or intended to be fail-safe, or for use in
+* any application requiring fail-safe performance, such as life-support or
+* safety devices or systems, Class III medical devices, nuclear facilities,
+* applications related to the deployment of airbags, or any other applications
+* that could lead to death, personal injury, or severe property or
+* environmental damage (individually and collectively, "Critical
+* Applications"). Customer assumes the sole risk and liability of any use of
+* Xilinx products in Critical Applications, subject only to applicable laws
+* and regulations governing limitations on product liability.
+*
+* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
+* AT ALL TIMES.
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -25,16 +45,21 @@
 * @file xuartns550_l.h
 *
 * This header file contains identifiers and low-level driver functions (or
-* macros) that can be used to access the device.  The user should refer to the
+* macros) that can be used to access the device. The user should refer to the
 * hardware device specification for more details of the device operation.
 * High-level driver functions are defined in xuartns550.h.
 *
 * <pre>
 * MODIFICATION HISTORY:
 *
-* Ver   Who  Date     Changes
+* Ver   Who  Date	 Changes
 * ----- ---- -------- -----------------------------------------------
 * 1.00b jhl  04/24/02 First release
+* 1.11a sv   03/20/07 Updated to use the new coding guidelines.
+* 1.11a rpm  11/13/07 Fixed bug in _EnableIntr
+* 2.00a ktn  10/20/09 Converted all register accesses to 32 bit access.
+*		      Updated to use HAL Processor APIs. _m is removed from the
+*		      name of all the macro definitions.
 * </pre>
 *
 ******************************************************************************/
@@ -48,264 +73,278 @@ extern "C" {
 
 /***************************** Include Files *********************************/
 
-#include "xbasic_types.h"
-#include "xio.h"
+#include "xil_types.h"
+#include "xil_assert.h"
+#include "xil_io.h"
 
 /************************** Constant Definitions *****************************/
 
 /*
- * Offset from the device base address (IPIF) to the IP registers.
+ * Offset from the device base address to the IP registers.
  */
 #define XUN_REG_OFFSET 0x1000
 
-/* 16450/16550 compatible UART, register offsets as byte registers */
+/** @name Register Map
+ *
+ * Register offsets for the 16450/16550 compatible UART device.
+ * @{
+ */
+#define XUN_RBR_OFFSET	(XUN_REG_OFFSET) /**< Receive buffer, read only */
+#define XUN_THR_OFFSET	(XUN_REG_OFFSET) /**< Transmit holding register */
+#define XUN_IER_OFFSET	(XUN_REG_OFFSET + 0x04) /**< Interrupt enable */
+#define XUN_IIR_OFFSET	(XUN_REG_OFFSET + 0x08) /**< Interrupt id, read only */
+#define XUN_FCR_OFFSET	(XUN_REG_OFFSET + 0x08) /**< Fifo control, write only */
+#define XUN_LCR_OFFSET	(XUN_REG_OFFSET + 0x0C) /**< Line Control Register */
+#define XUN_MCR_OFFSET	(XUN_REG_OFFSET + 0x10) /**< Modem Control Register */
+#define XUN_LSR_OFFSET	(XUN_REG_OFFSET + 0x14) /**< Line Status Register */
+#define XUN_MSR_OFFSET	(XUN_REG_OFFSET + 0x18) /**< Modem Status Register */
+#define XUN_DRLS_OFFSET	(XUN_REG_OFFSET + 0x00) /**< Divisor Register LSB */
+#define XUN_DRLM_OFFSET	(XUN_REG_OFFSET + 0x04) /**< Divisor Register MSB */
+/* @} */
 
-#define XUN_RBR_OFFSET  (XUN_REG_OFFSET + 0x03) /* receive buffer, read only */
-#define XUN_THR_OFFSET  (XUN_REG_OFFSET + 0x03) /* transmit holding register */
-#define XUN_IER_OFFSET  (XUN_REG_OFFSET + 0x07) /* interrupt enable */
-#define XUN_IIR_OFFSET  (XUN_REG_OFFSET + 0x0B) /* interrupt id, read only */
-#define XUN_FCR_OFFSET  (XUN_REG_OFFSET + 0x0B) /* fifo control, write only */
-#define XUN_LCR_OFFSET  (XUN_REG_OFFSET + 0x0F) /* line control register */
-#define XUN_MCR_OFFSET  (XUN_REG_OFFSET + 0x13) /* modem control register */
-#define XUN_LSR_OFFSET  (XUN_REG_OFFSET + 0x17) /* line status register */
-#define XUN_MSR_OFFSET  (XUN_REG_OFFSET + 0x1B) /* modem status register */
-#define XUN_DRLS_OFFSET (XUN_REG_OFFSET + 0x03) /* divisor register LSB */
-#define XUN_DRLM_OFFSET (XUN_REG_OFFSET + 0x07) /* divisor register MSB */
-
-/* the following constant specifies the size of the FIFOs, the size of the
+/*
+ * The following constant specifies the size of the FIFOs, the size of the
  * FIFOs includes the transmitter and receiver such that it is the total number
  * of bytes that the UART can buffer
  */
-#define XUN_FIFO_SIZE               16
+#define XUN_FIFO_SIZE			16
 
-/* Interrupt Enable Register bits */
 
-#define XUN_IER_MODEM_STATUS        0x08    /* modem status interrupt */
-#define XUN_IER_RX_LINE             0x04    /* receive status interrupt */
-#define XUN_IER_TX_EMPTY            0x02    /* transmitter empty interrupt */
-#define XUN_IER_RX_DATA             0x01    /* receiver data available */
+/**
+ * @name Interrupt Enable Register (IER) mask(s)
+ * @{
+ */
+#define XUN_IER_MODEM_STATUS	0x00000008 /**< Modem status interrupt */
+#define XUN_IER_RX_LINE		0x00000004 /**< Receive status interrupt */
+#define XUN_IER_TX_EMPTY	0x00000002 /**< Transmitter empty interrupt */
+#define XUN_IER_RX_DATA		0x00000001 /**< Receiver data available */
+/* @} */
 
-/* Interrupt ID Register bits */
+/**
+ * @name Interrupt ID Register (INT_ID) mask(s)
+ * @{
+ */
+#define XUN_INT_ID_MASK		 0x0000000F /**< Only the interrupt ID */
+#define XUN_INT_ID_FIFOS_ENABLED 0x000000C0 /**< Only the FIFOs enable */
+/* @} */
 
-#define XUN_INT_ID_MASK             0x0F    /* only the interrupt ID */
-#define XUN_INT_ID_FIFOS_ENABLED    0xC0    /* only the FIFOs enable */
+/**
+ * @name FIFO Control Register mask(s)
+ * @{
+ */
+#define XUN_FIFO_RX_TRIG_MSB	0x00000080 /**< Trigger level MSB */
+#define XUN_FIFO_RX_TRIG_LSB	0x00000040 /**< Trigger level LSB */
+#define XUN_FIFO_TX_RESET	0x00000004 /**< Reset the transmit FIFO */
+#define XUN_FIFO_RX_RESET	0x00000002 /**< Reset the receive FIFO */
+#define XUN_FIFO_ENABLE		0x00000001 /**< Enable the FIFOs */
+#define XUN_FIFO_RX_TRIGGER	0x000000C0 /**< Both trigger level bits */
+/* @} */
 
-/* FIFO Control Register bits */
+/**
+ * @name Line Control Register(LCR) mask(s)
+ * @{
+ */
+#define XUN_LCR_DLAB		0x00000080 /**< Divisor latch access */
+#define XUN_LCR_SET_BREAK	0x00000040 /**< Cause a break condition */
+#define XUN_LCR_STICK_PARITY	0x00000020 /**< Stick Parity */
+#define XUN_LCR_EVEN_PARITY	0x00000010 /**< 1 = even, 0 = odd parity */
+#define XUN_LCR_ENABLE_PARITY	0x00000008 /**< 1 = Enable, 0 = Disable parity*/
+#define XUN_LCR_2_STOP_BITS	0x00000004 /**< 1= 2 stop bits,0 = 1 stop bit */
+#define XUN_LCR_8_DATA_BITS	0x00000003 /**< 8 Data bits selection */
+#define XUN_LCR_7_DATA_BITS	0x00000002 /**< 7 Data bits selection */
+#define XUN_LCR_6_DATA_BITS	0x00000001 /**< 6 Data bits selection */
+#define XUN_LCR_LENGTH_MASK	0x00000003 /**< Both length bits mask */
+#define XUN_LCR_PARITY_MASK	0x00000018 /**< Both parity bits mask */
+/* @} */
 
-#define XUN_FIFO_RX_TRIG_MSB        0x80    /* trigger level MSB */
-#define XUN_FIFO_RX_TRIG_LSB        0x40    /* trigger level LSB */
-#define XUN_FIFO_TX_RESET           0x04    /* reset the transmit FIFO */
-#define XUN_FIFO_RX_RESET           0x02    /* reset the receive FIFO */
-#define XUN_FIFO_ENABLE             0x01    /* enable the FIFOs */
-#define XUN_FIFO_RX_TRIGGER         0xC0    /* both trigger level bits */
+/**
+ * @name Mode Control Register(MCR) mask(s)
+ * @{
+ */
+#define XUN_MCR_LOOP		0x00000010 /**< Local loopback */
+#define XUN_MCR_OUT_2		0x00000008 /**< General output 2 signal */
+#define XUN_MCR_OUT_1		0x00000004 /**< General output 1 signal */
+#define XUN_MCR_RTS		0x00000002 /**< RTS signal */
+#define XUN_MCR_DTR		0x00000001 /**< DTR signal */
+/* @} */
 
-/* Line Control Register bits */
+/**
+ * @name Line Status Register(LSR) mask(s)
+ * @{
+ */
+#define XUN_LSR_RX_FIFO_ERROR	0x00000080 /**< An errored byte is in FIFO */
+#define XUN_LSR_TX_EMPTY	0x00000040 /**< Transmitter is empty */
+#define XUN_LSR_TX_BUFFER_EMPTY 0x00000020 /**< Transmit holding reg empty */
+#define XUN_LSR_BREAK_INT	0x00000010 /**< Break detected interrupt */
+#define XUN_LSR_FRAMING_ERROR	0x00000008 /**< Framing error on current byte */
+#define XUN_LSR_PARITY_ERROR	0x00000004 /**< Parity error on current byte */
+#define XUN_LSR_OVERRUN_ERROR	0x00000002 /**< Overrun error on receive FIFO */
+#define XUN_LSR_DATA_READY	0x00000001 /**< Receive data ready */
+#define XUN_LSR_ERROR_BREAK	0x0000001E /**< Errors except FIFO error and
+						break detected */
+/* @} */
 
-#define XUN_LCR_DLAB                0x80    /* divisor latch access */
-#define XUN_LCR_SET_BREAK           0x40    /* cause a break condition */
-#define XUN_LCR_STICK_PARITY        0x20
-#define XUN_LCR_EVEN_PARITY         0x10    /* 1 = even, 0 = odd parity */
-#define XUN_LCR_ENABLE_PARITY       0x08
-#define XUN_LCR_2_STOP_BITS         0x04    /* 1 = 2 stop bits,0 = 1 stop bit */
-#define XUN_LCR_8_DATA_BITS         0x03
-#define XUN_LCR_7_DATA_BITS         0x02
-#define XUN_LCR_6_DATA_BITS         0x01
-#define XUN_LCR_LENGTH_MASK         0x03    /* both length bits mask */
-#define XUN_LCR_PARITY_MASK         0x18    /* both parity bits mask */
-
-/* Modem Control Register bits */
-
-#define XUN_MCR_LOOP                0x10    /* local loopback */
-#define XUN_MCR_OUT_2               0x08    /* general output 2 signal */
-#define XUN_MCR_OUT_1               0x04    /* general output 1 signal */
-#define XUN_MCR_RTS                 0x02    /* RTS signal */
-#define XUN_MCR_DTR                 0x01    /* DTR signal */
-
-/* Line Status Register bits */
-
-#define XUN_LSR_RX_FIFO_ERROR       0x80    /* an errored byte is in the FIFO */
-#define XUN_LSR_TX_EMPTY            0x40    /* transmitter is empty */
-#define XUN_LSR_TX_BUFFER_EMPTY     0x20    /* transmit holding reg empty */
-#define XUN_LSR_BREAK_INT           0x10    /* break detected interrupt */
-#define XUN_LSR_FRAMING_ERROR       0x08    /* framing error on current byte */
-#define XUN_LSR_PARITY_ERROR        0x04    /* parity error on current byte */
-#define XUN_LSR_OVERRUN_ERROR       0x02    /* overrun error on receive FIFO */
-#define XUN_LSR_DATA_READY          0x01    /* receive data ready */
-#define XUN_LSR_ERROR_BREAK         0x1E    /* errors except FIFO error and
-                                               break detected */
-
-#define XUN_DIVISOR_BYTE_MASK       0xFF
+#define XUN_DIVISOR_BYTE_MASK	0x000000FF
 
 /**************************** Type Definitions *******************************/
 
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-
-/*****************************************************************************
-*
-* Low-level driver macros.  The list below provides signatures to help the
-* user use the macros.
-*
-* Xuint8 XUartNs550_mReadReg(Xuint32 BaseAddress. int RegOffset)
-* void XUartNs550_mWriteReg(Xuint32 BaseAddress, int RegOffset,
-*                           Xuint8 RegisterValue)
-*
-* Xuint8 XUartNs550_mGetLineStatusReg(Xuint32 BaseAddress)
-* Xuint8 XUartNs550_mGetLineControlReg(Xuint32 BaseAddress)
-* void XUartNs550_mSetLineControlReg(Xuint32 BaseAddress, Xuint8 RegisterValue)
-*
-* void XUartNs550_mEnableIntr(Xuint32 BaseAddress)
-* void XUartNs550_mDisableIntr(Xuint32 BaseAddress)
-*
-* Xboolean XUartNs550_mIsReceiveData(Xuint32 BaseAddress)
-* Xboolean XUartNs550_mIsTransmitEmpty(Xuint32 BaseAddress)
-*
-*****************************************************************************/
-
 /****************************************************************************/
 /**
 * Read a UART register.
 *
-* @param    BaseAddress contains the base address of the device.
-* @param    RegOffset contains the offset from the 1st register of the device
-*           to select the specific register.
+* @param	BaseAddress contains the base address of the device.
+* @param	RegOffset contains the offset from the 1st register of the
+*		device to select the specific register.
 *
-* @return   The value read from the register.
+* @return	The value read from the register.
 *
-* @note     None.
+* @note		C-Style signature:
+*		u32 XUartNs550_ReadReg(u32 BaseAddress, u32 RegOffset);
 *
 ******************************************************************************/
-#define XUartNs550_mReadReg(BaseAddress, RegOffset) \
-    XIo_In8((BaseAddress) + (RegOffset))
+#define XUartNs550_ReadReg(BaseAddress, RegOffset) \
+	Xil_In32((BaseAddress) + (RegOffset))
 
 /****************************************************************************/
 /**
 * Write to a UART register.
 *
-* @param    BaseAddress contains the base address of the device.
-* @param    RegOffset contains the offset from the 1st register of the device
-*           to select the specific register.
+* @param	BaseAddress contains the base address of the device.
+* @param	RegOffset contains the offset from the 1st register of the
+*		device to select the specific register.
+* @param	RegisterValue is the value to be written to the regsiter.
 *
-* @return   The value read from the register.
+* @return	None.
 *
-* @note     None.
+* @note		C-Style signature:
+*		u32 XUartNs550_WriteReg(u32 BaseAddress, u32 RegOffset,
+*						u32 RegisterValue);
 *
 ******************************************************************************/
-#define XUartNs550_mWriteReg(BaseAddress, RegOffset, RegisterValue) \
-    XIo_Out8((BaseAddress) + (RegOffset), (RegisterValue))
+#define XUartNs550_WriteReg(BaseAddress, RegOffset, RegisterValue) \
+	Xil_Out32((BaseAddress) + (RegOffset), (RegisterValue))
 
 /****************************************************************************/
 /**
 * Get the UART Line Status Register.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   The value read from the register.
+* @return	The value read from the register.
 *
-* @note     None.
+* @note		C-Style signature:
+*		u32 XUartNs550_GetLineStatusReg(u32 BaseAddress);
 *
 ******************************************************************************/
-#define XUartNs550_mGetLineStatusReg(BaseAddress)   \
-    XIo_In8((BaseAddress) + XUN_LSR_OFFSET)
+#define XUartNs550_GetLineStatusReg(BaseAddress)   \
+	XUartNs550_ReadReg((BaseAddress), XUN_LSR_OFFSET)
 
 /****************************************************************************/
 /**
 * Get the UART Line Status Register.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   The value read from the register.
+* @return	The value read from the register.
 *
-* @note     None.
+* @note		C-Style signature:
+*		u32 XUartNs550_GetLineControlReg(u32 BaseAddress);
 *
 ******************************************************************************/
-#define XUartNs550_mGetLineControlReg(BaseAddress)  \
-    XIo_In8((BaseAddress) + XUN_LCR_OFFSET)
+#define XUartNs550_GetLineControlReg(BaseAddress)  \
+	XUartNs550_ReadReg((BaseAddress), XUN_LCR_OFFSET)
 
 /****************************************************************************/
 /**
 * Set the UART Line Status Register.
 *
-* @param    BaseAddress contains the base address of the device.
-* @param    RegisterValue is the value to be written to the register.
+* @param	BaseAddress contains the base address of the device.
+* @param	RegisterValue is the value to be written to the register.
 *
-* @return   None.
+* @return	None.
 *
-* @note     None.
+* @note		C-Style signature:
+*		void XUartNs550_SetLineControlReg(u32 BaseAddress,
+*				u32 RegisterValue);
 *
 ******************************************************************************/
-#define XUartNs550_mSetLineControlReg(BaseAddress, RegisterValue) \
-    XIo_Out8((BaseAddress) + XUN_LCR_OFFSET, (RegisterValue))
+#define XUartNs550_SetLineControlReg(BaseAddress, RegisterValue) \
+	XUartNs550_WriteReg((BaseAddress), XUN_LCR_OFFSET, (RegisterValue))
 
 /****************************************************************************/
 /**
 * Enable the transmit and receive interrupts of the UART.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   None.
+* @return	None.
 *
-* @note     None.
+* @note		C-Style signature:
+*		void XUartNs550_EnableIntr(u32 BaseAddress);,
 *
 ******************************************************************************/
-#define XUartNs550_mEnableIntr(BaseAddress)                             \
-    XIo_Out8((BaseAddress) + XUN_IER_OFFSET,                            \
-             XIo_In8((BaseAddress) + XUN_IER_OFFSET) |                  \
-             (XUN_IER_RX_LINE | XUN_IER_TX_EMPTY | XUN_IER_RX_DATA))
+#define XUartNs550_EnableIntr(BaseAddress)				\
+	XUartNs550_WriteReg((BaseAddress), XUN_IER_OFFSET,		\
+			 XUartNs550_ReadReg((BaseAddress), XUN_IER_OFFSET) | \
+			 (XUN_IER_RX_LINE | XUN_IER_TX_EMPTY | XUN_IER_RX_DATA))
 
 /****************************************************************************/
 /**
 * Disable the transmit and receive interrupts of the UART.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   None.
+* @return	None.
 *
-* @note     None.
+* @note		C-Style signature:
+*		void XUartNs550_DisableIntr(u32 BaseAddress);,
 *
 ******************************************************************************/
-#define XUartNs550_mDisableIntr(BaseAddress)                            \
-    XIo_Out8((BaseAddress) + XUN_IER_OFFSET,                            \
-             XIo_In8((BaseAddress) + XUN_IER_OFFSET) &                  \
-             ~(XUN_IER_RX_LINE | XUN_IER_TX_EMPTY | XUN_IER_RX_DATA))
+#define XUartNs550_DisableIntr(BaseAddress)				\
+	XUartNs550_WriteReg((BaseAddress), XUN_IER_OFFSET,		\
+			XUartNs550_ReadReg((BaseAddress), XUN_IER_OFFSET) & \
+			~(XUN_IER_RX_LINE | XUN_IER_TX_EMPTY | XUN_IER_RX_DATA))
 
 /****************************************************************************/
 /**
 * Determine if there is receive data in the receiver and/or FIFO.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   XTRUE if there is receive data, XFALSE otherwise.
+* @return	TRUE if there is receive data, FALSE otherwise.
 *
-* @note     None.
+* @note		C-Style signature:
+*		int XUartNs550_IsReceiveData(u32 BaseAddress);,
 *
 ******************************************************************************/
-#define XUartNs550_mIsReceiveData(BaseAddress)                          \
-    (XIo_In8((BaseAddress) + XUN_LSR_OFFSET) & XUN_LSR_DATA_READY)
+#define XUartNs550_IsReceiveData(BaseAddress)				\
+	(XUartNs550_GetLineStatusReg(BaseAddress) & XUN_LSR_DATA_READY)
 
 /****************************************************************************/
 /**
 * Determine if a byte of data can be sent with the transmitter.
 *
-* @param    BaseAddress contains the base address of the device.
+* @param	BaseAddress contains the base address of the device.
 *
-* @return   XTRUE if a byte can be sent, XFALSE otherwise.
+* @return	TRUE if a byte can be sent, FALSE otherwise.
 *
-* @note     None.
+* @note		C-Style signature:
+*		int XUartNs550_IsTransmitEmpty(u32 BaseAddress);,
 *
 ******************************************************************************/
-#define XUartNs550_mIsTransmitEmpty(BaseAddress)                        \
-    (XIo_In8((BaseAddress) + XUN_LSR_OFFSET) & XUN_LSR_TX_BUFFER_EMPTY)
+#define XUartNs550_IsTransmitEmpty(BaseAddress)			\
+	(XUartNs550_GetLineStatusReg(BaseAddress) & XUN_LSR_TX_BUFFER_EMPTY)
 
 /************************** Function Prototypes ******************************/
 
-void XUartNs550_SendByte(Xuint32 BaseAddress, Xuint8 Data);
+void XUartNs550_SendByte(u32 BaseAddress, u8 Data);
 
-Xuint8 XUartNs550_RecvByte(Xuint32 BaseAddress);
+u8 XUartNs550_RecvByte(u32 BaseAddress);
 
-void XUartNs550_SetBaud(Xuint32 BaseAddress, Xuint32 InputClockHz,
-                        Xuint32 BaudRate);
+void XUartNs550_SetBaud(u32 BaseAddress, u32 InputClockHz, u32 BaudRate);
 
 /************************** Variable Definitions *****************************/
 
@@ -313,5 +352,5 @@ void XUartNs550_SetBaud(Xuint32 BaseAddress, Xuint32 InputClockHz,
 }
 #endif
 
-#endif            /* end of protection macro */
+#endif /* end of protection macro */
 

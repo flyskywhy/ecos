@@ -1,24 +1,44 @@
-/* $Id: xuartns550_intr.c,v 1.1 2006/02/17 22:43:40 moleres Exp $ */
-/*****************************************************************************
+/* $Id: xuartns550_intr.c,v 1.1.2.2 2009/12/04 08:19:36 svemula Exp $ */
+/******************************************************************************
 *
-*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
-*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
-*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
-*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
-*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*       FOR A PARTICULAR PURPOSE.
+* (c) Copyright 2002-2009 Xilinx, Inc. All rights reserved.
 *
-*       (c) Copyright 2002 Xilinx Inc.
-*       All rights reserved.
+* This file contains confidential and proprietary information of Xilinx, Inc.
+* and is protected under U.S. and international copyright and other
+* intellectual property laws.
 *
-*****************************************************************************/
+* DISCLAIMER
+* This disclaimer is not a license and does not grant any rights to the
+* materials distributed herewith. Except as otherwise provided in a valid
+* license issued to you by Xilinx, and to the maximum extent permitted by
+* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
+* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
+* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
+* and (2) Xilinx shall not be liable (whether in contract or tort, including
+* negligence, or under any other theory of liability) for any loss or damage
+* of any kind or nature related to, arising under or in connection with these
+* materials, including for any direct, or any indirect, special, incidental,
+* or consequential loss or damage (including loss of data, profits, goodwill,
+* or any type of loss or damage suffered as a result of any action brought by
+* a third party) even if such damage or loss was reasonably foreseeable or
+* Xilinx had been advised of the possibility of the same.
+*
+* CRITICAL APPLICATIONS
+* Xilinx products are not designed or intended to be fail-safe, or for use in
+* any application requiring fail-safe performance, such as life-support or
+* safety devices or systems, Class III medical devices, nuclear facilities,
+* applications related to the deployment of airbags, or any other applications
+* that could lead to death, personal injury, or severe property or
+* environmental damage (individually and collectively, "Critical
+* Applications"). Customer assumes the sole risk and liability of any use of
+* Xilinx products in Critical Applications, subject only to applicable laws
+* and regulations governing limitations on product liability.
+*
+* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
+* AT ALL TIMES.
+*
+******************************************************************************/
 /****************************************************************************/
 /**
 *
@@ -33,6 +53,12 @@
 * Ver   Who  Date     Changes
 * ----- ---- -------- -----------------------------------------------
 * 1.00b jhl  03/11/02 Repartitioned driver for smaller files.
+* 1.11a sv   03/20/07 Updated to use the new coding guidelines.
+* 2.00a ktn  10/20/09 Converted all register accesses to 32 bit access.
+*		      Updated to use HAL Processor APIs. _m is removed from the
+*		      name of all the macro definitions. XUartNs550_mClearStats
+*		      macro is removed, XUartNs550_ClearStats function should be
+*		      used in its place.
 * </pre>
 *
 *****************************************************************************/
@@ -41,7 +67,7 @@
 
 #include "xuartns550.h"
 #include "xuartns550_i.h"
-#include "xio.h"
+#include "xil_io.h"
 
 /************************** Constant Definitions ****************************/
 
@@ -66,21 +92,20 @@ typedef void (*Handler)(XUartNs550 *InstancePtr);
  * to each of the handlers for specific kinds of interrupts. The table is
  * indexed by the value read from the interrupt ID register.
  */
-static Handler HandlerTable[13] =
-{
-    ModemHandler,           /* 0 */
-    NoInterruptHandler,     /* 1 */
-    SendDataHandler,        /* 2 */
-    XNULL,                  /* 3 */
-    ReceiveDataHandler,     /* 4 */
-    XNULL,                  /* 5 */
-    ReceiveStatusHandler,   /* 6 */
-    XNULL,                  /* 7 */
-    XNULL,                  /* 8 */
-    XNULL,                  /* 9 */
-    XNULL,                  /* 10 */
-    XNULL,                  /* 11 */
-    ReceiveTimeoutHandler   /* 12 */
+static Handler HandlerTable[13] = {
+	ModemHandler,		/* 0 */
+	NoInterruptHandler,	/* 1 */
+	SendDataHandler,	/* 2 */
+	NULL,			/* 3 */
+	ReceiveDataHandler,	/* 4 */
+	NULL,			/* 5 */
+	ReceiveStatusHandler,	/* 6 */
+	NULL,			/* 7 */
+	NULL,			/* 8 */
+	NULL,			/* 9 */
+	NULL,			/* 10 */
+	NULL,			/* 11 */
+	ReceiveTimeoutHandler	/* 12 */
 };
 
 /****************************************************************************/
@@ -90,35 +115,33 @@ static Handler HandlerTable[13] =
 * occurs in the driver. The purpose of the handler is to allow application
 * specific processing to be performed.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
-* @param    FuncPtr is the pointer to the callback function.
-* @param    CallBackRef is the upper layer callback reference passed back when
-*           the callback function is invoked.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
+* @param	FuncPtr is the pointer to the callback function.
+* @param	CallBackRef is the upper layer callback reference passed back
+*		when the callback function is invoked.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @notes
+* @note
 *
 * There is no assert on the CallBackRef since the driver doesn't know what it
 * is (nor should it)
 *
 *****************************************************************************/
 void XUartNs550_SetHandler(XUartNs550 *InstancePtr,
-                           XUartNs550_Handler FuncPtr, void *CallBackRef)
+				XUartNs550_Handler FuncPtr, void *CallBackRef)
 {
-    /*
-     * Assert validates the input arguments
-     * CallBackRef not checked, no way to know what is valid
-     */
+	/*
+	 * Assert validates the input arguments
+	 * CallBackRef not checked, no way to know what is valid
+	 */
 
-    XASSERT_VOID(InstancePtr != XNULL);
-    XASSERT_VOID(FuncPtr != XNULL);
-    XASSERT_VOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
+	Xil_AssertVoid(InstancePtr != NULL);
+	Xil_AssertVoid(FuncPtr != NULL);
+	Xil_AssertVoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 
-    InstancePtr->Handler = FuncPtr;
-    InstancePtr->CallBackRef = CallBackRef;
+	InstancePtr->Handler = FuncPtr;
+	InstancePtr->CallBackRef = CallBackRef;
 }
 
 /****************************************************************************/
@@ -130,36 +153,35 @@ void XUartNs550_SetHandler(XUartNs550 *InstancePtr,
 * does not save or restore the processor context such that the user must
 * ensure this occurs.
 *
-* @param    InstancePtr contains a pointer to the instance of the UART that
-*           the interrupt is for.
+* @param	InstancePtr contains a pointer to the instance of the UART that
+*		the interrupt is for.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 ******************************************************************************/
 void XUartNs550_InterruptHandler(XUartNs550 *InstancePtr)
 {
-    Xuint8 IsrStatus;
+	u8 IsrStatus;
 
-    XASSERT_VOID(InstancePtr != XNULL);
+	Xil_AssertVoid(InstancePtr != NULL);
 
-    /* Read the interrupt ID register to determine which, only one,
-     * interrupt is active
-     */
-    IsrStatus = XIo_In8(InstancePtr->BaseAddress + XUN_IIR_OFFSET) &
-                        XUN_INT_ID_MASK;
+	/*
+	 * Read the interrupt ID register to determine which, only one,
+	 * interrupt is active
+	 */
+	IsrStatus = (u8)XUartNs550_ReadReg(InstancePtr->BaseAddress,
+					XUN_IIR_OFFSET) &
+					XUN_INT_ID_MASK;
 
-    /* Make sure the handler table has a handler defined for the interrupt
-     * that is active, and then call the handler
-     */
-    XASSERT_VOID(HandlerTable[IsrStatus] != XNULL);
+	/*
+	 * Make sure the handler table has a handler defined for the interrupt
+	 * that is active, and then call the handler
+	 */
+	Xil_AssertVoid(HandlerTable[IsrStatus] != NULL);
 
-    HandlerTable[IsrStatus](InstancePtr);
+	HandlerTable[IsrStatus](InstancePtr);
 }
 
 /****************************************************************************/
@@ -168,15 +190,11 @@ void XUartNs550_InterruptHandler(XUartNs550 *InstancePtr)
 * This function handles the case when the value read from the interrupt ID
 * register indicates no interrupt is to be serviced.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance .
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 * @internal
 *
@@ -186,15 +204,17 @@ void XUartNs550_InterruptHandler(XUartNs550 *InstancePtr)
 *****************************************************************************/
 static void NoInterruptHandler(XUartNs550 *InstancePtr)
 {
-    volatile Xuint8 LsrRegister;
-    /*
-     * Reading the ID register clears the currently asserted interrupts
-     */
-    LsrRegister = XIo_In8(InstancePtr->BaseAddress + XUN_LSR_OFFSET);
+	volatile u32 LsrRegister;
 
-    /* Update the stats to reflect any errors that might be read */
+	/*
+	 * Reading the ID register clears the currently asserted interrupts
+	 */
+	LsrRegister = XUartNs550_GetLineStatusReg(InstancePtr->BaseAddress);
 
-    XUartNs550_mUpdateStats(InstancePtr, LsrRegister);
+	/*
+	 * Update the stats to reflect any errors that might be read
+	 */
+	XUartNs550_UpdateStats(InstancePtr, (u8)LsrRegister);
 }
 
 /****************************************************************************/
@@ -203,11 +223,9 @@ static void NoInterruptHandler(XUartNs550 *InstancePtr)
 * This function handles interrupts for receive status updates which include
 * overrun errors, framing errors, parity errors, and the break interrupt.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
-*
-* None.
+* @return	None.
 *
 * @note
 *
@@ -218,39 +236,38 @@ static void NoInterruptHandler(XUartNs550 *InstancePtr)
 *****************************************************************************/
 static void ReceiveStatusHandler(XUartNs550 *InstancePtr)
 {
-    Xuint8 LsrRegister;
+	u32 LsrRegister;
 
-    /*
-     * If there are bytes still to be received in the specified buffer
-     * go ahead and receive them
-     */
-    if (InstancePtr->ReceiveBuffer.RemainingBytes != 0)
-    {
-        XUartNs550_ReceiveBuffer(InstancePtr);
-    }
-    else
-    {
-        /*
-         * Reading the ID register clears the currently asserted interrupts
-         * and this must be done since there was no data to receive, update
-         * the status for the status read
-         */
-        LsrRegister = XIo_In8(InstancePtr->BaseAddress + XUN_LSR_OFFSET);
-        XUartNs550_mUpdateStats(InstancePtr, LsrRegister);
-    }
+	/*
+	 * If there are bytes still to be received in the specified buffer
+	 * go ahead and receive them
+	 */
+	if (InstancePtr->ReceiveBuffer.RemainingBytes != 0) {
+		XUartNs550_ReceiveBuffer(InstancePtr);
+	} else {
+		/*
+		 * Reading the ID register clears the currently asserted
+		 * interrupts and this must be done since there was no data
+		 * to receive, update the status for the status read
+		 */
+		LsrRegister =
+			XUartNs550_GetLineStatusReg(InstancePtr->BaseAddress);
+		XUartNs550_UpdateStats(InstancePtr, (u8)LsrRegister);
+	}
 
-    /*
-     * Call the application handler to indicate that there is a receive
-     * error or a break interrupt, if the application cares about the
-     * error it call a function to get the last errors
-     */
-    InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_RECV_ERROR,
-                         InstancePtr->ReceiveBuffer.RequestedBytes -
-                         InstancePtr->ReceiveBuffer.RemainingBytes);
+	/*
+	 * Call the application handler to indicate that there is a receive
+	 * error or a break interrupt, if the application cares about the
+	 * error it call a function to get the last errors
+	 */
+	InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_RECV_ERROR,
+				InstancePtr->ReceiveBuffer.RequestedBytes -
+				InstancePtr->ReceiveBuffer.RemainingBytes);
 
-    /* Update the receive stats to reflect the receive interrupt */
-
-    InstancePtr->Stats.StatusInterrupts++;
+	/*
+	 * Update the receive stats to reflect the receive interrupt
+	 */
+	InstancePtr->Stats.StatusInterrupts++;
 }
 /****************************************************************************/
 /**
@@ -260,57 +277,50 @@ static void ReceiveStatusHandler(XUartNs550 *InstancePtr)
 * times, the receiver is not receiving any data, and the number of bytes
 * present is less than the FIFO threshold.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
 static void ReceiveTimeoutHandler(XUartNs550 *InstancePtr)
 {
-    Xuint32 Event;
+	u32 Event;
 
-    /*
-     * If there are bytes still to be received in the specified buffer
-     * go ahead and receive them
-     */
-    if (InstancePtr->ReceiveBuffer.RemainingBytes != 0)
-    {
-        XUartNs550_ReceiveBuffer(InstancePtr);
-    }
+	/*
+	 * If there are bytes still to be received in the specified buffer
+	 * go ahead and receive them
+	 */
+	if (InstancePtr->ReceiveBuffer.RemainingBytes != 0) {
+		XUartNs550_ReceiveBuffer(InstancePtr);
+	}
 
-    /*
-     * If there are no more bytes to receive then indicate that this is
-     * not a receive timeout but the end of the buffer reached, a timeout
-     * normally occurs if # of bytes is not divisible by FIFO threshold,
-     * don't rely on previous test of remaining bytes since receive function
-     * updates it
-     */
-    if (InstancePtr->ReceiveBuffer.RemainingBytes != 0)
-    {
-        Event = XUN_EVENT_RECV_TIMEOUT;
-    }
-    else
-    {
-        Event = XUN_EVENT_RECV_DATA;
-    }
+	/*
+	 * If there are no more bytes to receive then indicate that this is
+	 * not a receive timeout but the end of the buffer reached, a timeout
+	 * normally occurs if # of bytes is not divisible by FIFO threshold,
+	 * don't rely on previous test of remaining bytes since receive function
+	 * updates it
+	 */
+	if (InstancePtr->ReceiveBuffer.RemainingBytes != 0) {
+		Event = XUN_EVENT_RECV_TIMEOUT;
+	} else {
+		Event = XUN_EVENT_RECV_DATA;
+	}
 
-    /*
-     * Call the application handler to indicate that there is a receive
-     * timeout or data event
-     */
-    InstancePtr->Handler(InstancePtr->CallBackRef, Event,
-                         InstancePtr->ReceiveBuffer.RequestedBytes -
-                         InstancePtr->ReceiveBuffer.RemainingBytes);
+	/*
+	 * Call the application handler to indicate that there is a receive
+	 * timeout or data event
+	 */
+	InstancePtr->Handler(InstancePtr->CallBackRef, Event,
+			 InstancePtr->ReceiveBuffer.RequestedBytes -
+			 InstancePtr->ReceiveBuffer.RemainingBytes);
 
-    /* Update the receive stats to reflect the receive interrupt */
-
-    InstancePtr->Stats.ReceiveInterrupts++;
+	/*
+	 * Update the receive stats to reflect the receive interrupt
+	 */
+	InstancePtr->Stats.ReceiveInterrupts++;
 }
 /****************************************************************************/
 /**
@@ -318,43 +328,40 @@ static void ReceiveTimeoutHandler(XUartNs550 *InstancePtr)
 * This function handles the interrupt when data is received, either a single
 * byte when FIFOs are not enabled, or multiple bytes with the FIFO.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
 static void ReceiveDataHandler(XUartNs550 *InstancePtr)
 {
-    /*
-     * If there are bytes still to be received in the specified buffer
-     * go ahead and receive them
-     */
-     if (InstancePtr->ReceiveBuffer.RemainingBytes != 0)
-    {
-        XUartNs550_ReceiveBuffer(InstancePtr);
-    }
+	/*
+	 * If there are bytes still to be received in the specified buffer
+	 * go ahead and receive them
+	 */
+	if (InstancePtr->ReceiveBuffer.RemainingBytes != 0) {
+		XUartNs550_ReceiveBuffer(InstancePtr);
+	}
 
-    /* If the last byte of a message was received then call the application
-     * handler, this code should not use an else from the previous check of
-     * the number of bytes to receive because the call to receive the buffer
-     * updates the bytes to receive
-     */
-    if (InstancePtr->ReceiveBuffer.RemainingBytes == 0)
-    {
-        InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_RECV_DATA,
-                             InstancePtr->ReceiveBuffer.RequestedBytes -
-                             InstancePtr->ReceiveBuffer.RemainingBytes);
-    }
+	/*
+	 * If the last byte of a message was received then call the application
+	 * handler, this code should not use an else from the previous check of
+	 * the number of bytes to receive because the call to receive the buffer
+	 * updates the bytes to receive
+	 */
+	if (InstancePtr->ReceiveBuffer.RemainingBytes == 0) {
+		InstancePtr->Handler(InstancePtr->CallBackRef,
+				XUN_EVENT_RECV_DATA,
+				InstancePtr->ReceiveBuffer.RequestedBytes -
+				InstancePtr->ReceiveBuffer.RemainingBytes);
+	}
 
-    /* Update the receive stats to reflect the receive interrupt */
-
-    InstancePtr->Stats.ReceiveInterrupts++;
+	/*
+	 * Update the receive stats to reflect the receive interrupt
+	 */
+	InstancePtr->Stats.ReceiveInterrupts++;
 }
 
 /****************************************************************************/
@@ -363,87 +370,87 @@ static void ReceiveDataHandler(XUartNs550 *InstancePtr)
 * This function handles the interrupt when data has been sent, the transmit
 * FIFO is empty (transmitter holding register).
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
 static void SendDataHandler(XUartNs550 *InstancePtr)
 {
-   Xuint8 IerRegister;
+	u32 IerRegister;
 
-    /*
-     * If there are not bytes to be sent from the specified buffer then disable
-     * the transmit interrupt so it will stop interrupting as it interrupts
-     * any time the FIFO is empty
-     */
-    if (InstancePtr->SendBuffer.RemainingBytes == 0)
-    {
-        IerRegister = XIo_In8(InstancePtr->BaseAddress + XUN_IER_OFFSET);
-        XIo_Out8(InstancePtr->BaseAddress + XUN_IER_OFFSET,
-                 IerRegister & ~XUN_IER_TX_EMPTY);
+	/*
+	 * If there are not bytes to be sent from the specified buffer then
+	 * disable the transmit interrupt so it will stop interrupting as it
+	 * interrupts any time the FIFO is empty
+	 */
+	if (InstancePtr->SendBuffer.RemainingBytes == 0) {
+		IerRegister = XUartNs550_ReadReg(InstancePtr->BaseAddress,
+							XUN_IER_OFFSET);
+		XUartNs550_WriteReg(InstancePtr->BaseAddress, XUN_IER_OFFSET,
+				 IerRegister & ~XUN_IER_TX_EMPTY);
 
-        /* Call the application handler to indicate the data has been sent */
+		/*
+		 * Call the application handler to indicate the data
+		 * has been sent
+		 */
+		InstancePtr->Handler(InstancePtr->CallBackRef,
+				XUN_EVENT_SENT_DATA,
+				InstancePtr->SendBuffer.RequestedBytes -
+				InstancePtr->SendBuffer.RemainingBytes);
+	}
 
-        InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_SENT_DATA,
-                             InstancePtr->SendBuffer.RequestedBytes -
-                             InstancePtr->SendBuffer.RemainingBytes);
-    }
+	/*
+	 * Otherwise there is still more data to send in the specified buffer
+	 * so go ahead and send it
+	 */
+	else {
+		XUartNs550_SendBuffer(InstancePtr);
+	}
 
-    /*
-     * Otherwise there is still more data to send in the specified buffer
-     * so go ahead and send it
-     */
-    else
-    {
-        XUartNs550_SendBuffer(InstancePtr);
-    }
-
-    /* Update the transmit stats to reflect the transmit interrupt */
-
-    InstancePtr->Stats.TransmitInterrupts++;
+	/*
+	 * Update the transmit stats to reflect the transmit interrupt
+	 */
+	InstancePtr->Stats.TransmitInterrupts++;
 }
 
 /****************************************************************************/
 /**
 *
-* This function handles modem interrupts.  It does not do any processing
+* This function handles modem interrupts. It does not do any processing
 * except to call the application handler to indicate a modem event.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
 static void ModemHandler(XUartNs550 *InstancePtr)
 {
-    Xuint8 MsrRegister;
+	u32 MsrRegister;
 
-    /* Read the modem status register so that the interrupt is acknowledged
-     * and so that it can be passed to the callback handler with the event
-     */
-    MsrRegister = XIo_In8(InstancePtr->BaseAddress + XUN_MSR_OFFSET);
+	/*
+	 * Read the modem status register so that the interrupt is acknowledged
+	 * and so that it can be passed to the callback handler with the event
+	 */
+	MsrRegister = XUartNs550_ReadReg(InstancePtr->BaseAddress,
+						XUN_MSR_OFFSET);
 
-    /* Call the application handler to indicate the modem status changed,
-     * passing the modem status and the event data in the call
-     */
-    InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_MODEM,
-                         MsrRegister);
+	/*
+	 * Call the application handler to indicate the modem status changed,
+	 * passing the modem status and the event data in the call
+	 */
+	InstancePtr->Handler(InstancePtr->CallBackRef, XUN_EVENT_MODEM,
+						 (u8) MsrRegister);
 
-    /* Update the modem stats to reflect the modem interrupt */
-
-    InstancePtr->Stats.ModemInterrupts++;
+	/*
+	 * Update the modem stats to reflect the modem interrupt
+	 */
+	InstancePtr->Stats.ModemInterrupts++;
 }
+
 

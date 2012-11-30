@@ -1,24 +1,44 @@
-/* $Id: xuartns550_options.c,v 1.2 2006/08/09 05:42:11 mta Exp $ */
-/*****************************************************************************
+/* $Id: xuartns550_options.c,v 1.1.2.1 2009/11/24 04:46:49 svemula Exp $ */
+/******************************************************************************
 *
-*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
-*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
-*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
-*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
-*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*       FOR A PARTICULAR PURPOSE.
+* (c) Copyright 2002-2009 Xilinx, Inc. All rights reserved.
 *
-*       (c) Copyright 2002 Xilinx Inc.
-*       All rights reserved.
+* This file contains confidential and proprietary information of Xilinx, Inc.
+* and is protected under U.S. and international copyright and other
+* intellectual property laws.
 *
-*****************************************************************************/
+* DISCLAIMER
+* This disclaimer is not a license and does not grant any rights to the
+* materials distributed herewith. Except as otherwise provided in a valid
+* license issued to you by Xilinx, and to the maximum extent permitted by
+* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
+* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
+* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
+* and (2) Xilinx shall not be liable (whether in contract or tort, including
+* negligence, or under any other theory of liability) for any loss or damage
+* of any kind or nature related to, arising under or in connection with these
+* materials, including for any direct, or any indirect, special, incidental,
+* or consequential loss or damage (including loss of data, profits, goodwill,
+* or any type of loss or damage suffered as a result of any action brought by
+* a third party) even if such damage or loss was reasonably foreseeable or
+* Xilinx had been advised of the possibility of the same.
+*
+* CRITICAL APPLICATIONS
+* Xilinx products are not designed or intended to be fail-safe, or for use in
+* any application requiring fail-safe performance, such as life-support or
+* safety devices or systems, Class III medical devices, nuclear facilities,
+* applications related to the deployment of airbags, or any other applications
+* that could lead to death, personal injury, or severe property or
+* environmental damage (individually and collectively, "Critical
+* Applications"). Customer assumes the sole risk and liability of any use of
+* Xilinx products in Critical Applications, subject only to applicable laws
+* and regulations governing limitations on product liability.
+*
+* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
+* AT ALL TIMES.
+*
+******************************************************************************/
 /****************************************************************************/
 /**
 *
@@ -33,6 +53,12 @@
 * ----- ---- -------- -----------------------------------------------
 * 1.00b jhl  03/11/02 Repartitioned driver for smaller files.
 * 1.00b rpm  04/12/05 Added critical section protection in ReadFcrRegister
+* 1.11a sv   03/20/07 Updated to use the new coding guidelines.
+* 1.13a sdm  07/10/09 Added receive line interrupt option to OptionsTable[].
+* 2.00a sdm  09/22/09 Converted all register accesses to 32 bit access.
+* 2.00a ktn  10/20/09 Converted all register accesses to 32 bit access.
+*		      Updated to use HAL Processor APIs. _m is removed from the
+*		      name of all the macro definitions.
 * </pre>
 *
 *****************************************************************************/
@@ -41,7 +67,7 @@
 
 #include "xuartns550.h"
 #include "xuartns550_i.h"
-#include "xio.h"
+#include "xil_io.h"
 
 /************************** Constant Definitions ****************************/
 
@@ -54,11 +80,10 @@
  * The following data type maps an option to a register and the bits of the
  * regiser such that getting and setting the options may be table driven.
  */
-typedef struct
-{
-    Xuint16 Option;
-    Xuint16 RegisterOffset;
-    Xuint8  Mask;
+typedef struct {
+	u16 Option;
+	u16 RegisterOffset;
+	u8  Mask;
 } Mapping;
 
 /*
@@ -66,29 +91,28 @@ typedef struct
  * the options. These options are table driven to allow easy maintenance and
  * expansion of the options.
  */
-
-static Mapping OptionsTable[] =
-{
-    { XUN_OPTION_SET_BREAK,     XUN_LCR_OFFSET,   XUN_LCR_SET_BREAK    },
-    { XUN_OPTION_LOOPBACK,      XUN_MCR_OFFSET,  XUN_MCR_LOOP         },
-    { XUN_OPTION_DATA_INTR,     XUN_IER_OFFSET,     XUN_IER_RX_DATA      },
-    { XUN_OPTION_MODEM_INTR,    XUN_IER_OFFSET,     XUN_IER_MODEM_STATUS },
-    { XUN_OPTION_FIFOS_ENABLE,  XUN_FCR_OFFSET,   XUN_FIFO_ENABLE      },
-    { XUN_OPTION_RESET_TX_FIFO, XUN_FCR_OFFSET,   XUN_FIFO_TX_RESET    },
-    { XUN_OPTION_RESET_RX_FIFO, XUN_FCR_OFFSET,   XUN_FIFO_RX_RESET    },
-    { XUN_OPTION_ASSERT_OUT2,   XUN_MCR_OFFSET,  XUN_MCR_OUT_2        },
-    { XUN_OPTION_ASSERT_OUT1,   XUN_MCR_OFFSET,  XUN_MCR_OUT_1        },
-    { XUN_OPTION_ASSERT_RTS,    XUN_MCR_OFFSET,  XUN_MCR_RTS          },
-    { XUN_OPTION_ASSERT_DTR,    XUN_MCR_OFFSET,  XUN_MCR_DTR          }
+static Mapping OptionsTable[] = {
+	{ XUN_OPTION_SET_BREAK, XUN_LCR_OFFSET, XUN_LCR_SET_BREAK },
+	{ XUN_OPTION_LOOPBACK, XUN_MCR_OFFSET, XUN_MCR_LOOP },
+	{ XUN_OPTION_DATA_INTR, XUN_IER_OFFSET, XUN_IER_RX_DATA },
+	{ XUN_OPTION_MODEM_INTR, XUN_IER_OFFSET, XUN_IER_MODEM_STATUS },
+	{ XUN_OPTION_FIFOS_ENABLE, XUN_FCR_OFFSET, XUN_FIFO_ENABLE },
+	{ XUN_OPTION_RESET_TX_FIFO, XUN_FCR_OFFSET, XUN_FIFO_TX_RESET },
+	{ XUN_OPTION_RESET_RX_FIFO, XUN_FCR_OFFSET, XUN_FIFO_RX_RESET },
+	{ XUN_OPTION_ASSERT_OUT2, XUN_MCR_OFFSET, XUN_MCR_OUT_2 },
+	{ XUN_OPTION_ASSERT_OUT1, XUN_MCR_OFFSET, XUN_MCR_OUT_1 },
+	{ XUN_OPTION_ASSERT_RTS, XUN_MCR_OFFSET, XUN_MCR_RTS },
+	{ XUN_OPTION_ASSERT_DTR, XUN_MCR_OFFSET, XUN_MCR_DTR },
+	{ XUN_OPTION_RXLINE_INTR, XUN_IER_OFFSET, XUN_IER_RX_LINE }
 };
 
 /* Create a constants for the number of entries in the table */
 
-#define XUN_NUM_OPTIONS      (sizeof(OptionsTable) / sizeof(Mapping))
+#define XUN_NUM_OPTIONS	  (sizeof(OptionsTable) / sizeof(Mapping))
 
 /************************** Function Prototypes *****************************/
 
-static Xuint8 ReadFcrRegister(Xuint32 BaseAddress);
+static u32 ReadFcrRegister(u32 BaseAddress);
 
 /****************************************************************************/
 /**
@@ -97,60 +121,55 @@ static Xuint8 ReadFcrRegister(Xuint32 BaseAddress);
 * implemented as bit masks such that multiple options may be enabled or
 * disabled simulataneously.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return 	The current options for the UART. The optionss are bit masks
+*		that are contained in the file xuartns550.h and
+*		named XUN_OPTION_*.
 *
-* The current options for the UART. The optionss are bit masks that are
-* contained in the file xuartns550.h and named XUN_OPTION_*.
-*
-* @return
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-Xuint16 XUartNs550_GetOptions(XUartNs550 *InstancePtr)
+u16 XUartNs550_GetOptions(XUartNs550 *InstancePtr)
 {
-    Xuint16 Options = 0;
-    Xuint8 Register;
-    Xuint32 Index;
+	u16 Options = 0;
+	u32 Register;
+	u32 Index;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
-    XASSERT_NONVOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
+	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 
-    /*
-     * Loop thru the options table to map the physical options in the
-     * registers of the UART to the logical options to be returned
-     */
-    for (Index = 0; Index < XUN_NUM_OPTIONS; Index++)
-    {
-        /* If the FIFO control register is being read, the make sure to
-         * setup the line control register so it can be read
-         */
-        if (OptionsTable[Index].RegisterOffset == XUN_FCR_OFFSET)
-        {
-            Register = ReadFcrRegister(InstancePtr->BaseAddress);
-        }
-        else
-        {
-            Register = XIo_In8(InstancePtr->BaseAddress +
-                               OptionsTable[Index].RegisterOffset);
-        }
+	/*
+	 * Loop thru the options table to map the physical options in the
+	 * registers of the UART to the logical options to be returned
+	 */
+	for (Index = 0; Index < XUN_NUM_OPTIONS; Index++) {
+		/*
+		 * If the FIFO control register is being read, the make sure to
+		 * setup the line control register so it can be read
+		 */
+		if (OptionsTable[Index].RegisterOffset == XUN_FCR_OFFSET) {
+			Register = ReadFcrRegister(InstancePtr->BaseAddress);
+		} else {
+			Register = XUartNs550_ReadReg(InstancePtr->BaseAddress,
+					OptionsTable[Index].RegisterOffset);
+		}
 
-        /* If the bit in the register which correlates to the option is set,
-         * then set the corresponding bit in the options, ignoring any bits
-         * which are zero since the options variable is initialized to zero
-         */
-        if (Register & OptionsTable[Index].Mask)
-        {
-            Options |= OptionsTable[Index].Option;
-        }
-    }
+		/*
+		 * If the bit in the register which correlates to the option
+		 * is set, then set the corresponding bit in the options,
+		 * ignoring any bits which are zero since the options variable
+		 * is initialized to zero
+		 */
+		if (Register & OptionsTable[Index].Mask) {
+			Options |= OptionsTable[Index].Option;
+		}
+	}
 
-    return Options;
+	return Options;
 }
 
 /****************************************************************************/
@@ -165,75 +184,72 @@ Xuint16 XUartNs550_GetOptions(XUartNs550 *InstancePtr)
 * ANDed with the inverse to clear the settings to be disabled. The resulting
 * value is then used as the options for the SetOption function call.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
-* @param    Options contains the options to be set which are bit masks
-*           contained in the file xuartns550.h and named XUN_OPTION_*.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
+* @param	Options contains the options to be set which are bit masks
+*		contained in the file xuartns550.h and named XUN_OPTION_*.
 *
 * @return
+*		- XST_SUCCESS if the options were set successfully.
+*		- XST_UART_CONFIG_ERROR if the options could not be set because
+*		the hardware does not support FIFOs
 *
-* - XST_SUCCESS if the options were set successfully.
-* - XST_UART_CONFIG_ERROR if the options could not be set because the hardware
-*   does not support FIFOs
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-XStatus XUartNs550_SetOptions(XUartNs550 *InstancePtr, Xuint16 Options)
+int XUartNs550_SetOptions(XUartNs550 *InstancePtr, u16 Options)
 {
-    Xuint32 Index;
-    Xuint8 Register;
+	u32 Index;
+	u32 Register;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
-    XASSERT_NONVOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
+	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 
-    /*
-     * Loop thru the options table to map the logical options to the physical
-     * options in the registers of the UART.
-     */
-    for (Index = 0; Index < XUN_NUM_OPTIONS; Index++)
-    {
+	/*
+	 * Loop thru the options table to map the logical options to the
+	 * physical options in the registers of the UART
+	 */
+	for (Index = 0; Index < XUN_NUM_OPTIONS; Index++) {
 
-       /* If the FIFO control register is being read, this is a special case
-        * that requires special register processing
-        */
-        if (OptionsTable[Index].RegisterOffset == XUN_FCR_OFFSET)
-        {
-            Register = ReadFcrRegister(InstancePtr->BaseAddress);
-        }
-        else
-        {
-            /* Read the register which contains option so that the register can
-             * be changed without destoying any other bits of the register
-             */
-            Register = XIo_In8(InstancePtr->BaseAddress +
-                               OptionsTable[Index].RegisterOffset);
-        }
+		/*
+		 * If the FIFO control register is being read, this is a
+		 * special case that requires special register processing
+		 */
+		if (OptionsTable[Index].RegisterOffset == XUN_FCR_OFFSET) {
+			Register = ReadFcrRegister(InstancePtr->BaseAddress);
+		} else {
+			/*
+			 * Read the register which contains option so that the
+			 * register can be changed without destoying any other
+			 * bits of the register
+			 */
+			Register = XUartNs550_ReadReg(InstancePtr->BaseAddress,
+					OptionsTable[Index].RegisterOffset);
+		}
 
-        /* If the option is set in the input, then set the corresponding bit
-         * in the specified register, otherwise clear the bit in the register
-         */
-        if (Options & OptionsTable[Index].Option)
-        {
-            Register |= OptionsTable[Index].Mask;
-        }
-        else
-        {
-            Register &= ~OptionsTable[Index].Mask;
-        }
-        /* Write the new value to the register to set the option */
+		/*
+		 * If the option is set in the input, then set the
+		 * corresponding bit in the specified register, otherwise
+		 * clear the bit in the register
+		 */
+		if (Options & OptionsTable[Index].Option) {
+			Register |= OptionsTable[Index].Mask;
+		} else {
+			Register &= ~OptionsTable[Index].Mask;
+		}
 
-        XIo_Out8(InstancePtr->BaseAddress +
-                 OptionsTable[Index].RegisterOffset, Register);
-    }
+		/*
+		 * Write the new value to the register to set the option
+		 */
+		XUartNs550_WriteReg(InstancePtr->BaseAddress,
+				 OptionsTable[Index].RegisterOffset, Register);
+	}
 
-    /* To be done, add error checks for enabling/resetting FIFOs */
+	/* To be done, add error checks for enabling/resetting FIFOs */
 
-    return XST_SUCCESS;
+	return XST_SUCCESS;
 }
 
 /****************************************************************************/
@@ -243,36 +259,35 @@ XStatus XUartNs550_SetOptions(XUartNs550 *InstancePtr, Xuint16 Options)
 * level indicates the number of bytes in the receive FIFO that cause a receive
 * data event (interrupt) to be generated.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	The current receive FIFO trigger level. Constants which
+*		define each trigger level are contained in the file
+*		xuartns550.h and named XUN_FIFO_TRIGGER_*.
 *
-* The current receive FIFO trigger level.  Constants which define each trigger
-* level are contained in the file xuartns550.h and named XUN_FIFO_TRIGGER_*.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-Xuint8 XUartNs550_GetFifoThreshold(XUartNs550 *InstancePtr)
+u8 XUartNs550_GetFifoThreshold(XUartNs550 *InstancePtr)
 {
-    Xuint8 FcrRegister;
+	u32 FcrRegister;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
-    XASSERT_NONVOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
+	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 
-    /* Read the value of the FIFO control register so that the threshold
-     * can be retrieved, this read takes special register processing
-     */
-    FcrRegister = ReadFcrRegister(InstancePtr->BaseAddress);
+	/*
+	 * Read the value of the FIFO control register so that the threshold
+	 * can be retrieved, this read takes special register processing
+	 */
+	FcrRegister = ReadFcrRegister(InstancePtr->BaseAddress);
 
-    /* Return only the trigger level from the register value */
-
-    return FcrRegister & XUN_FIFO_RX_TRIGGER;
+	/*
+	 * Return only the trigger level from the register value
+	 */
+	return (u8)(FcrRegister & XUN_FIFO_RX_TRIGGER);
 }
 
 /****************************************************************************/
@@ -283,62 +298,63 @@ Xuint8 XUartNs550_GetFifoThreshold(XUartNs550 *InstancePtr)
 * data event (interrupt) to be generated. The FIFOs must be enabled to set the
 * trigger level.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
-* @param    TriggerLevel contains the trigger level to set. Constants which
-*           define each trigger level are contained in the file xuartns550.h
-*           and named XUN_FIFO_TRIGGER_*.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
+* @param	TriggerLevel contains the trigger level to set. Constants which
+*		define each trigger level are contained in the file xuartns550.h
+*		and named XUN_FIFO_TRIGGER_*.
 *
 * @return
+*		- XST_SUCCESS if the trigger level was set
+*		- XST_UART_CONFIG_ERROR if the trigger level could not be set,
+*		either the hardware does not support the FIFOs or FIFOs
+*		are not enabled
 *
-* - XST_SUCCESS if the trigger level was set
-* - XST_UART_CONFIG_ERROR if the trigger level could not be set, either the
-*   hardware does not support the FIFOs or FIFOs are not enabled
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-XStatus XUartNs550_SetFifoThreshold(XUartNs550 *InstancePtr,
-                                    Xuint8 TriggerLevel)
+int XUartNs550_SetFifoThreshold(XUartNs550 *InstancePtr, u8 TriggerLevel)
 {
-    Xuint8 FcrRegister;
+	u32 FcrRegister;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
-    XASSERT_NONVOID((TriggerLevel == XUN_FIFO_TRIGGER_14)  ||
-                    (TriggerLevel == XUN_FIFO_TRIGGER_08)  ||
-                    (TriggerLevel == XUN_FIFO_TRIGGER_04)  ||
-                    (TriggerLevel == XUN_FIFO_TRIGGER_01));
-    XASSERT_NONVOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
+	Xil_AssertNonvoid((TriggerLevel == XUN_FIFO_TRIGGER_14) ||
+			(TriggerLevel == XUN_FIFO_TRIGGER_08) ||
+			(TriggerLevel == XUN_FIFO_TRIGGER_04) ||
+			(TriggerLevel == XUN_FIFO_TRIGGER_01));
+	Xil_AssertNonvoid(InstancePtr->IsReady == XIL_COMPONENT_IS_READY);
 
-    /* Read the value of the FIFO control register, this read takes special
-     * register processing
-     */
-    FcrRegister = ReadFcrRegister(InstancePtr->BaseAddress);
+	/*
+	 * Read the value of the FIFO control register, this read takes special
+	 * register processing
+	 */
+	FcrRegister = ReadFcrRegister(InstancePtr->BaseAddress);
 
-    /* If the FIFO control register indicates that FIFOs are disabled,
-     * then either they are just disabled or it has no FIFOs, return an error
-     */
-    if ((FcrRegister & XUN_FIFO_ENABLE) == 0)
-    {
-        return XST_UART_CONFIG_ERROR;
-    }
+	/*
+	 * If the FIFO control register indicates that FIFOs are disabled, then
+	 * either they are just disabled or it has no FIFOs, return an error
+	 */
+	if ((FcrRegister & XUN_FIFO_ENABLE) == 0) {
+		return XST_UART_CONFIG_ERROR;
+	}
 
-    /* Set the receive FIFO trigger level by clearing out the old level in
-     * the FIFO control register and writing in the new level
-     */
-    FcrRegister &= ~XUN_FIFO_RX_TRIGGER;
-    FcrRegister |= TriggerLevel;
+	/*
+	 * Set the receive FIFO trigger level by clearing out the old level in
+	 * the FIFO control register and writing in the new level
+	 */
+	FcrRegister &= ~XUN_FIFO_RX_TRIGGER;
+	FcrRegister |= (u32) TriggerLevel;
 
-    /* Write the new value for the FIFO control register to it such that the
-     * threshold is changed, writing to it is normal unlike reading from it
-     */
-    XIo_Out8(InstancePtr->BaseAddress + XUN_FCR_OFFSET, FcrRegister);
+	/*
+	 * Write the new value for the FIFO control register to it such that the
+	 * threshold is changed, writing to it is normal unlike reading from it
+	 */
+	XUartNs550_WriteReg(InstancePtr->BaseAddress,
+				XUN_FCR_OFFSET, FcrRegister);
 
-    return XST_SUCCESS;
+	return XST_SUCCESS;
 }
 
 /****************************************************************************/
@@ -357,37 +373,36 @@ XStatus XUartNs550_SetFifoThreshold(XUartNs550 *InstancePtr,
 * any errors that occurred for the bytes of the buffer. It does not indicate
 * which bytes contained errors.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	The last errors that occurred. The errors are bit masks
+*		that are contained in the file xuartns550.h and
+*		named XUN_ERROR_*.
 *
-* The last errors that occurred. The errors are bit masks that are contained
-* in the file xuartns550.h and named XUN_ERROR_*.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-Xuint8 XUartNs550_GetLastErrors(XUartNs550 *InstancePtr)
+u8 XUartNs550_GetLastErrors(XUartNs550 *InstancePtr)
 {
-    Xuint8 Temp = InstancePtr->LastErrors;
+	u8 Temp = InstancePtr->LastErrors;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
 
-    /* Clear the last errors and return the previous value */
+	/*
+	 * Clear the last errors and return the previous value
+	 */
+	InstancePtr->LastErrors = 0;
 
-    InstancePtr->LastErrors = 0;
-
-    /* Only return the bits that are reported errors which include
-     * receive overrun, framing, parity and break detection, the last errors
-     * variable holds an accumulation of the line status register bits which
-     * have been set
-     */
-    return Temp & XUN_LSR_ERROR_BREAK;
+	/*
+	 * Only return the bits that are reported errors which include
+	 * receive overrun, framing, parity and break detection, the last errors
+	 * variable holds an accumulation of the line status register bits which
+	 * have been set
+	 */
+	return Temp & XUN_LSR_ERROR_BREAK;
 }
 
 /****************************************************************************/
@@ -399,12 +414,10 @@ Xuint8 XUartNs550_GetLastErrors(XUartNs550 *InstancePtr)
 * whenever it is read such that reading it twice may not yield the same
 * results.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance .
 *
-* @return
-*
-* The modem status which are bit masks that are contained in the file
-* xuartns550.h and named XUN_MODEM_*.
+* @return 	The modem status which are bit masks that are contained in
+*		the file  xuartns550.h and named XUN_MODEM_*.
 *
 * @note
 *
@@ -412,20 +425,21 @@ Xuint8 XUartNs550_GetLastErrors(XUartNs550 *InstancePtr)
 * status register with no abstraction.
 *
 *****************************************************************************/
-Xuint8 XUartNs550_GetModemStatus(XUartNs550 *InstancePtr)
+u8 XUartNs550_GetModemStatus(XUartNs550 *InstancePtr)
 {
-    Xuint8 ModemStatusRegister;
+	u32 ModemStatusRegister;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
 
-    /* Read the modem status register to return
-     */
-    ModemStatusRegister = XIo_In8(InstancePtr->BaseAddress +
-                                  XUN_MSR_OFFSET);
-    return ModemStatusRegister;
+	/*
+	 * Read the modem status register to return
+	 */
+	ModemStatusRegister = XUartNs550_ReadReg(InstancePtr->BaseAddress,
+					XUN_MSR_OFFSET);
+	return (u8) ModemStatusRegister;
 }
 
 /****************************************************************************/
@@ -434,35 +448,33 @@ Xuint8 XUartNs550_GetModemStatus(XUartNs550 *InstancePtr)
 * This function determines if the specified UART is sending data. If the
 * transmitter register is not empty, it is sending data.
 *
-* @param    InstancePtr is a pointer to the XUartNs550 instance to be worked on.
+* @param	InstancePtr is a pointer to the XUartNs550 instance.
 *
-* @return
+* @return	A value of TRUE if the UART is sending data, otherwise FALSE.
 *
-* A value of XTRUE if the UART is sending data, otherwise XFALSE.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-Xboolean XUartNs550_IsSending(XUartNs550 *InstancePtr)
+int XUartNs550_IsSending(XUartNs550 *InstancePtr)
 {
-    Xuint8 LsrRegister;
+	u32 LsrRegister;
 
-    /*
-     * Assert validates the input arguments
-     */
-    XASSERT_NONVOID(InstancePtr != XNULL);
+	/*
+	 * Assert validates the input arguments
+	 */
+	Xil_AssertNonvoid(InstancePtr != NULL);
 
-    /* Read the line status register to determine if the transmitter is
-     * empty
-     */
-    LsrRegister = XIo_In8(InstancePtr->BaseAddress + XUN_LSR_OFFSET);
+	/*
+	 * Read the line status register to determine if the transmitter is
+	 * empty
+	 */
+	LsrRegister = XUartNs550_GetLineStatusReg(InstancePtr->BaseAddress);
 
-    /* If the transmitter is not empty then indicate that the UART is still
-     * sending some data
-     */
-    return ((LsrRegister & XUN_LSR_TX_EMPTY) == 0);
+	/*
+	 * If the transmitter is not empty then indicate that the UART is still
+	 * sending some data
+	 */
+	return ((LsrRegister & XUN_LSR_TX_EMPTY) == 0);
 }
 
 /****************************************************************************/
@@ -473,52 +485,51 @@ Xboolean XUartNs550_IsSending(XUartNs550 *InstancePtr)
 * to write to the line control register, then read the FIFO control register,
 * and then restore the line control register.
 *
-* @param    BaseAddress contains the base address of the registers in the
-*           device.
+* @param	BaseAddress contains the base address of the registers in the
+*		device.
 *
-* @return
+* @return	The contents of the FIFO control register.
 *
-* The contents of the FIFO control register.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 *****************************************************************************/
-static Xuint8 ReadFcrRegister(Xuint32 BaseAddress)
+static u32 ReadFcrRegister(u32 BaseAddress)
 {
-    Xuint8 LcrRegister;
-    Xuint8 FcrRegister;
-    Xuint8 IerRegister;
+	u32 LcrRegister;
+	u32 FcrRegister;
+	u32 IerRegister;
 
-    /*
-     * Enter a critical section here by disabling Uart interrupts.  We do
-     * not want to receive an interrupt while we have the FCR latched since
-     * the interrupt handler may want to read the IIR.
-     */
-    IerRegister = XIo_In8(BaseAddress + XUN_IER_OFFSET);
-    XIo_Out8(BaseAddress + XUN_IER_OFFSET, 0);
+	/*
+	 * Enter a critical section here by disabling Uart interrupts.  We do
+	 * not want to receive an interrupt while we have the FCR latched since
+	 * the interrupt handler may want to read the IIR
+	 */
+	IerRegister = XUartNs550_ReadReg(BaseAddress, XUN_IER_OFFSET);
+	XUartNs550_WriteReg(BaseAddress, XUN_IER_OFFSET, 0);
 
-    /* Get the line control register contents and set the divisor latch
-     * access bit so the FIFO control register can be read, this can't
-     * be done with a true 16550, but is a feature in the Xilinx device
-     */
-    LcrRegister = XIo_In8(BaseAddress + XUN_LCR_OFFSET);
-    XIo_Out8(BaseAddress + XUN_LCR_OFFSET, LcrRegister | XUN_LCR_DLAB);
+	/*
+	 * Get the line control register contents and set the divisor latch
+	 * access bit so the FIFO control register can be read, this can't
+	 * be done with a true 16550, but is a feature in the Xilinx device
+	 */
+	LcrRegister = XUartNs550_GetLineControlReg(BaseAddress);
+	XUartNs550_SetLineControlReg(BaseAddress, LcrRegister | XUN_LCR_DLAB);
 
-    /* Read the FIFO control register so it can be returned */
+	/*
+	 * Read the FIFO control register so it can be returned
+	 */
+	FcrRegister = XUartNs550_ReadReg(BaseAddress, XUN_FCR_OFFSET);
 
-    FcrRegister = XIo_In8(BaseAddress + XUN_FCR_OFFSET);
+	/*
+	 * Restore the line control register to it's original contents such
+	 * that the DLAB bit is no longer set and return the register
+	 */
+	XUartNs550_SetLineControlReg(BaseAddress, LcrRegister);
 
-    /* Restore the line control register to it's original contents such
-     * that the DLAB bit is no longer set and return the register
-     */
-    XIo_Out8(BaseAddress + XUN_LCR_OFFSET, LcrRegister);
+	/*
+	 * Exit the critical section by restoring the IER
+	 */
+	XUartNs550_WriteReg(BaseAddress, XUN_IER_OFFSET, IerRegister);
 
-    /*
-     * Exit the critical section by restoring the IER
-     */
-    XIo_Out8(BaseAddress + XUN_IER_OFFSET, IerRegister);
-
-    return FcrRegister;
+	return FcrRegister;
 }
