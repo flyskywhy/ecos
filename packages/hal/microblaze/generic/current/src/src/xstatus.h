@@ -1,4 +1,3 @@
-/* $Id: xstatus.h,v 1.28.6.2 2011/05/03 03:48:10 sadanan Exp $ */
 /******************************************************************************
 *
 *       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
@@ -15,7 +14,7 @@
 *       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
 *       FOR A PARTICULAR PURPOSE.
 *
-*       (c) Copyright 2002-2010 Xilinx Inc.
+*       (c) Copyright 2002-2011 Xilinx Inc.
 *       All rights reserved.
 *
 ******************************************************************************/
@@ -361,9 +360,47 @@ extern "C" {
 #define XST_USB_BUF_TOO_BIG		1413
 #define XST_USB_NO_BUF			1414
 
-/****************** HWICAP constants 1421 - 1430  *****************************/
+/****************** HWICAP constants 1421 - 1429  *****************************/
 
 #define XST_HWICAP_WRITE_DONE		1421
+
+
+/****************** AXI VDMA constants 1430 - 1440  *****************************/
+
+#define XST_VDMA_MISMATCH_ERROR 1430
+
+/*********************** NAND Flash statuses 1441 - 1459  *********************/
+
+#define XST_NAND_BUSY			1441L	/* Flash is erasing or
+						 * programming
+						 */
+#define XST_NAND_READY			1442L	/* Flash is ready for commands
+						 */
+#define XST_NAND_ERROR			1443L	/* Flash had detected an
+						 * internal error.
+						 */
+#define XST_NAND_PART_NOT_SUPPORTED	1444L	/* Flash type not supported by
+						 * driver
+						 */
+#define XST_NAND_OPT_NOT_SUPPORTED	1445L	/* Operation not supported
+						 */
+#define XST_NAND_TIMEOUT_ERROR		1446L	/* Programming or erase
+						 * operation aborted due to a
+						 * timeout
+						 */
+#define XST_NAND_ADDRESS_ERROR		1447L	/* Accessed flash outside its
+						 * addressible range
+						 */
+#define XST_NAND_ALIGNMENT_ERROR	1448L	/* Write alignment error
+						 */
+#define XST_NAND_PARAM_PAGE_ERROR	1449L	/* Failed to read parameter
+						 * page of the device
+						 */
+#define XST_NAND_CACHE_ERROR		1450L	/* Flash page buffer error
+						 */
+
+#define XST_NAND_WRITE_PROTECTED	1451L	/* Flash is write protected
+						 */
 
 /**************************** Type Definitions *******************************/
 

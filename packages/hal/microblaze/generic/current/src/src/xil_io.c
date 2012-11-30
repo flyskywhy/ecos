@@ -61,26 +61,24 @@
 * This file may contain architecture-dependent code.
 *
 ******************************************************************************/
+
+/***************************** Include Files *********************************/
+
 #include "xil_io.h"
+#include "xil_types.h"
+
+/************************** Constant Definitions *****************************/
+
+
+/**************************** Type Definitions *******************************/
 
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-/* The following macro is specific to the GNU compiler and PowerPC family. It
- * performs an EIEIO instruction such that I/O operations are synced correctly.
- * This macro is not necessarily portable across compilers since it uses
- * inline assembly.
- */
-#if defined __GNUC__
-//#  define SYNCHRONIZE_IO __asm__ volatile ("mbar 1")
-#elif defined __DCC__
-//#  define SYNCHRONIZE_IO __asm volatile(" mbar 1")
-#else
-#  define SYNCHRONIZE_IO
-#endif
-
 
 /************************** Function Prototypes ******************************/
+
+
 
 /*****************************************************************************/
 /**
@@ -94,10 +92,10 @@
 * @note		None.
 *
 ******************************************************************************/
-/*u16 Xil_EndianSwap16(u16 Data)
+u16 Xil_EndianSwap16(u16 Data)
 {
 	return (u16) (((Data & 0xFF00) >> 8) | ((Data & 0x00FF) << 8));
-}*/
+}
 
 /*****************************************************************************/
 /**
@@ -111,329 +109,25 @@
 * @note		None.
 *
 ******************************************************************************/
-/*u32 Xil_EndianSwap32(u32 Data)
+u32 Xil_EndianSwap32(u32 Data)
 {
 	u16 LoWord;
 	u16 HiWord;
 
+	/* get each of the half words from the 32 bit word */
 
 	LoWord = (u16) (Data & 0x0000FFFF);
 	HiWord = (u16) ((Data & 0xFFFF0000) >> 16);
 
+	/* byte swap each of the 16 bit half words */
 
 	LoWord = (((LoWord & 0xFF00) >> 8) | ((LoWord & 0x00FF) << 8));
 	HiWord = (((HiWord & 0xFF00) >> 8) | ((HiWord & 0x00FF) << 8));
 
+	/* swap the half words before returning the value */
 
 	return (u32) ((LoWord << 16) | HiWord);
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an input operation for an 8-bit memory location by reading from the
-* specified address and returning the value read from that address.
-*
-* @param    Addr contains the address to perform the input operation at.
-*
-* @return
-*
-* The value read from the specified input address.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-/*u8 Xil_In8(u32 Addr)
-{
-
-#if defined __GNUC__
-
-	u8 Value;
-	__asm__ volatile ("eieio; lbz %0,0(%1)":"=r" (Value):"b"
-			  (Addr));
-	return Value;
-
-#else
-
-	SYNCHRONIZE_IO;
-	return *(u8 *) Addr;
-
-#endif
-
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an input operation for a 16-bit memory location by reading from the
-* specified address and returning the value read from that address.
-*
-* @param    Addr contains the address to perform the input operation at.
-*
-* @return
-*
-* The value read from the specified input address.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-/*u16 Xil_In16(u32 Addr)
-{
-
-#if defined __GNUC__
-
-	u16 Value;
-	__asm__ volatile ("eieio; lhz %0,0(%1)":"=r" (Value):"b"
-			  (Addr));
-	return Value;
-
-#else
-
-	SYNCHRONIZE_IO;
-	return *(u16 *) Addr;
-
-#endif
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an input operation for a 32-bit memory location by reading from the
-* specified address and returning the value read from that address.
-*
-* @param    Addr contains the address to perform the input operation at.
-*
-* @return
-*
-* The value read from the specified input address.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-u32 Xil_In32(u32 Addr)
-{
-	/* read the contents of the I/O location and then synchronize the I/O
-	 * such that the I/O operation completes before proceeding on
-	 */
-
-#ifdef __GNUC__
-
-	u32 Value;
-	__asm__ volatile ("lwi %0,%1,0":"=r" (Value):"b"
-			  (Addr));
-	return Value;
-
-#else
-
-	SYNCHRONIZE_IO;
-	return *(u32 *) Addr;
-
-#endif
-
 }
-
-/*****************************************************************************/
-/**
-*
-* Performs an output operation for an 8-bit memory location by writing the
-* specified value to the specified address.
-*
-* @param    Addr contains the address to perform the output operation at.
-* @param    Value contains the value to be output at the specified address.
-*
-* @return
-*
-* None.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-/*void Xil_Out8(u32 Addr, u8 Value)
-{
-
-#ifdef __GNUC__
-
-	__asm__ volatile ("stb %0,0(%1); eieio"::"r" (Value), "b"(Addr));
-
-#else
-
-	*(volatile u8 *) Addr = Value;
-	SYNCHRONIZE_IO;
-
-#endif
-
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an output operation for a 16-bit memory location by writing the
-* specified value to the specified address.
-*
-* @param    Addr contains the address to perform the output operation at.
-* @param    Value contains the value to be output at the specified address.
-*
-* @return
-*
-* None.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-/*void Xil_Out16(u32 Addr, u16 Value)
-{
-
-#ifdef __GNUC__
-
-	__asm__ volatile ("sth %0,0(%1); eieio"::"r" (Value), "b"(Addr));
-
-#else
-
-	*(volatile u16 *) Addr = Value;
-	SYNCHRONIZE_IO;
-
-#endif
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an output operation for a 32-bit memory location by writing the
-* specified value to the specified address.
-*
-* @param    Addr contains the address to perform the output operation at.
-* @param    Value contains the value to be output at the specified address.
-*
-* @return
-*
-* None.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-void Xil_Out32(u32 Addr, u32 Value)
-{
-	/* write the contents of the I/O location and then synchronize the I/O
-	 * such that the I/O operation completes before proceeding on
-	 */
-
-#ifdef __GNUC__
-
-	__asm__ volatile ("swi %0,%1,0;"::"r" (Value), "b"(Addr));
-
-#else
-
-	*(volatile u32 *) Addr = Value;
-	SYNCHRONIZE_IO;
-
-#endif
-}
-
-
-/***************** Macros (Inline Functions) Definitions *********************/
-#if defined __DCC__
-/**
-*
-* Performs an input operation for a 16-bit memory location and swap the
-* endianness by reading from the specified address and returning the
-* byte-swapped value read from that address.
-*
-* @param	Addr contains the address to perform the input operation at.
-*
-* @return	The byte-swapped value read from the specified input address.
-*
-* @note		None.
-*
-******************************************************************************/
-/*asm volatile u16 Xil_InSwap16(u32 Addr)
-{
-%reg Addr
-! "r3"
-
-	eieio
-	lhbrx r3, 0, Addr
-}*/
-
-/**
-*
-* Performs an input operation for a 32-bit memory location and swap the
-* endianness by reading from the specified address and returning the
-* byte-swapped value read from that address.
-*
-* @param	Addr contains the address to perform the input operation at.
-*
-* @return	The byte-swapped value read from the specified input address.
-*
-* @note		None.
-*
-******************************************************************************/
-/*asm volatile u32 Xil_InSwap32(u32 Addr)
-{
-%reg Addr
-! "r3"
-
-	eieio
-	lwbrx r3, 0, Addr
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an output operation for a 16-bit memory location by writing the
-* specified value to the specified address. The value is byte-swapped
-* before being written.
-*
-* @param	Addr contains the address to perform the output operation at.
-* @param	Value contains the value to be output at the specified address.
-*
-* @return	None.
-*
-* @note		None.
-*
-******************************************************************************/
-/*asm volatile void Xil_OutSwap16(u32 Addr, u16 Value)
-{
-%reg Addr; reg Value
-
-	sthbrx Value, 0, Addr
-	eieio
-}*/
-
-/*****************************************************************************/
-/**
-*
-* Performs an output operation for a 32-bit memory location by writing the
-* specified value to the specified address. The value is byte-swapped
-* before being written.
-*
-* @param	Addr contains the address to perform the output operation at.
-* @param	Value contains the value to be output at the specified address.
-*
-* @return	None.
-*
-* @note		None.
-*
-******************************************************************************/
-/*asm volatile void Xil_OutSwap32(u32 Addr, u32 Value)
-{
-%reg Addr; reg Value
-
-	stwbrx Value, 0, Addr
-	eieio
-}*/
-#endif
 
 /*****************************************************************************/
 /**
@@ -454,17 +148,19 @@ void Xil_Out32(u32 Addr, u32 Value)
 * @note		None.
 *
 ******************************************************************************/
-/*u16 Xil_In16LE(u32 Addr)
-{
-#ifdef __GNUC__
-	u16 iocontents;
-
-	__asm__ volatile ("eieio; lhbrx %0,0,%1":"=r" (iocontents):"b" (Addr));
-	return iocontents;
+#ifndef __LITTLE_ENDIAN__
+u16 Xil_In16LE(u32 Addr)
 #else
-	return Xil_InSwap16(Addr);
+u16 Xil_In16BE(u32 Addr)
 #endif
-}*/
+{
+	u16 Value;
+
+	/* get the data then swap it */
+	Value = Xil_In16(Addr);
+
+	return Xil_EndianSwap16(Value);
+}
 
 /*****************************************************************************/
 /**
@@ -484,19 +180,18 @@ void Xil_Out32(u32 Addr, u32 Value)
 * @note		None.
 *
 ******************************************************************************/
-/*u32 Xil_In32LE(u32 Addr)
-{
-#ifdef __GNUC__
-	u32 iocontents;
-
-	__asm__ volatile ("eieio; lwbrx %0,0,%1":"=r" (iocontents):"b"
-			  (Addr));
-	return iocontents;
+#ifndef __LITTLE_ENDIAN__
+u32 Xil_In32LE(u32 Addr)
 #else
-	return Xil_InSwap32(Addr);
+u32 Xil_In32BE(u32 Addr)
 #endif
-}*/
+{
+	u32 InValue;
 
+	/* get the data then swap it */
+	InValue = Xil_In32(Addr);
+	return Xil_EndianSwap32(InValue);
+}
 
 /*****************************************************************************/
 /**
@@ -516,15 +211,19 @@ void Xil_Out32(u32 Addr, u32 Value)
 * @note		None.
 *
 ******************************************************************************/
-/*void Xil_Out16LE(u32 Addr, u16 Value)
-{
-#ifdef __GNUC__
-	__asm__ volatile ("sthbrx %0,0,%1; eieio"::"r" (Value),
-			  "b"(Addr));
+#ifndef __LITTLE_ENDIAN__
+void Xil_Out16LE(u32 Addr, u16 Value)
 #else
-	Xil_OutSwap16(Addr, Value);
+void Xil_Out16BE(u32 Addr, u16 Value)
 #endif
-}*/
+{
+	u16 OutValue;
+
+	/* swap the data then output it */
+	OutValue = Xil_EndianSwap16(Value);
+
+	Xil_Out16(Addr, OutValue);
+}
 
 /*****************************************************************************/
 /**
@@ -544,14 +243,15 @@ void Xil_Out32(u32 Addr, u32 Value)
 * @note		None.
 *
 ******************************************************************************/
-/*void Xil_Out32LE(u32 Addr, u32 Value)
-{
-#ifdef __GNUC__
-	__asm__ volatile ("stwbrx %0,0,%1; eieio"::"r" (Value),
-			  "b"(Addr));
+#ifndef __LITTLE_ENDIAN__
+void Xil_Out32LE(u32 Addr, u32 Value)
 #else
-	Xil_OutSwap32(Addr, Value);
+void Xil_Out32BE(u32 Addr, u32 Value)
 #endif
-}*/
+{
+	u32 OutValue;
 
-
+	/* swap the data then output it */
+	OutValue = Xil_EndianSwap32(Value);
+	Xil_Out32(Addr, OutValue);
+}

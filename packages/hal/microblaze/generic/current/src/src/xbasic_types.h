@@ -1,4 +1,4 @@
-/* $Id: xbasic_types.h,v 1.19.10.3 2009/10/19 16:36:59 haibing Exp $ */
+/* $Id: xbasic_types.h,v 1.19.10.4 2011/06/28 11:00:54 sadanan Exp $ */
 /******************************************************************************
 *
 *       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
@@ -111,11 +111,13 @@ typedef float		Xfloat32;	/**< 32-bit floating point */
 typedef double		Xfloat64;	/**< 64-bit double precision FP */
 typedef unsigned long	Xboolean;	/**< boolean (XTRUE or XFALSE) */
 
+#if !defined __XUINT64__
 typedef struct
 {
 	Xuint32 Upper;
 	Xuint32 Lower;
 } Xuint64;
+#endif
 
 /** @name New types
  * New simple types.
