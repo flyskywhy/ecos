@@ -7054,12 +7054,20 @@ package CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE {
 }
 
 package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
-	alias		{ "Xilinx Ethernet TMAC Lite driver" devs_eth_temac }
+	alias		{ "Xilinx Ethernet TEMAC driver" devs_eth_temac }
 	hardware
-	directory	devs/eth/microblaze/temac
+	directory	devs/eth/microblaze/temac_axi
 	script		temac_eth_drivers.cdl
-	description	"Xilinx Tri-Mode Ethernet MAC driver"
+	description	"Xilinx Ethernet TEMAC driver"
 }
+
+#package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
+#	alias		{ "Xilinx Ethernet TEMAC Lite driver" devs_eth_temac }
+#	hardware
+#	directory	devs/eth/microblaze/temac
+#	script		temac_eth_drivers.cdl
+#	description	"Xilinx Tri-Mode Ethernet MAC driver"
+#}
 
 package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	alias		{ "Xilinx Uart16550 serial driver" devs_serial_mb_uart16550 }
