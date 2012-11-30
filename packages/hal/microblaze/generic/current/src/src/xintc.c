@@ -1,4 +1,4 @@
-/* $Id: xintc.c,v 1.1.4.1 2010/09/17 05:32:46 svemula Exp $ */
+/* $Id: xintc.c,v 1.1.2.1 2011/05/24 07:09:38 vidhum Exp $ */
 /******************************************************************************
 *
 * (c) Copyright 2002-2009 Xilinx, Inc. All rights reserved.
@@ -139,7 +139,6 @@ int XIntc_Initialize(XIntc * InstancePtr, u16 DeviceId)
 	 * and reinitialize, but prevents a user from inadvertently initializing
 	 */
 	if (InstancePtr->IsStarted == XIL_COMPONENT_IS_STARTED) {
-			diag_printf("intc not found0... ");
 		return XST_DEVICE_IS_STARTED;
 	}
 
@@ -149,8 +148,7 @@ int XIntc_Initialize(XIntc * InstancePtr, u16 DeviceId)
 	 */
 	CfgPtr = XIntc_LookupConfig(DeviceId);
 	if (CfgPtr == NULL) {
-		diag_printf("intc not found1... ");
-//		return XST_DEVICE_NOT_FOUND;
+		return XST_DEVICE_NOT_FOUND;
 	}
 
 	/*
@@ -589,7 +587,7 @@ XIntc_Config *XIntc_LookupConfig(u16 DeviceId)
 
 	for (Index = 0; Index < XPAR_XINTC_NUM_INSTANCES; Index++) {
 		if (XIntc_ConfigTable[Index].DeviceId == DeviceId) {
-			CfgPtr = &XIntc_ConfigTable[0];//[Index];
+			CfgPtr = &XIntc_ConfigTable[Index];
 			break;
 		}
 	}

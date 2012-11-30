@@ -1,4 +1,4 @@
-/* $Id: xintc_g.c,v 1.1.4.1 2010/09/17 05:32:46 svemula Exp $ */
+/* $Id: xintc_g.c,v 1.1.2.1 2011/05/24 07:09:38 vidhum Exp $ */
 /******************************************************************************
 *
 * (c) Copyright 2002-2009 Xilinx, Inc. All rights reserved.
@@ -79,7 +79,6 @@
 
 #include "xintc.h"
 #include "xparameters.h"
-#include <pkgconf/hal_microblaze_platform.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -106,11 +105,18 @@
  * Refer to the XIntc_Config data structure in xintc.h for details on how this
  * table should be initialized.
  */
-XIntc_Config XIntc_ConfigTable[0] = {
+XIntc_Config XIntc_ConfigTable[XPAR_XINTC_NUM_INSTANCES] = {
 	{
-	 0x13,	/* Unique ID  of device */
-	 MON_INTC_BASE,	/* Register base address */
-	 0,	/* Ack before or after service */
+	 XPAR_INTC_0_DEVICE_ID,	/* Unique ID  of device */
+	 XPAR_INTC_0_BASEADDR,	/* Register base address */
+	 XPAR_INTC_0_ACK_BEFORE,	/* Ack before or after service */
+	 0			/* Device options */
+	 }
+	,
+	{
+	 XPAR_INTC_1_DEVICE_ID,	/* Unique ID  of device */
+	 XPAR_INTC_1_BASEADDR,	/* Register base address */
+	 XPAR_INTC_1_ACK_BEFORE,	/* Ack before or after service */
 	 0			/* Device options */
 	 }
 };

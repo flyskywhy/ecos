@@ -1,7 +1,7 @@
-/* $Id: xintc.h,v 1.1.4.1 2010/09/17 05:32:46 svemula Exp $ */
+/* $Id: xintc.h,v 1.1.2.1 2011/05/24 07:09:38 vidhum Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2002-2010 Xilinx, Inc. All rights reserved.
+* (c) Copyright 2002-2011 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -124,6 +124,8 @@
 *		      SIE, CIE and IVR are enabled in the HW - Refer CR 555392.
 *		      This driver doesnot make use of these definitions and does
 *		      not use the optional registers.
+* 2.03a hvm  05/24/11 Updated the tcl to generate vector Ids for external
+*		      interrupts. CR565336
 * </pre>
 *
 ******************************************************************************/
