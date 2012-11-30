@@ -91,14 +91,9 @@ typedef unsigned short u16;
 typedef unsigned long u32;
 #endif
 /**
- * xbasic_types.h does not typedef s* or u64
+ * xbasic_types.h does not typedef u64
  */
 typedef unsigned long long u64;
-
-typedef char s8;
-typedef short s16;
-typedef long s32;
-typedef long long s64;
 #else
 #include <linux/types.h>
 #endif
