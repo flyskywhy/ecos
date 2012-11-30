@@ -52,61 +52,39 @@
 //
 //==========================================================================
 
-#include "src/xemaclite.h"
-#include "src/xemaclite_l.h"
+#ifndef TEMAC_ADAPTER_H     /* prevent circular inclusions */
+#define TEMAC_ADAPTER_H     /* by using protection macros */
+
+#include "src/xlltemac.h"
+#include "src/xlldma.h"
+#include "src/xlltemac_hw.h"
+#include "src/xil_assert.h"
+#include "src/xil_io.h"
 #include <pkgconf/hal_microblaze_platform.h>
+#include "temacdma.h"
 
-//
-// Buffer descriptors - internal use with FIFO driver
-//
-#define EMACLITE_BD_Rx_Empty      0x8000  // Buffer is empty, S3ESK can fill
-#define EMACLITE_BD_Rx_Wrap       0x2000  // Wrap: Last buffer in ring
-#define EMACLITE_BD_Rx_Int        0x1000  // Interrupt
-#define EMACLITE_BD_Rx_Last       0x0800  // Last buffer in frame
-#define EMACLITE_BD_Rx_Miss       0x0100  // Miss: promiscious mode
-#define EMACLITE_BD_Rx_BC         0x0080  // Broadcast address
-#define EMACLITE_BD_Rx_MC         0x0040  // Multicast address
-#define EMACLITE_BD_Rx_LG         0x0020  // Frame length violation
-#define EMACLITE_BD_Rx_NO         0x0010  // Non-octet aligned frame
-#define EMACLITE_BD_Rx_SH         0x0008  // Short frame
-#define EMACLITE_BD_Rx_CR         0x0004  // CRC error
-#define EMACLITE_BD_Rx_OV         0x0002  // Overrun
-#define EMACLITE_BD_Rx_TR         0x0001  // Frame truncated. late collision
+/*
+ * Info kept about interface
+ */
 
-#define EMACLITE_BD_Tx_Ready      0x8000  // Frame ready
-#define EMACLITE_BD_Tx_Pad        0x4000  // Pad short frames
-#define EMACLITE_BD_Tx_Wrap       0x2000  // Wrap: Last buffer in ring
-#define EMACLITE_BD_Tx_Int        0x1000  // Interrupt
-#define EMACLITE_BD_Tx_Last       0x0800  // Last buffer in frame
-#define EMACLITE_BD_Tx_TC         0x0400  // Send CRC after data
-#define EMACLITE_BD_Tx_DEF        0x0200  // Defer indication
-#define EMACLITE_BD_Tx_HB         0x0100  // Heartbeat
-#define EMACLITE_BD_Tx_LC         0x0080  // Late collision
-#define EMACLITE_BD_Tx_RL         0x0040  // Retransmission limit
-#define EMACLITE_BD_Tx_RC         0x003C  // Retry count 
-#define EMACLITE_BD_Tx_UN         0x0002  // Underrun
-#define EMACLITE_BD_Tx_CSL        0x0001  // Carrier sense lost
-#define EMACLITE_BD_Tx_ERRORS     (FCC_BD_Tx_LC|FCC_BD_Tx_RL|FCC_BD_Tx_RC|FCC_BD_Tx_UN|FCC_BD_Tx_CSL)
-
-#define MTU	1500
-//
-// Info kept about interface
-//
-struct emaclite_info { 
-    // These fields should be defined by the implementation
-    int                       int_vector;
-    char                     *esa_key;        // RedBoot 'key' for device ESA
-    unsigned char             enaddr[6];
-    unsigned char            *rxbuf;          // Rx buffer space
-    unsigned char            *txbuf;          // Tx buffer space
-    // The rest of the structure is set up at runtime
-    XEmacLite                 dev;
-    unsigned short            rxlength;       // Rx buffer length
-    unsigned short            txlength;       // Tx buffer length
+struct temac_info { 
+	/* These fields should be defined by the implementation */
+	int			int_tx_vector;
+	int			int_rx_vector;
+	char		*esa_key;
+	unsigned char	enaddr[6];
+	/* The rest of the structure is set up at runtime */
+	XLlTemac		dev;
 #ifdef CYGPKG_NET
-    cyg_interrupt             emaclite_interrupt;
-    cyg_handle_t              emaclite_interrupt_handle;
+	cyg_interrupt	temac_tx_interrupt;
+	cyg_handle_t	temac_tx_interrupt_handle;
+
+	cyg_interrupt	temac_rx_interrupt;
+	cyg_handle_t	temac_rx_interrupt_handle;
 #endif
-	int						  sended;
+
+	cyg_uint16      rx_buf_len;                 ///< this member stores length of the receive buffer
+	cyg_uint8       rx_buf[TEMACDMA_MTU];      ///< this buffer is used to store receive data
 };
 
+#endif
