@@ -83,8 +83,8 @@ extern "C" {
 /***************** Macros (Inline Functions) Definitions *********************/
 
 #if defined __GNUC__
-#  define INST_SYNC		mbar(0)
-#  define DATA_SYNC		mbar(1)
+//#  define INST_SYNC		mbar(0)
+//#  define DATA_SYNC		mbar(1)
 #else
 #  define INST_SYNC
 #  define DATA_SYNC
