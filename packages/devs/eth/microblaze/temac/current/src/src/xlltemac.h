@@ -529,6 +529,8 @@ extern "C" {
 #define XTE_RX                   1	/* receive direction  */
 #define XTE_TX                   2	/* transmit direction */
 
+#define XPAR_LL_DMA     2
+
 /**************************** Type Definitions *******************************/
 
 

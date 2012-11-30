@@ -66,6 +66,7 @@
 
 /***************************** Include Files *********************************/
 #include "xlltemac.h"
+#include <cyg/infra/diag.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -1590,7 +1591,7 @@ void XLlTemac_PhyRead(XLlTemac *InstancePtr, u32 PhyAddress,
 			XTE_RDY_OFFSET) & XTE_RDY_HARD_ACS_RDY_MASK);
 
 
-	xdbg_printf(XDBG_DEBUG_GENERAL, "XLlTemac_PhyRead: BaseAddress: 0x%08x\n", InstancePtr->Config.BaseAddress);
+	diag_printf("XLlTemac_PhyRead: BaseAddress: 0x%08x\n", InstancePtr->Config.BaseAddress);
 	/*
 	 * XLlTemac_PhyRead saves the state of the IE register so that it can
 	 * clear the HardAcsCmplt bit and later restore the state of the IE
@@ -1624,7 +1625,7 @@ void XLlTemac_PhyRead(XLlTemac *InstancePtr, u32 PhyAddress,
 	MiiReg = RegisterNum & XTE_MIIM_REGAD_MASK;
 	MiiReg |= ((PhyAddress << XTE_MIIM_PHYAD_SHIFT) & XTE_MIIM_PHYAD_MASK);
 
-	xdbg_printf(XDBG_DEBUG_GENERAL, "XLlTemac_PhyRead: Mii Reg: 0x%0x; Value written: 0x%0x\n",
+	diag_printf("XLlTemac_PhyRead: Mii Reg: 0x%0x; Value written: 0x%0x\n",
 		   RegisterNum, MiiReg);
 	XLlTemac_WriteReg(InstancePtr->Config.BaseAddress, XTE_LSW_OFFSET,
 		MiiReg);
@@ -1642,7 +1643,7 @@ void XLlTemac_PhyRead(XLlTemac *InstancePtr, u32 PhyAddress,
 	/* Read data */
 	*PhyDataPtr = XLlTemac_ReadReg(InstancePtr->Config.BaseAddress,
 			XTE_LSW_OFFSET);
-	xdbg_printf(XDBG_DEBUG_GENERAL, "XLlTemac_PhyRead: Value retrieved: 0x%0x\n", *PhyDataPtr);
+	diag_printf("XLlTemac_PhyRead: Value retrieved: 0x%0x\n", *PhyDataPtr);
 
 	/*
 	 * Clear MII status bits. The TIS register in the hard TEMAC doesn't

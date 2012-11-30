@@ -77,6 +77,7 @@
 
 #include "xlldma.h"
 #include "xenv.h"
+#include <cyg/hal/hal_cache.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -150,7 +151,7 @@
 	{								    \
 		u32 Addr = (u32)(BdPtr);				    \
 									    \
-		Addr += ((RingPtr)->Separation * (NumBd));		    \
+			Addr +=  ((RingPtr)->Separation) * NumBd;		    \
 		if ((Addr > (RingPtr)->LastBdAddr) || ((u32)(BdPtr) > Addr))\
 		{							    \
 			Addr -= (RingPtr)->Length;			    \
@@ -177,7 +178,7 @@
 	{                                                                     \
 		u32 Addr = (u32)(BdPtr);				      \
 									      \
-		Addr -= ((RingPtr)->Separation * (NumBd));		      \
+			Addr -=  (((RingPtr)->Separation) * NumBd);		    \
 		if ((Addr < (RingPtr)->FirstBdAddr) || ((u32)(BdPtr) < Addr)) \
 		{							      \
 			Addr += (RingPtr)->Length;			      \
