@@ -69,7 +69,7 @@ cdl_package CYGPKG_HAL {
 
     make -priority 250 {
         <PREFIX>/lib/extras.o: <PREFIX>/lib/libextras.a
-        $(CC) $(CFLAGS) -nostdlib -Wl,-r -T /dev/null -Wl,--whole-archive -o $@ $<
+        $(COMMAND_PREFIX)ld -EL -nostdlib -static -nostdlib -r -T /dev/null --whole-archive -o $@ $<
     }   
 
     cdl_option CYGBLD_GLOBAL_WARNFLAGS {
