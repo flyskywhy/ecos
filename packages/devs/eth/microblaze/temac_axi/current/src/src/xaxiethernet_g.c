@@ -1,4 +1,4 @@
-/* $Id: xdebug.h,v 1.1.2.1 2011/08/29 09:03:22 anirudh Exp $ */
+/* $Id: xaxiethernet_g.c,v 1.1.2.1 2011/08/29 09:03:22 anirudh Exp $ */
 /******************************************************************************
 *
 * (c) Copyright 2010 Xilinx, Inc. All rights reserved.
@@ -39,56 +39,35 @@
 * AT ALL TIMES.
 *
 ******************************************************************************/
-#ifndef XDEBUG
-#define XDEBUG
+#include "xparameters.h"
+#include "xaxiethernet.h"
 
-#undef DEBUG
+/*
+* The configuration table for devices
+*/
 
-#if defined(DEBUG) && !defined(NDEBUG)
-
-#ifndef XDEBUG_WARNING
-#define XDEBUG_WARNING
-#warning DEBUG is enabled
-#endif
-
-int printf(const char *format, ...);
-
-#define XDBG_DEBUG_ERROR             0x00000001    /* error  condition messages */
-#define XDBG_DEBUG_GENERAL           0x00000002    /* general debug  messages */
-#define XDBG_DEBUG_ALL               0xFFFFFFFF    /* all debugging data */
-
-#define XDBG_DEBUG_FIFO_REG          0x00000100    /* display register reads/writes */
-#define XDBG_DEBUG_FIFO_RX           0x00000101    /* receive debug messages */
-#define XDBG_DEBUG_FIFO_TX           0x00000102    /* transmit debug messages */
-#define XDBG_DEBUG_FIFO_ALL          0x0000010F    /* all fifo debug messages */
-
-#define XDBG_DEBUG_TEMAC_REG         0x00000400    /* display register reads/writes */
-#define XDBG_DEBUG_TEMAC_RX          0x00000401    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_TX          0x00000402    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ALL         0x0000040F    /* all temac  debug messages */
-
-#define XDBG_DEBUG_TEMAC_ADPT_RX     0x00000800    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_TX     0x00000801    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_IOCTL  0x00000802    /* ioctl debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_MISC   0x00000803    /* debug msg for other routines */
-#define XDBG_DEBUG_TEMAC_ADPT_ALL    0x0000080F    /* all temac adapter debug messages */
-
-#define xdbg_current_types (XDBG_DEBUG_ERROR | XDBG_DEBUG_GENERAL | XDBG_DEBUG_FIFO_REG | XDBG_DEBUG_TEMAC_REG)
-
-#define xdbg_stmnt(x)  x
-
-/* ANSI Syntax */
-#define xdbg_printf(type, ...) (((type) & xdbg_current_types) ? printf (__VA_ARGS__) : 0)
-
-
-#else /* defined(DEBUG) && !defined(NDEBUG) */
-
-#define xdbg_stmnt(x)
-
-/* ANSI Syntax */
-#define xdbg_printf(...)
-
-
-#endif /* defined(DEBUG) && !defined(NDEBUG) */
-
-#endif /* XDEBUG */
+XAxiEthernet_Config XAxiEthernet_ConfigTable[] = {
+	{
+	 XPAR_AXIETHERNET_0_DEVICE_ID,
+	 XPAR_AXIETHERNET_0_BASEADDR,
+	 XPAR_AXIETHERNET_0_TEMAC_TYPE,
+	 XPAR_AXIETHERNET_0_TXCSUM,
+	 XPAR_AXIETHERNET_0_RXCSUM,
+	 XPAR_AXIETHERNET_0_PHY_TYPE,
+	 XPAR_AXIETHERNET_0_TXVLAN_TRAN,
+	 XPAR_AXIETHERNET_0_RXVLAN_TRAN,
+	 XPAR_AXIETHERNET_0_TXVLAN_TAG,
+	 XPAR_AXIETHERNET_0_RXVLAN_TAG,
+	 XPAR_AXIETHERNET_0_TXVLAN_STRP,
+	 XPAR_AXIETHERNET_0_RXVLAN_STRP,
+	 XPAR_AXIETHERNET_0_MCAST_EXTEND,
+	 XPAR_AXIETHERNET_0_STATS,
+	 XPAR_AXIETHERNET_0_AVB,
+	 XPAR_AXIETHERNET_0_INTR,
+	 XPAR_AXIETHERNET_0_CONNECTED_TYPE,
+	 XPAR_AXIETHERNET_0_CONNECTED_BASEADDR,
+	 XPAR_AXIETHERNET_0_CONNECTED_FIFO_INTR,
+	 0xFF,
+	 0xFF
+	}
+};

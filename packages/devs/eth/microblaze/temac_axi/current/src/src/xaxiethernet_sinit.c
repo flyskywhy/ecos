@@ -1,4 +1,4 @@
-/* $Id: xdebug.h,v 1.1.2.1 2011/08/29 09:03:22 anirudh Exp $ */
+/* $Id: xaxiethernet_sinit.c,v 1.1.2.1 2011/08/29 09:03:22 anirudh Exp $ */
 /******************************************************************************
 *
 * (c) Copyright 2010 Xilinx, Inc. All rights reserved.
@@ -39,56 +39,67 @@
 * AT ALL TIMES.
 *
 ******************************************************************************/
-#ifndef XDEBUG
-#define XDEBUG
+/**
+*
+* @file xaxiethernet_sinit.c
+*
+* This file contains static initialzation functionality for Axi Ethernet driver.
+*
+* <pre>
+* MODIFICATION HISTORY:
+*
+* Ver   Who  Date     Changes
+* ----- ---- -------- -------------------------------------------------------
+* 1.00a asa  6/30/10 First release
+* </pre>
+*
+******************************************************************************/
 
-#undef DEBUG
+/***************************** Include Files *********************************/
 
-#if defined(DEBUG) && !defined(NDEBUG)
+#include "xparameters.h"
+#include "xaxiethernet.h"
 
-#ifndef XDEBUG_WARNING
-#define XDEBUG_WARNING
-#warning DEBUG is enabled
-#endif
-
-int printf(const char *format, ...);
-
-#define XDBG_DEBUG_ERROR             0x00000001    /* error  condition messages */
-#define XDBG_DEBUG_GENERAL           0x00000002    /* general debug  messages */
-#define XDBG_DEBUG_ALL               0xFFFFFFFF    /* all debugging data */
-
-#define XDBG_DEBUG_FIFO_REG          0x00000100    /* display register reads/writes */
-#define XDBG_DEBUG_FIFO_RX           0x00000101    /* receive debug messages */
-#define XDBG_DEBUG_FIFO_TX           0x00000102    /* transmit debug messages */
-#define XDBG_DEBUG_FIFO_ALL          0x0000010F    /* all fifo debug messages */
-
-#define XDBG_DEBUG_TEMAC_REG         0x00000400    /* display register reads/writes */
-#define XDBG_DEBUG_TEMAC_RX          0x00000401    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_TX          0x00000402    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ALL         0x0000040F    /* all temac  debug messages */
-
-#define XDBG_DEBUG_TEMAC_ADPT_RX     0x00000800    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_TX     0x00000801    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_IOCTL  0x00000802    /* ioctl debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_MISC   0x00000803    /* debug msg for other routines */
-#define XDBG_DEBUG_TEMAC_ADPT_ALL    0x0000080F    /* all temac adapter debug messages */
-
-#define xdbg_current_types (XDBG_DEBUG_ERROR | XDBG_DEBUG_GENERAL | XDBG_DEBUG_FIFO_REG | XDBG_DEBUG_TEMAC_REG)
-
-#define xdbg_stmnt(x)  x
-
-/* ANSI Syntax */
-#define xdbg_printf(type, ...) (((type) & xdbg_current_types) ? printf (__VA_ARGS__) : 0)
+/************************** Constant Definitions *****************************/
 
 
-#else /* defined(DEBUG) && !defined(NDEBUG) */
-
-#define xdbg_stmnt(x)
-
-/* ANSI Syntax */
-#define xdbg_printf(...)
+/**************************** Type Definitions *******************************/
 
 
-#endif /* defined(DEBUG) && !defined(NDEBUG) */
+/***************** Macros (Inline Functions) Definitions *********************/
 
-#endif /* XDEBUG */
+
+/************************** Function Prototypes ******************************/
+
+/*****************************************************************************/
+/**
+* XAxiEthernet_LookupConfig returns a reference to an XAxiEthernet_Config
+* structure based on an unique device id, <i>DeviceId</i>. The return value
+* will refer to an entry in the device configuration table defined in the
+* xaxiethernet_g.c file.
+*
+* @param	DeviceId is the unique device ID of the device for the lookup
+*		operation.
+*
+* @return
+*		- Returns a reference to a config record in the
+*		  configuration table (in xaxiethernet_g.c) corresponding to
+*		  <i>DeviceId</i>, or NULL
+*		- NULL if no match is found.
+*
+******************************************************************************/
+XAxiEthernet_Config *XAxiEthernet_LookupConfig(u16 DeviceId)
+{
+	extern XAxiEthernet_Config XAxiEthernet_ConfigTable[];
+	XAxiEthernet_Config *CfgPtr = NULL;
+	int Index;
+
+	for (Index = 0; Index < XPAR_XAXIETHERNET_NUM_INSTANCES; Index++) {
+		if (XAxiEthernet_ConfigTable[Index].DeviceId == DeviceId) {
+			CfgPtr = &XAxiEthernet_ConfigTable[Index];
+			break;
+		}
+	}
+
+	return (CfgPtr);
+}

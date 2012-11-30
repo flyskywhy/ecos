@@ -1,7 +1,6 @@
-/* $Id: xdebug.h,v 1.1.2.1 2011/08/29 09:03:22 anirudh Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2010 Xilinx, Inc. All rights reserved.
+* (c) Copyright 2010-2011 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -39,56 +38,64 @@
 * AT ALL TIMES.
 *
 ******************************************************************************/
-#ifndef XDEBUG
-#define XDEBUG
+/*****************************************************************************/
+/**
+*
+* @file xaxidma_sinit.c
+*
+* Look up the hardware settings using device ID. The hardware setting is inside
+* the configuration table in xaxidma_g.c, generated automatically by XPS or
+* manually by the user.
+*
+* <pre>
+* MODIFICATION HISTORY:
+*
+* Ver   Who  Date     Changes
+* ----- ---- -------- -------------------------------------------------------
+* 1.00a jz   08/16/10 First release
+* 2.00a jz   08/10/10 Second release, added in xaxidma_g.c, xaxidma_sinit.c,
+*                     updated tcl file, added xaxidma_porting_guide.h
+* 3.00a jz   11/22/10 Support IP core parameters change
+* 5.00a srt  08/29/11 Removed a compiler warning
+*
+* </pre>
+*
+******************************************************************************/
 
-#undef DEBUG
+/***************************** Include Files *********************************/
 
-#if defined(DEBUG) && !defined(NDEBUG)
-
-#ifndef XDEBUG_WARNING
-#define XDEBUG_WARNING
-#warning DEBUG is enabled
-#endif
-
-int printf(const char *format, ...);
-
-#define XDBG_DEBUG_ERROR             0x00000001    /* error  condition messages */
-#define XDBG_DEBUG_GENERAL           0x00000002    /* general debug  messages */
-#define XDBG_DEBUG_ALL               0xFFFFFFFF    /* all debugging data */
-
-#define XDBG_DEBUG_FIFO_REG          0x00000100    /* display register reads/writes */
-#define XDBG_DEBUG_FIFO_RX           0x00000101    /* receive debug messages */
-#define XDBG_DEBUG_FIFO_TX           0x00000102    /* transmit debug messages */
-#define XDBG_DEBUG_FIFO_ALL          0x0000010F    /* all fifo debug messages */
-
-#define XDBG_DEBUG_TEMAC_REG         0x00000400    /* display register reads/writes */
-#define XDBG_DEBUG_TEMAC_RX          0x00000401    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_TX          0x00000402    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ALL         0x0000040F    /* all temac  debug messages */
-
-#define XDBG_DEBUG_TEMAC_ADPT_RX     0x00000800    /* receive debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_TX     0x00000801    /* transmit debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_IOCTL  0x00000802    /* ioctl debug messages */
-#define XDBG_DEBUG_TEMAC_ADPT_MISC   0x00000803    /* debug msg for other routines */
-#define XDBG_DEBUG_TEMAC_ADPT_ALL    0x0000080F    /* all temac adapter debug messages */
-
-#define xdbg_current_types (XDBG_DEBUG_ERROR | XDBG_DEBUG_GENERAL | XDBG_DEBUG_FIFO_REG | XDBG_DEBUG_TEMAC_REG)
-
-#define xdbg_stmnt(x)  x
-
-/* ANSI Syntax */
-#define xdbg_printf(type, ...) (((type) & xdbg_current_types) ? printf (__VA_ARGS__) : 0)
+#include "xparameters.h"
+#include "xaxidma.h"
 
 
-#else /* defined(DEBUG) && !defined(NDEBUG) */
+/*****************************************************************************/
+/**
+ * Look up the hardware configuration for a device instance
+ *
+ * @param	DeviceId is the unique device ID of the device to lookup for
+ *
+ * @return
+ *		The configuration structure for the device. If the device ID is
+ *		not found,a NULL pointer is returned.
+ *
+ * @note	None
+ *
+ ******************************************************************************/
+XAxiDma_Config *XAxiDma_LookupConfig(u32 DeviceId)
+{
+	extern XAxiDma_Config XAxiDma_ConfigTable[];
+	XAxiDma_Config *CfgPtr;
+	u32 Index;
 
-#define xdbg_stmnt(x)
+	CfgPtr = NULL;
 
-/* ANSI Syntax */
-#define xdbg_printf(...)
+	for (Index = 0; Index < XPAR_XAXIDMA_NUM_INSTANCES; Index++) {
+		if (XAxiDma_ConfigTable[Index].DeviceId == DeviceId) {
 
+			CfgPtr = &XAxiDma_ConfigTable[Index];
+			break;
+		}
+	}
 
-#endif /* defined(DEBUG) && !defined(NDEBUG) */
-
-#endif /* XDEBUG */
+	return CfgPtr;
+}
