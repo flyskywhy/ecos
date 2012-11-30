@@ -23,50 +23,81 @@ cdl_package CYGPKG_HAL_MICROBLAZE_XILINX_ML505_XPS_EDK92 {
 		puts $::cdl_header "#include <pkgconf/hal_microblaze_generic.h>"
 		puts $::cdl_header "#define HAL_PLATFORM_BOARD	\"by Xilinx ML505 xps edk92\""
 		puts $::cdl_header "#define HAL_PLATFORM_EXTRA	\"by ecos_v3.00\""
-		puts $::cdl_header "#define MON_CPU_ICACHE_SIZE	8192"
-		puts $::cdl_header "#define MON_CPU_ICACHE_BASE	0x48000000"
-		puts $::cdl_header "#define MON_CPU_ICACHE_HIGH	0x4fffffff"
-		puts $::cdl_header "#define MON_CPU_DCACHE_SIZE	8192"
-		puts $::cdl_header "#define MON_CPU_DCACHE_BASE	0x48000000"
-		puts $::cdl_header "#define MON_CPU_DCACHE_HIGH	0x4fffffff"
-		puts $::cdl_header "#define MON_CPU_SYSTEM_CLK	83333333"
+		puts $::cdl_header "#define MON_CPU_ICACHE_SIZE	2048"
+		puts $::cdl_header "#define MON_CPU_ICACHE_BASE	0xA8000000"
+		puts $::cdl_header "#define MON_CPU_ICACHE_HIGH	0xAfffffff"
+		puts $::cdl_header "#define MON_CPU_DCACHE_SIZE	2048"
+		puts $::cdl_header "#define MON_CPU_DCACHE_BASE	0xA8000000"
+		puts $::cdl_header "#define MON_CPU_DCACHE_HIGH	0xAfffffff"
+		puts $::cdl_header "#define MON_CPU_SYSTEM_CLK	100000000"
 		puts $::cdl_header "#define MON_CPU_MSR_INSTR	1"
 		puts $::cdl_header "#define MON_CPU_BARREL	1"
 		puts $::cdl_header "#define MON_CPU_DIV	0"
 		puts $::cdl_header "#define MON_CPU_HW_MUL	1"
 		puts $::cdl_header "#define MON_CPU_PCMP_INSTR	1"
-		puts $::cdl_header "#define MON_CPU_FPU	0"
+		puts $::cdl_header "#define MON_CPU_FPU	1"
 		puts $::cdl_header "/* dlmb_cntlr */"
 		puts $::cdl_header "#define MON_BRAM_BASE	0x00000000"
-		puts $::cdl_header "#define MON_BRAM_HIGH	0x00001fff"
+		puts $::cdl_header "#define MON_BRAM_HIGH	0x00007fff"
 		puts $::cdl_header "/* RS232_Uart_2 */"
-		puts $::cdl_header "#define MON_UART16550_0_BASE	0x83e00000"
-		puts $::cdl_header "#define MON_UART16550_0_INTR	5"
-		puts $::cdl_header "/* LEDs_8Bit */"
-		puts $::cdl_header "#define MON_GPIO_0_BASE	0x81400000"
-		puts $::cdl_header "/* LEDs_Positions */"
-		puts $::cdl_header "#define MON_GPIO_1_BASE	0x81420000"
+		puts $::cdl_header "#define MON_UART16550_0_BASE	0x40400000"
+		puts $::cdl_header "#define MON_UART16550_0_INTR	3"
 		puts $::cdl_header "/* DDR2_SDRAM */"
-		puts $::cdl_header "#define MON_MEMORY_BASE	0x48000000"
-		puts $::cdl_header "#define MON_MEMORY_HIGH	0x4fffffff"
+		puts $::cdl_header "#define MON_MEMORY_BASE	0xA8000000"
+		puts $::cdl_header "#define MON_MEMORY_HIGH	0xAfffffff"
 		puts $::cdl_header "/* xps_timer_1 */"
-		puts $::cdl_header "#define MON_TIMER_BASE	0x83c00000"
+		puts $::cdl_header "#define MON_TIMER_BASE	0x41C00000"
 		puts $::cdl_header "#define MON_TIMER_INTR	0"
-		puts $::cdl_header "/* Ethernet_MAC */"
-		puts $::cdl_header "#define MON_EMACLITE_BASE	0x81000000"
-		puts $::cdl_header "#define MON_EMACLITE_TX_PING_PONG	0"
-		puts $::cdl_header "#define MON_EMACLITE_RX_PING_PONG	0"
-		puts $::cdl_header "#define MON_EMACLITE_INCLUDE_MDIO	1"
-		puts $::cdl_header "#define MON_EMACLITE_INTR	2"
+		puts $::cdl_header "/* Tri_Mode_MAC */"
+		puts $::cdl_header "#define MON_TEMAC_0_BASEADDR	0x41240000"
+		puts $::cdl_header "#define MON_TEMAC_TX_PING_PONG	0"
+		puts $::cdl_header "#define MON_TEMAC_RX_PING_PONG	0"
+		puts $::cdl_header "#define MON_TEMAC_INCLUDE_MDIO	1"
+#		puts $::cdl_header "#define MON_TEMAC_INTR	0"
 		puts $::cdl_header "/* xps_intc_0 */"
-		puts $::cdl_header "#define MON_INTC_BASE	0x81800000"
-		puts $::cdl_header "#define MON_INTC_NUM_INTR	3"
+		puts $::cdl_header "#define MON_INTC_BASE	0x41200000"
+		puts $::cdl_header "#define MON_INTC_NUM_INTR	4"
+#		puts $::cdl_header "/* STRATAFLASH */"
+#		puts $::cdl_header "#define MICROBLAZE_FLASH_BASE	0x8C000000"
+#		puts $::cdl_header "#define MICROBLAZE_FLASH_SIZE	0x1FFFFFFF"
+#		puts $::cdl_header "/* MAC_DMA */"
+		puts $::cdl_header "#define MON_DMA_EMAC_BASEADDR	0x41E00000"
+		puts $::cdl_header "#define MON_TXDMA_INTR	2"
+		puts $::cdl_header "#define MON_RXDMA_INTR	1"
+
+
+
+
 
 	}
+	
+	
+	
+	
+	
+#	cdl_option CYGHWR_HAL_ARM_XSCALE_IXDP425_FLASH {
+#        display         "External Intel StrataFLASH memory support"
+#        parent          CYGPKG_IO_FLASH
+#        active_if       CYGPKG_IO_FLASH
+#        flavor          bool
+#        default_value   1
+#        no_define
+#        implements      CYGHWR_IO_FLASH_BLOCK_LOCKING
+#        compile         -library=libextras.a microblaze_strataflash.c
+#        description "
+#        The IXDP425 development board is fitted with an external Intel
+#        StrataFLASH JS28F256P30 FLASH memory device. This option enables
+#        support for the StrataFlash."
+#       }
+	
+	
+	
+	
+	
 	cdl_option MON_SYSTEM_CLK {
 		display		"SYSTEM_CLK IP core support"
 		flavor		data
-		default_value	83
+		default_value	100
 		description	"System CLK."
 	}
 	cdl_option MON_UART16550_0 {
@@ -75,20 +106,28 @@ cdl_package CYGPKG_HAL_MICROBLAZE_XILINX_ML505_XPS_EDK92 {
 		default_value	1
 		description	"Enabling this option adds support to RS232_Uart_2."
 	}
-       cdl_option MON_GPIO_0 {
-           display         "GPIO_0 IP core support"
-           flavor          bool
-           default_value   1
-           description     "Enabling this option adds support to LEDs_8Bit."
-           }
-       cdl_option MON_GPIO_1 {
-           display         "GPIO_1 IP core support"
-	   flavor          bool
-	   default_value   1
-	   description     "Enabling this option adds support to LEDs_Positions."
-	   }
-	cdl_option MON_EMACLITE_0 {
-		display		"EMACLITE_0 IP core support"
+#	cdl_option MON_SPI_0 {
+#		display		"MON_0 IP core support"
+#		flavor		bool
+#		default_value	1
+#		description	"Enabling this option adds support to SPI"
+#	}
+	
+	
+#       cdl_option MON_GPIO_0 {
+#           display         "GPIO_0 IP core support"
+#           flavor          bool
+#           default_value   1
+#           description     "Enabling this option adds support to LEDs_8Bit."
+#           }
+#       cdl_option MON_GPIO_1 {
+#           display         "GPIO_1 IP core support"
+#	   flavor          bool
+#	   default_value   1
+#	   description     "Enabling this option adds support to LEDs_Positions."
+#	   }
+	cdl_option MON_TEMAC_0 {
+		display		"TEMAC_0 IP core support"
 		flavor	bool
 		default_value	1
 		description	"Enabling this option adds support to Ethernet_MAC."
