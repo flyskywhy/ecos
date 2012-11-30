@@ -23,6 +23,7 @@
 *******************************************************************************/
 
 #include "xparameters.h"
+#include <pkgconf/hal_microblaze_platform.h>
 
 #define MICROBLAZE_MSR_DCACHE_ENABLE        0x00000080
 #define MICROBLAZE_MSR_INTR_ENABLE          0x00000002
@@ -50,7 +51,7 @@ microblaze_invalidate_dcache:
     
         andi    r5, r5, -(4 * XPAR_MICROBLAZE_DCACHE_LINE_LEN)  /* Align to cache line */
 
-    	addik	r6, r5, XPAR_MICROBLAZE_DCACHE_BYTE_SIZE        /* Compute end */
+    	addik	r6, r5, MON_CPU_DCACHE_SIZE        /* Compute end */
         andi    r6, r6, -(4 * XPAR_MICROBLAZE_DCACHE_LINE_LEN)  /* Align to cache line */
     
 L_start:
