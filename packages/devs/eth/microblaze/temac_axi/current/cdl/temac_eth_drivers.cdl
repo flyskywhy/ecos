@@ -1,0 +1,131 @@
+# ====================================================================
+#
+#      temac_eth_drivers.cdl
+#
+#      Hardware specifics for spartan3esk ethernet
+#      Taken from Xilinx VIRTEX4 Board
+#
+# ====================================================================
+## ####ECOSGPLCOPYRIGHTBEGIN####                                            
+## -------------------------------------------                              
+## This file is part of eCos, the Embedded Configurable Operating System.   
+## Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under    
+## the terms of the GNU General Public License as published by the Free     
+## Software Foundation; either version 2 or (at your option) any later      
+## version.                                                                 
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT      
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+## for more details.                                                        
+##
+## You should have received a copy of the GNU General Public License        
+## along with eCos; if not, write to the Free Software Foundation, Inc.,    
+## 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+##
+## As a special exception, if other files instantiate templates or use      
+## macros or inline functions from this file, or you compile this file      
+## and link it with other works to produce a work based on this file,       
+## this file does not by itself cause the resulting work to be covered by   
+## the GNU General Public License. However the source code for this file    
+## must still be made available in accordance with section (3) of the GNU   
+## General Public License v2.                                               
+##
+## This exception does not invalidate any other reasons why a work based    
+## on this file might be covered by the GNU General Public License.         
+## -------------------------------------------                              
+## ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Author(s):      Michal Pfeifer
+# Original data:  
+# Contributors:   
+# Date:           2003-09-23
+#                 2005-04-21
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
+    display       "TEMAC support"
+    description   "TEMAC support"
+
+    parent        CYGPKG_IO_ETH_DRIVERS
+    active_if	  CYGPKG_IO_ETH_DRIVERS
+    active_if	  CYGPKG_HAL_MICROBLAZE 
+    requires      CYGPKG_HAL_MICROBLAZE_GENERIC
+    active_if     MON_TEMAC_0
+
+#    include_dir   .
+#    include_files ; # none _exported_ whatsoever
+
+    implements    CYGHWR_NET_DRIVERS
+    implements    CYGHWR_NET_DRIVER_ETH0
+
+    compile       -library=libextras.a adapter.c temacdma.c src/xlltemac.c src/xlltemac_control.c \
+                  src/xlltemac_g.c src/xlltemac_sinit.c \
+		  src/xlldma.c src/xlldma_bdring.c \
+		  src/microblaze_invalidate_dcache.S src/microblaze_invalidate_dcache_range.S
+#		  src/xintc.c src/xintc_g.c src/xintc_intr.c src/xintc_l.c src/xintc_options.c \
+
+    cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_OPTIONS {
+        display "TEMAC build options"
+        flavor  none
+	no_define
+
+        cdl_option CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_CFLAGS_ADD {
+            display "TEMAC compiler flags"
+            flavor  data
+            no_define
+            default_value { "-D_KERNEL -D__ECOS" }
+            description   "
+                This option modifies the set of compiler flags for
+                building the Spartan3E Starter Kit ethernet driver package. 
+		These flags are used in addition to the set of global 
+		flags."
+        }
+    }
+
+	cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_DMA_OPTIONS {
+		display		"Ethernet TriEMAC DMA  options"
+		flavor		none
+		no_define
+		
+		cdl_option CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE {
+		display		"Define the size of ring buffer"
+		flavor		data
+		        legal_values  { 8 16 32 64 
+		                                      }
+		default_value	16
+		description "
+			This option modifies the set of compiler flags for
+			building the Spartan-6 SP605 ethernet driver package. 
+			These flags are used in addition to the set of global 
+			flags."
+		}
+
+	
+		cdl_option CYGPKG_DEVS_ETH_MICROBLAZE_DMA_CFLAGS_ADD {
+		display		"DMA compiler flags"
+		flavor		data
+		no_define
+		default_value	{ "-D_KERNEL -D__ECOS" }
+		description "
+			This option modifies the set of compiler flags for
+			building the Spartan-6 SP605 ethernet driver package. 
+			These flags are used in addition to the set of global 
+			flags."
+		}
+	}
+
+
+
+
+
+
+
+}
