@@ -7168,5 +7168,30 @@ target xilinx_ml505_xps_edk92 {
 }
 ### end CYGPKG_HAL_MICROBLAZE_XILINX_ML505_XPS_EDK92
 
+### start CYGPKG_HAL_MICROBLAZE_XILINX_SP605_XPS_EDK132
+###############################################################################
+# Generate by ecos_v1.00.a - Copyright (C) Michal Simek 2008 <monstr@monstr.eu>
+###############################################################################
+package CYGPKG_HAL_MICROBLAZE_XILINX_SP605_XPS_EDK132 {
+	alias	{ "Xilinx sp605 xps edk132" hal_microblaze_xilinx_sp605_xps_edk132 microblaze_xilinx_sp605_xps_edk132_hal }
+	directory	hal/microblaze/xilinx_sp605_xps_edk132
+	script		hal_microblaze_xilinx_sp605_xps_edk132.cdl
+	hardware
+	description " This platform is create by ecos_v3.00.a"
+}
+
+target xilinx_sp605_xps_edk132 {
+	alias	{ "Xilinx sp605 xps edk132" xilinx_sp605_xps_edk132 }
+	packages {	CYGPKG_HAL_MICROBLAZE
+			CYGPKG_HAL_MICROBLAZE_GENERIC
+			CYGPKG_HAL_MICROBLAZE_XILINX_SP605_XPS_EDK132
+			CYGPKG_IO_SERIAL_GENERIC_16X5X
+			CYGPKG_IO_SERIAL_MICROBLAZE_UART16550
+			CYGPKG_IO_ETH_DRIVERS
+	}
+	description " This target is create by ecos_v1.00.a"
+}
+### end CYGPKG_HAL_MICROBLAZE_XILINX_SP605_XPS_EDK132
+
 # ==========================================================================
 # End of ecos.db
