@@ -7053,6 +7053,14 @@ package CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE {
 	description	"Xilinx Ethernet MAC Lite driver"
 }
 
+package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
+	alias		{ "Xilinx Ethernet TMAC Lite driver" devs_eth_temac }
+	hardware
+	directory	devs/eth/microblaze/temac
+	script		temac_eth_drivers.cdl
+	description	"Xilinx Tri-Mode Ethernet MAC driver"
+}
+
 package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	alias		{ "Xilinx Uart16550 serial driver" devs_serial_mb_uart16550 }
 	hardware
