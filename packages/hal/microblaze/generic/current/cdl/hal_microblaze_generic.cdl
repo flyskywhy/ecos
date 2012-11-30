@@ -56,9 +56,10 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
         Generic support."
 
     compile       plf_io.c hal_diag.c hal_aux.c platform.S \
-                  src/xuartns550_g.c src/xuartns550_intr.c src/xbasic_types.c\
+                  src/xuartns550_g.c src/xuartns550_intr.c src/xbasic_types.c src/xil_assert.c src/xil_io.c \
                   src/xuartns550_options.c  src/xuartns550_stats.c src/xuartns550.c src/xuartns550_l.c \
-                  src/xuartns550_selftest.c src/xuartns550_format.c src/xuartns550_sinit.c
+                  src/xuartns550_selftest.c src/xuartns550_format.c src/xuartns550_sinit.c \
+                  src/xintc.c src/xintc_g.c src/xintc_intr.c src/xintc_l.c src/xintc_options.c
 
     implements    CYGINT_HAL_DEBUG_GDB_STUBS
     implements    CYGINT_HAL_DEBUG_GDB_STUBS_BREAK
@@ -194,8 +195,8 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             display "Global linker flags"
             flavor  data
             no_define
-            default_value { "-msoft-float -mcpu=v4.00.a -g -nostdlib -Wl,--gc-sections -Wl,-static" }
-#            default_value { "-msoft-float -mcpu=v4.00.a -g -nostdlib" }
+            default_value { "-msoft-float -g -nostdlib -Wl,--gc-sections -Wl,-static" }
+#            default_value { "-msoft-float -g -nostdlib" }
 #            default_value { "-mcpu=v4.00.a -nostdlib" }
             description   "
                 This option controls the global linker flags. Individual
@@ -229,37 +230,37 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
         }
     }
 
-    cdl_component CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_OPTIONS {
-        display "SPARTAN3ESK build options"
-        flavor  none
-        description   "
-	    Package specific build options including control over
-	    compiler flags used only in building this package,
-	    and details of which tests are built."
-
-
-        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_ADD {
-            display "Additional compiler flags"
-            flavor  data
-            no_define
-            default_value { "" }
-            description   "
-                This option modifies the set of compiler flags for
-                building HAL. These flags are used in addition
-                to the set of global flags."
-        }
-
-        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_REMOVE {
-            display "Suppressed compiler flags"
-            flavor  data
-            no_define
-            default_value { "" }
-            description   "
-                This option modifies the set of compiler flags for
-                building HAL. These flags are removed from
-                the set of global flags if present."
-        }
-    }
+#    cdl_component CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_OPTIONS {
+#        display "SPARTAN3ESK build options"
+#        flavor  none
+#        description   "
+#            Package specific build options including control over
+#            compiler flags used only in building this package,
+#            and details of which tests are built."
+#    
+#    
+#        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_ADD {
+#            display "Additional compiler flags"
+#            flavor  data
+#            no_define
+#            default_value { "" }
+#            description   "
+#                This option modifies the set of compiler flags for
+#                building HAL. These flags are used in addition
+#                to the set of global flags."
+#        }
+#    
+#        cdl_option CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK_CFLAGS_REMOVE {
+#            display "Suppressed compiler flags"
+#            flavor  data
+#            no_define
+#            default_value { "" }
+#            description   "
+#                This option modifies the set of compiler flags for
+#                building HAL. These flags are removed from
+#                the set of global flags if present."
+#        }
+#    }
 
     cdl_component CYGHWR_MEMORY_LAYOUT {
         display "Memory layout"
