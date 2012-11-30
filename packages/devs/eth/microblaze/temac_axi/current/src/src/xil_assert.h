@@ -1,15 +1,6 @@
 /******************************************************************************
 *
-* (c) Copyright 2009 Xilinx, Inc. All rights reserved. 
-*     This program is free software; you can redistribute it and/or modify 
-*     it under the terms of the GNU General Public License as published by 
-*     the Free Software Foundation; either version 2 of the License, or (at 
-*     your option) any later version. 
-*
-*     You should have received a copy of the GNU General Public License 
-*     along with this program; if not, write to the Free Software 
-*     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, 
-*     MA  02110-1301  USA
+* (c) Copyright 2009 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -81,14 +72,14 @@ extern "C" {
 #define XIL_ASSERT_OCCURRED 1
 
 extern unsigned int Xil_AssertStatus;
-extern void Xil_Assert(char *, int);
+extern void Xil_Assert(const char *, int);
 
 
 /**
  * This data type defines a callback to be invoked when an
  * assert occurs. The callback is invoked only when asserts are enabled
  */
-typedef void (*Xil_AssertCallback) (char *File, int Line);
+typedef void (*Xil_AssertCallback) (const char *File, int Line);
 
 /***************** Macros (Inline Functions) Definitions *********************/
 

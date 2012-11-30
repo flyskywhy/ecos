@@ -104,7 +104,7 @@ static Xil_AssertCallback Xil_AssertCallbackRoutine = NULL;
 * @note     None.
 *
 ******************************************************************************/
-void Xil_Assert(char *File, int Line)
+void Xil_Assert(const char *File, int Line)
 {
 	/* if the callback has been set then invoke it */
 	if (Xil_AssertCallbackRoutine != 0) {

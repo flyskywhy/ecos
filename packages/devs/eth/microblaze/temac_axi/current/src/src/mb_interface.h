@@ -1,28 +1,28 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2004 Xilinx, Inc.  All rights reserved. 
-// 
-// Xilinx, Inc. 
-// XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A 
-// COURTESY TO YOU.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS 
-// ONE POSSIBLE   IMPLEMENTATION OF THIS FEATURE, APPLICATION OR 
-// STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION 
-// IS FREE FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE 
-// FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION. 
-// XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO 
-// THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO 
-// ANY WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE 
-// FROM CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY 
-// AND FITNESS FOR A PARTICULAR PURPOSE. 
-// 
+// Copyright (c) 2004-2011 Xilinx, Inc.  All rights reserved.
+//
+// Xilinx, Inc.
+// XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
+// COURTESY TO YOU.  BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
+// ONE POSSIBLE   IMPLEMENTATION OF THIS FEATURE, APPLICATION OR
+// STANDARD, XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION
+// IS FREE FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE
+// FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
+// XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
+// THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO
+// ANY WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE
+// FROM CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE.
+//
 // File   : mb_interface.h
 // Date   : 2002, March 20.
 // Company: Xilinx
-// Group  : Emerging Software Technologies
+// Group  :
 //
 // Summary:
 // Header file for mb_interface
 //
-// $Id: mb_interface.h,v 1.1.2.1 2009/09/24 23:37:36 haibing Exp $
+// $Id: mb_interface.h,v 1.1.2.1 2011/05/17 04:37:26 sadanan Exp $
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,13 +46,14 @@ extern void microblaze_disable_exceptions(void);                /* Disable hardw
 extern void microblaze_register_handler(XInterruptHandler Handler, void *DataPtr);                               /* Register top level interrupt handler */
 extern void microblaze_register_exception_handler(Xuint8 ExceptionId, XExceptionHandler Handler, void *DataPtr); /* Register exception handler */
 
-extern void microblaze_invalidate_icache();         /* Invalidate the entire icache */
-extern void microblaze_invalidate_dcache();         /* Invalidate the entire dcache */
-extern void microblaze_flush_dcache();              /* Flush the whole dcache */
+extern void microblaze_invalidate_icache(void);         /* Invalidate the entire icache */
+extern void microblaze_invalidate_dcache(void);         /* Invalidate the entire dcache */
+extern void microblaze_flush_dcache(void);              /* Flush the whole dcache */
 extern void microblaze_invalidate_icache_range(unsigned int cacheaddr, unsigned int len);   /* Invalidate a part of the icache */
 extern void microblaze_invalidate_dcache_range(unsigned int cacheaddr, unsigned int len);   /* Invalidate a part of the dcache */
 extern void microblaze_flush_dcache_range(unsigned int cacheaddr, unsigned int len);        /* Flush a part of the dcache */
-    
+extern void microblaze_scrub(void);                     /* Scrub LMB and internal BRAM */
+
 /* Deprecated */
 extern void microblaze_update_icache (int , int , int ) __attribute__((deprecated));
 extern void microblaze_init_icache_range (int , int )  __attribute__((deprecated));
@@ -107,6 +108,15 @@ extern void microblaze_init_dcache_range (int , int )  __attribute__((deprecated
                                                               "andi\t%0,%0,0x10" : "=d" (error))
 
 /* Pseudo assembler instructions */
+#define clz(v)          ({  unsigned int _rval;         \
+                            __asm__ __volatile__ (      \
+                                "clz\t%0,%1\n" : "=d"(_rval): "d" (v) \
+                            );                          \
+                            _rval;                      \
+                        })
+
+#define mbar(mask)      ({  __asm__ __volatile__ ("mbar\t" stringify(mask) ); })
+
 #define mfgpr(rn)       ({  unsigned int _rval;         \
                             __asm__ __volatile__ (      \
                                 "or\t%0,r0," stringify(rn) "\n" : "=d"(_rval) \
@@ -190,10 +200,24 @@ extern void microblaze_init_dcache_range (int , int )  __attribute__((deprecated
                             );                                      \
                             _rval;                                  \
                         })
-    
+
 #define mftlbhi()       ({  unsigned int _rval;         \
                             __asm__ __volatile__ (                  \
                                 "mfs\t%0,rtlbhi\n" : "=d"(_rval)    \
+                            );                                      \
+                            _rval;                                  \
+                        })
+
+#define mfslr()         ({  unsigned int _rval;         \
+                            __asm__ __volatile__ (                  \
+                                "mfs\t%0,rslr\n" : "=d"(_rval)    \
+                            );                                      \
+                            _rval;                                  \
+                        })
+
+#define mfshr()         ({  unsigned int _rval;         \
+                            __asm__ __volatile__ (                  \
+                                "mfs\t%0,rshr\n" : "=d"(_rval)    \
                             );                                      \
                             _rval;                                  \
                         })
@@ -243,6 +267,64 @@ extern void microblaze_init_dcache_range (int , int )  __attribute__((deprecated
                                 "mts\trtlbsx,%0\n\tnop\n" :: "d" (v)    \
                             );                                      \
                         })
+
+#define mtslr(v)        ({  __asm__ __volatile__ (      \
+                                "mts\trslr,%0\n\tnop\n" :: "d" (v)  \
+                            );                                      \
+                        })
+
+#define mtshr(v)        ({  __asm__ __volatile__ (      \
+                                "mts\trshr,%0\n\tnop\n" :: "d" (v)  \
+                            );                                      \
+                        })
+
+#define lwx(address)	({  unsigned int _rval; \
+                              __asm__ __volatile__ ( \
+                             "lwx\t%0,%1,r0\n" : "=d"(_rval) : "d" (address) \
+                              ); \
+                              _rval; \
+                          })
+
+#define lwr(address)	({  unsigned int _rval; \
+                              __asm__ __volatile__ ( \
+                             "lwr\t%0,%1,r0\n" : "=d"(_rval) : "d" (address) \
+                              ); \
+                              _rval; \
+                          })
+
+#define lhur(address)	({  unsigned int _rval; \
+                              __asm__ __volatile__ ( \
+                             "lhur\t%0,%1,r0\n" : "=d"(_rval) : "d" (address) \
+                              ); \
+                              _rval; \
+                          })
+
+#define lbur(address)	({  unsigned int _rval; \
+                              __asm__ __volatile__ ( \
+                             "lbur\t%0,%1,r0\n" : "=d"(_rval) : "d" (address) \
+                              ); \
+                              _rval; \
+                          })
+
+#define swx(address, data) ({  __asm__ __volatile__ ( \
+                                "swx\t%0,%1,r0\n" :: "d" (data), "d" (address) \
+                               ); \
+                           })
+
+#define swr(address, data) ({  __asm__ __volatile__ ( \
+                                "swr\t%0,%1,r0\n" :: "d" (data), "d" (address) \
+                               ); \
+                           })
+
+#define shr(address, data) ({  __asm__ __volatile__ ( \
+                                "shr\t%0,%1,r0\n" :: "d" (data), "d" (address) \
+                               ); \
+                           })
+
+#define sbr(address, data) ({  __asm__ __volatile__ ( \
+                                "sbr\t%0,%1,r0\n" :: "d" (data), "d" (address) \
+                               ); \
+                           })
 
 #define microblaze_getfpex_operand_a()     ({          \
                                     extern unsigned int mb_fpex_op_a;   \

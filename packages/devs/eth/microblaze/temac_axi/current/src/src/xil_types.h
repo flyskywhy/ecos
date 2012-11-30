@@ -1,6 +1,6 @@
 /******************************************************************************
 *
-* (c) Copyright 2009 Xilinx, Inc. All rights reserved.
+* (c) Copyright 2009-2011 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -52,6 +52,7 @@
 * Ver   Who    Date   Changes
 * ----- ---- -------- -------------------------------------------------------
 * 1.00a hbm  07/14/09 First release
+* 3.03a sdm  05/30/11 Added Xuint64 typedef and XUINT64_MSW/XUINT64_LSW macros
 * </pre>
 *
 ******************************************************************************/
@@ -89,11 +90,51 @@
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned long u32;
-#endif
+
+#define __XUINT64__
+typedef struct
+{
+	u32 Upper;
+	u32 Lower;
+} Xuint64;
+
+/*****************************************************************************/
 /**
- * xbasic_types.h does not typedef u64
+* Return the most significant half of the 64 bit data type.
+*
+* @param    x is the 64 bit word.
+*
+* @return   The upper 32 bits of the 64 bit word.
+*
+* @note     None.
+*
+******************************************************************************/
+#define XUINT64_MSW(x) ((x).Upper)
+
+/*****************************************************************************/
+/**
+* Return the least significant half of the 64 bit data type.
+*
+* @param    x is the 64 bit word.
+*
+* @return   The lower 32 bits of the 64 bit word.
+*
+* @note     None.
+*
+******************************************************************************/
+#define XUINT64_LSW(x) ((x).Lower)
+
+#endif /* XBASIC_TYPES_H */
+
+/**
+ * xbasic_types.h does not typedef s* or u64
  */
 typedef unsigned long long u64;
+
+typedef char s8;
+typedef short s16;
+typedef long s32;
+typedef long long s64;
 #else
 #include <linux/types.h>
 #endif
