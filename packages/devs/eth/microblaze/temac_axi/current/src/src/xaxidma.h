@@ -423,7 +423,7 @@ extern "C" {
 #include "xenv.h"
 #else
 #include <string.h>
-#include "xil_cache.h"
+//#include "xil_cache.h"
 #endif
 
 /************************** Constant Definitions *****************************/

@@ -80,9 +80,9 @@
 #include <src/xparameters.h>
 
 #include "adapter.h"
-#include <src/xlltemac.h>
-#include <src/xlldma.h>
-#include <src/xlldma_bdring.h>
+#include <src/xaxiethernet.h>
+#include <src/xaxidma.h>
+#include <src/xaxidma_bdring.h>
 
 #ifdef CYGPKG_REDBOOT
 #include <pkgconf/redboot.h>
@@ -107,6 +107,8 @@ RedBoot_config_option("Network hardware address [MAC]",
 #define TEMAC_SPEED    100 /* 100Mb/s for Mii */
 #define TEMAC_SPEED_1G 1000    /* 1000Mb/s for GMii */
 
+#define CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG 0
+
 #ifndef CONFIG_BOOL
 #define CONFIG_BOOL 1
 #endif
@@ -117,6 +119,8 @@ RedBoot_config_option("Network hardware address [MAC]",
 
 #define AUTO_NEG_100 0x4000
 #define AUTO_NEG_1000 0x8000
+
+#define MAX_MULTICAST_ADDR   (1<<23) //Maximum number of multicast ethernet mac addresses
 
 extern microblaze_intc_t *intc;
 
@@ -133,6 +137,8 @@ static struct temac_info temac0_info = { MON_TXDMA_INTR, // Interrupt vector for
         "eth0_esa", { 0x08, 0x00, 0x3E, 0x28, 0x7A, 0xBA }, // Default ESA
         };
 static struct temacdma_handle g_dma_handle;
+
+//cyg_uint32 McastAddressTable[(MAX_MULTICAST_ADDR>>3)/sizeof(cyg_uint32)] //1 MB for storing multicast address table
 
 ETH_DRV_SC(temac0_sc,
         &temac0_info, // Driver specific data
@@ -156,7 +162,165 @@ static void temac_int(struct eth_drv_sc *data);
 static void temac_RxEvent(void *sc);
 static void temac_TxEvent(void *sc);
 
-#ifdef CYGPKG_NET
+/*static void temac_add_mc_mac(cyg_uint8 * mc_addr);
+static void temac_rem_mc_mac(cyg_uint8 * mc_addr);
+
+static int AxiEthernet_ClearExtMulticast(void *AddressPtr);
+static int AxiEthernet_AddExtMulticast(void *AddressPtr);
+*/
+
+//#ifdef CYGPKG_NET
+
+
+/*****************************************************************************/
+/**
+* AxiEthernet_AddExtMulticast adds the multicast Ethernet address table in
+* DDR. This table is mainly for software driver to perform the final address
+* filtering.
+*
+* Once an Ethernet address is programmed, the Axi Ethernet channel will begin
+* receiving data sent from that address. The way to prevent the
+* Axi Ethernet channel from receiving messages from an Ethernet address in the
+* DDR table is to clear it with AxiEthernet_ClearExtMulticast().
+*
+* @paramAddressPtr is a pointer to the 6-byte Ethernet address to set.
+*
+* @return - XST_SUCCESS,on successful completion
+*- XST_INVALID_PARAM, if input MAC address is not between
+*01:00:5E:00:00:00 and 01:00:5E:7F:FF:FF, as per RFC1112.
+* @note
+*
+* This table is independent to BRAM table that is used for HW address
+* filtering. It is user's responsiblility to maintain these tables.
+*
+* In the multicast table, hardware requires it to be 'indexed' with bit 22-8,
+* 15 bits in total of mac address. This address filtering is done in hardware
+*  and provisioned with XAxiEthernet_[Add|Clear]ExtMulticastSet() APIs.
+*
+* This routine consider all 2**23 possible multicast ethernet addresses to be
+* 8Mx1 bit or 1M bytes memory area. All defined multicast addresses are from
+* 01.00.5E.00.00.00 to 01.00.5E.7F.FF.FF
+* The first 25 bit out of 48 bit are static, so they will not be part of
+* calculation.
+*
+* In memory, software used every bit represents every defined MAC address,
+* then we have this formula for table lookup.
+* offset + (address >> 3) => memory location.
+* address % 32            => bit location for multicast address
+* Let's take 01:00:5E:00:01:FF(hex),
+* memory location : 0x3F
+* bit location    : 0x1F
+ *****************************************************************************/
+static void AxiEthernet_AddExtMulticast(void *AddressPtr)
+{
+    cyg_uint32 MaOffset;
+    cyg_uint32 Loc;
+    cyg_uint32 Bval;
+    cyg_uint32 BvalNew;
+    cyg_uint8  *Aptr = (cyg_uint8 *) AddressPtr;
+
+/*
+ * Verify if address is a good/valid multicast address, between
+ * 01:00:5E:00:00:00 to 01:00:5E:7F:FF:FF per RFC1112.
+ * This address is referenced to be index to BRAM table.
+*/
+//    if ((0x01 != Aptr[0]) || (0x00 != Aptr[1]) || (0x5e != Aptr[2]) || (0x0 != (Aptr[3] & 0x80))) 
+//    {
+//	return 1;
+//    }
+
+/* Program software Multicast table in RAM */
+/* Calculate memory locations in software table */
+    MaOffset  = Aptr[5];
+    MaOffset |= Aptr[4] << 8;
+    MaOffset |= Aptr[3] << 16;
+
+    Loc  = ((MaOffset >> 5) << 2); /* it is not same as ">> 3" */
+
+/* Bit value */
+    BvalNew = 1 << (MaOffset % 32);
+
+/* Program software Multicast table in RAM */
+    Bval = XAxiEthernet_ReadReg((u32)&McastAddressTable, Loc);
+    XAxiEthernet_WriteReg((u32)&McastAddressTable, Loc, Bval | BvalNew);
+
+//    return 0;
+}
+
+
+/*****************************************************************************/
+/**
+* AxiEthernet_ClearExtMulticast clears the Ethernet address in multicast
+* address table in DDR.
+*
+* @param AddressPtr is a pointer to the 6-byte Ethernet address to set.
+*
+* @return - XST_SUCCESS,on successful completion
+*- XST_INVALID_PARAM, if input MAC address is not between
+*01:00:5E:00:00:00 and 01:00:5E:7F:FF:FF, as per RFC1112.
+*
+* @note
+*
+* Please reference AxiEthernet_AddExtMulticast for multicast ethernet address
+* index and bit value calculation.
+*
+*****************************************************************************/
+static int AxiEthernet_ClearExtMulticast(void *AddressPtr)
+{
+    cyg_uint32 MaOffset;
+    cyg_uint32 Loc;
+    cyg_uint32 Bval;
+    cyg_uint32 BvalNew;
+    cyg_uint8 *Aptr = (cyg_uint8 *) AddressPtr;
+
+/*
+ * Verify if address is a good/valid multicast address, between
+ * 01:00:5E:00:00:00 to 01:00:5E:7F:FF:FF per RFC1112.
+ * This address is referenced to be index to BRAM table.
+ */
+
+//    if ((0x01 != Aptr[0]) || (0x00 != Aptr[1]) || (0x5e != Aptr[2]) || (0x0 != (Aptr[3] & 0x80))) 
+//    {
+//	return 1;
+//    }
+
+/* Program software Multicast table in RAM */
+/* Calculate memory locations in software table */
+    MaOffset  = Aptr[5];
+    MaOffset |= Aptr[4] << 8;
+    MaOffset |= Aptr[3] << 16;
+
+    Loc  = ((MaOffset >> 5) << 2);
+
+/* Bit value */
+    BvalNew = 1 << (MaOffset % 32);
+
+/* Program software Multicast table in RAM */
+    Bval = XAxiEthernet_ReadReg((u32)&McastAddressTable, Loc);
+    XAxiEthernet_WriteReg((u32)&McastAddressTable, Loc, Bval & ~BvalNew);
+
+    return 0;
+}
+
+
+
+/*static void
+temac_add_mc_mac(cyg_uint8 * mc_addr)
+{
+    AxiEthernet_AddExtMulticast(mc_addr);
+}
+
+
+
+static void
+temac_rem_mc_mac(cyg_uint8 * mc_addr)
+{
+    AxiEthernet_ClearExtMulticast(mc_addr);
+}
+*/
+
+
+
 
 /**
  * Interrupt routine for transmission of a packet
@@ -179,7 +343,8 @@ temac_dma_tx_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *r
     struct eth_drv_sc *sc = (struct eth_drv_sc *)data;
     struct temac_info *qi = (struct temac_info *)sc->driver_private;
 
-    temacdma_tx_int_disable(&g_dma_handle);
+//    temacdma_tx_int_disable(&g_dma_handle);
+    
     cyg_drv_interrupt_mask(qi->int_tx_vector);
 
     cyg_drv_interrupt_acknowledge(qi->int_tx_vector);
@@ -207,7 +372,7 @@ temac_dma_rx_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *r
     struct eth_drv_sc *sc = (struct eth_drv_sc *)data;
     struct temac_info *qi = (struct temac_info *)sc->driver_private;
 
-    temacdma_rx_int_disable(&g_dma_handle);
+//    temacdma_rx_int_disable(&g_dma_handle);
 
     cyg_drv_interrupt_mask(qi->int_rx_vector);
 
@@ -216,7 +381,7 @@ temac_dma_rx_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *r
     // Run the DSR
     return (CYG_ISR_HANDLED|CYG_ISR_CALL_DSR);
 }
-#endif
+//#endif
 
 /**
  * Deliver function (ex-DSR) handles the ethernet [logical] processing. It checks a DMA interrupt status
@@ -245,12 +410,12 @@ static void temac_deliver(struct eth_drv_sc * sc) {
 
     } while (irq_status);
 
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     cyg_drv_interrupt_unmask(qi->int_tx_vector);
     cyg_drv_interrupt_unmask(qi->int_rx_vector);
-#endif
+//#endif
 
-    temacdma_int_enable(&g_dma_handle);
+    //temacdma_int_enable(&g_dma_handle);
 
 }
 
@@ -269,10 +434,11 @@ static void temac_deliver(struct eth_drv_sc * sc) {
 static bool temac_init(struct cyg_netdevtab_entry *dtp) {
     struct eth_drv_sc *sc = (struct eth_drv_sc *) dtp->device_instance;
     struct temac_info *qi = (struct temac_info *) sc->driver_private;
-    extern XLlTemac_Config XLlTemac_ConfigTable[0];
+    extern XAxiEthernet_Config XAxiEthernet_ConfigTable[0];
+    XAxiEthernet_Config *MacCfgPtr;
 
     cyg_uint16 Phy_Id;
-    cyg_uint16 phy_status_autoneg;
+//    cyg_uint16 phy_status_autoneg;
     cyg_uint32 status;
     unsigned char _enaddr[6];
     bool esa_ok;
@@ -287,54 +453,81 @@ static bool temac_init(struct cyg_netdevtab_entry *dtp) {
         memcpy(qi->enaddr, _enaddr, sizeof(qi->enaddr));
     } else {
         /* No 'flash config' data available - use default */
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
         diag_printf("_TEMAC_ETH - Warning! Using default ESA for '%s'_\n",
                 dtp->name);
+#endif
     }
 
     /*
      * Initialize Xilinx driver  - device id 0
      */
-    if (XLlTemac_CfgInitialize(&qi->dev, &XLlTemac_ConfigTable[0],
-            XLlTemac_ConfigTable[0].BaseAddress) != XST_SUCCESS) {
-        diag_printf("_TEMAC_ETH - can't initialize_\n");
-        return false;
-    }
-
-    status = XLlTemac_ReadReg((u32) & qi->dev, XTE_RCW1_OFFSET);
-    XLlTemac_WriteReg((u32) & qi->dev, XTE_RCW1_OFFSET, status
-            | XTE_RCW1_LT_DIS_MASK);
-
-    /*
-     * Set MAC address to Temac
-     */
-    status = XLlTemac_SetMacAddress(&qi->dev, qi->enaddr);
-    if (status) {
-        diag_printf("temac_init: SetMacAddress failure\n");
-    }
-
+     MacCfgPtr = XAxiEthernet_LookupConfig(12);
+     
+    // diag_printf("Addr = %X \n", XAxiEthernet_ConfigTable[0].BaseAddress);
     /*
      * Initialization of Temac DMA instance
      */
     temacdma_init(&g_dma_handle);
 
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
+    diag_printf("DMA initialized ok\n") ;
+#endif
+    if (XAxiEthernet_CfgInitialize( &qi->dev, &XAxiEthernet_ConfigTable[0],
+            XAxiEthernet_ConfigTable[0].BaseAddress) != XST_SUCCESS) {
+        diag_printf("_TEMAC_ETH - can't initialize_\n");
+        return false;
+    }
+
+    //////////!!!!!!promiscuous mode
+    
+    XAxiEthernet_DisableControlFrameLenCheck(&qi->dev);
+    
+    XAxiEthernet_SetOptions(&qi->dev, XAE_RCW1_VLAN_MASK | XAE_PROMISC_OPTION | XAE_MULTICAST_OPTION | XAE_RCW1_LT_DIS_MASK);//
+
+    status = XAxiEthernet_ReadReg( &qi->dev, XAE_RCW1_OFFSET);
+
+    XAxiEthernet_WriteReg((u32) &qi->dev, XAE_RCW1_OFFSET, status
+            | XAE_RCW1_LT_DIS_MASK);
+
+    /*
+     * Set MAC address to Temac
+     */
+     
+    status = XAxiEthernet_SetMacAddress( &qi->dev, qi->enaddr);
+    if (status) {
+        diag_printf("temac_init: SetMacAddress failure\n");
+    }
+
     /*
      * Set operating speed
      */
-    XLlTemac_PhyRead(&qi->dev, 0x00000007, 0x00000011, &phy_status_autoneg);
+    //XAxiEthernet_PhyRead((u32) &qi->dev, 0x00000007, 0x00000011, &phy_status_autoneg);
 
-    switch (phy_status_autoneg & 0xC000) {
-    case (AUTO_NEG_100): {
+    switch (XAxiEthernet_GetPhysicalInterface(&qi->dev)) {
+    case (XAE_PHY_TYPE_MII): {
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
         diag_printf("Speed = 100Mbps\n");
-        XLlTemac_SetOperatingSpeed(&qi->dev, TEMAC_SPEED);
+#endif
+        XAxiEthernet_SetOperatingSpeed( &qi->dev, TEMAC_SPEED);
         break;
     }
-    case (AUTO_NEG_1000): {
-        XLlTemac_SetOperatingSpeed(&qi->dev, TEMAC_SPEED_1G);
+    case (XAE_PHY_TYPE_GMII): {
+        XAxiEthernet_SetOperatingSpeed( &qi->dev, TEMAC_SPEED_1G);
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
         diag_printf("Speed = 1Gbps\n");
+#endif
         break;
     }
     default:
         diag_printf("10Mbps speed isn't supported");
+    }
+
+    status = XAxiEthernet_SetOptions(&qi->dev,
+     XAE_RECEIVER_ENABLE_OPTION |
+     XAE_TRANSMITTER_ENABLE_OPTION);
+    if (status ) {
+        diag_printf("Error setting options");
     }
 
     /*
@@ -344,7 +537,7 @@ static bool temac_init(struct cyg_netdevtab_entry *dtp) {
     // sleeping 2 secs for initializing PHY unit
     cyg_thread_delay(200); // assuming tick is 10 ms
 
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     /*
      * Set up to handle interrupts
      */
@@ -369,17 +562,19 @@ static bool temac_init(struct cyg_netdevtab_entry *dtp) {
     cyg_drv_interrupt_attach(qi->temac_rx_interrupt_handle);
     cyg_drv_interrupt_acknowledge(qi->int_rx_vector);
     cyg_drv_interrupt_unmask(qi->int_rx_vector);
-#endif
+//#endif
 
     /*
      * Initialize upper level driver for ecos
      */
     (sc->funs->eth_drv->init)(sc, (unsigned char *) &qi->enaddr);
 
-    XLlTemac_PhyRead(&qi->dev, 0x00000007, 0x00000002, &Phy_Id);
+    XAxiEthernet_PhyRead( &qi->dev, 0x00000007, 0x00000002, &Phy_Id);
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
     diag_printf("_Marvell PHY Address_  %X\n", Phy_Id);
 
     diag_printf("_Initialization of TEMAC_ETH finished succesful!!!_\n");
+#endif
     return true;
 }
 
@@ -402,9 +597,10 @@ static bool temac_init(struct cyg_netdevtab_entry *dtp) {
  **/
 
 static void temac_start(struct eth_drv_sc *sc, unsigned char *enaddr, int flags) {
+    cyg_uint32 Status;
     struct temac_info *qi = (struct temac_info *) sc->driver_private;
 
-    XLlTemac_Start(&qi->dev);
+    XAxiEthernet_Start(&qi->dev);
 
     temacdma_start(&g_dma_handle);
 }
@@ -427,7 +623,7 @@ static void temac_stop(struct eth_drv_sc *sc) {
     temacdma_rx_int_disable(&g_dma_handle);
     temacdma_tx_int_disable(&g_dma_handle);
 
-    XLlTemac_Stop(&qi->dev);
+    XAxiEthernet_Stop(&qi->dev);
 
 }
 
@@ -451,15 +647,19 @@ static void temac_stop(struct eth_drv_sc *sc) {
 static int temac_control(struct eth_drv_sc *sc, unsigned long key, void *data,
         int length) {
     struct temac_info *qi = (struct temac_info *) sc->driver_private;
-#ifdef CYGDBG_IO_ETH_DRIVERS_DEBUG
+
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
     diag_printf("Temac control started\n");
 #endif
     switch (key) {
     case ETH_DRV_SET_MAC_ADDRESS:
-        XLlTemac_SetMacAddress(&qi->dev, data);
+    {
+        XAxiEthernet_SetMacAddress(&qi->dev, data);
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
         diag_printf("Temac control SETMACADDR started\n");
+#endif
         return 0;
-        break;
+    }
     default:
 #ifdef CYGDBG_IO_ETH_DRIVERS_DEBUG
         diag_printf("Temac control undefined key\n");
@@ -588,12 +788,17 @@ static void temac_recv(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list,
     cyg_uint32 sg_idx, sg_offset;
     cyg_uint32 copy_cnt;
     cyg_uint8 * buf_ptr;
+    cyg_uint32 i;
 
     sg_idx = sg_offset = rb_offset = 0;
 
     rb_len = qi->rx_buf_len;
 
     buf_ptr = qi->rx_buf;
+
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
+    diag_printf("sg_len %d\n",sg_len);
+#endif
 
     /*
      * For all scatter-gather buffers that we need to fill.
@@ -604,6 +809,13 @@ static void temac_recv(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list,
         if (copy_cnt && sg_list[sg_idx].buf)
             memcpy(((cyg_uint8 *) sg_list[sg_idx].buf) + sg_offset, buf_ptr,
                     copy_cnt);
+
+#ifdef CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG
+        for (i = 0; i < copy_cnt; i++)
+            diag_printf("%X ",*(buf_ptr + i));
+            
+        diag_printf("\n");
+#endif
 
         /*
          * incrementing pointer to  buffer-receiver

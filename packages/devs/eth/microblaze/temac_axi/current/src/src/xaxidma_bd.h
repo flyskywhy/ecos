@@ -100,7 +100,7 @@ extern "C" {
 #include "xaxidma_hw.h"
 #include "xstatus.h"
 #include "xdebug.h"
-#include "xil_cache.h"
+//#include "xil_cache.h"
 
 #ifdef __MICROBLAZE__
 #include "xenv.h"

@@ -55,9 +55,9 @@
 #ifndef TEMAC_ADAPTER_H     /* prevent circular inclusions */
 #define TEMAC_ADAPTER_H     /* by using protection macros */
 
-#include "src/xlltemac.h"
-#include "src/xlldma.h"
-#include "src/xlltemac_hw.h"
+#include "src/xaxiethernet.h"
+#include "src/xaxidma.h"
+#include "src/xaxiethernet_hw.h"
 #include "src/xil_assert.h"
 #include "src/xil_io.h"
 #include <pkgconf/hal_microblaze_platform.h>
@@ -74,14 +74,14 @@ struct temac_info {
 	char		*esa_key;
 	unsigned char	enaddr[6];
 	/* The rest of the structure is set up at runtime */
-	XLlTemac		dev;
-#ifdef CYGPKG_NET
+	XAxiEthernet		dev;
+//#ifdef CYGPKG_NET
 	cyg_interrupt	temac_tx_interrupt;
 	cyg_handle_t	temac_tx_interrupt_handle;
 
 	cyg_interrupt	temac_rx_interrupt;
 	cyg_handle_t	temac_rx_interrupt_handle;
-#endif
+//#endif
 
 	cyg_uint16      rx_buf_len;                 ///< this member stores length of the receive buffer
 	cyg_uint8       rx_buf[TEMACDMA_MTU];      ///< this buffer is used to store receive data

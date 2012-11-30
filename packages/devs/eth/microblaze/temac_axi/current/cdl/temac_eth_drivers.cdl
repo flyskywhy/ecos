@@ -2,8 +2,7 @@
 #
 #      temac_eth_drivers.cdl
 #
-#      Hardware specifics for spartan3esk ethernet
-#      Taken from Xilinx VIRTEX4 Board
+#      Hardware specifics for spartan-6 ethernet
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -40,11 +39,10 @@
 # ====================================================================
 ######DESCRIPTIONBEGIN####
 #
-# Author(s):      Michal Pfeifer
+# Author(s):      Alexandr Kolb
 # Original data:  
 # Contributors:   
-# Date:           2003-09-23
-#                 2005-04-21
+# Date:           2012-03-23
 #
 #####DESCRIPTIONEND####
 #
@@ -66,9 +64,10 @@ cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
     implements    CYGHWR_NET_DRIVERS
     implements    CYGHWR_NET_DRIVER_ETH0
 
-    compile       -library=libextras.a adapter.c temacdma.c src/xlltemac.c src/xlltemac_control.c \
-                  src/xlltemac_g.c src/xlltemac_sinit.c \
-		  src/xlldma.c src/xlldma_bdring.c \
+    compile       -library=libextras.a adapter.c temacdma.c src/xaxiethernet.c src/xaxiethernet_control.c \
+                  src/xaxiethernet_g.c src/xaxiethernet_sinit.c \
+		  src/xaxidma.c src/xaxidma_bdring.c src/xaxidma_bd.c \
+		  src/xaxidma_g.c src/xaxidma_sinit.c \
 		  src/microblaze_invalidate_dcache.S src/microblaze_invalidate_dcache_range.S
 #		  src/xintc.c src/xintc_g.c src/xintc_intr.c src/xintc_l.c src/xintc_options.c \
 
@@ -88,6 +87,18 @@ cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC {
 		These flags are used in addition to the set of global 
 		flags."
         }
+		
+		
+		cdl_option CYGPKG_DEVS_ETH_MICROBLAZE_TEMAC_DEBUG {
+		display		"TEMAC debug info"
+		flavor		bool
+		no_define
+		default_value	0
+		description "
+			This option enables print of debug information"
+		}
+
+		
     }
 
 	cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_DMA_OPTIONS {

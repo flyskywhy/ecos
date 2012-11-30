@@ -64,6 +64,38 @@
 
 #include "xaxidma_bdring.h"
 
+
+#include <cyg/hal/hal_cache.h>
+
+/************************** Constant Definitions *****************************/
+
+
+/**************************** Type Definitions *******************************/
+
+
+/***************** Macros (Inline Functions) Definitions *********************/
+
+/******************************************************************************
+ * Define methods to flush and invalidate cache for BDs should they be
+ * located in cached memory. These macros may NOPs if the underlying
+ * XCACHE_FLUSH_DCACHE_RANGE and XCACHE_INVALIDATE_DCACHE_RANGE macros are not
+ * implemented or they do nothing.
+ *****************************************************************************/
+#ifdef XCACHE_FLUSH_DCACHE_RANGE
+#  define XAXIDMA_CACHE_FLUSH(BdPtr)               \
+      XCACHE_FLUSH_DCACHE_RANGE((BdPtr), XLLDMA_BD_HW_NUM_BYTES)
+#else
+#  define XLLDMA_CACHE_FLUSH(BdPtr)
+#endif
+
+#ifdef XCACHE_INVALIDATE_DCACHE_RANGE
+#  define XAXIDMA_CACHE_INVALIDATE(BdPtr)          \
+      XCACHE_INVALIDATE_DCACHE_RANGE((BdPtr), XLLDMA_BD_HW_NUM_BYTES)
+#else
+#  define XLLDMA_CACHE_INVALIDATE(BdPtr)
+#endif
+
+
 /************************** Constant Definitions *****************************/
 /* Use 100 milliseconds for 100 MHz
  * This interval is sufficient for hardware to finish 40MB transfer with
@@ -1415,7 +1447,7 @@ int XAxiDma_BdRingCheck(XAxiDma_BdRing * RingPtr)
 void XAxiDma_BdRingDumpRegs(XAxiDma_BdRing *RingPtr) {
 	u32 RegBase = RingPtr->ChanBase;
 
-	xil_printf("Dump registers %x:\r\n", (unsigned int)RegBase);
+	/*xil_printf("Dump registers %x:\r\n", (unsigned int)RegBase);
 	xil_printf("Control REG: %08x\r\n",
 		(unsigned int)XAxiDma_ReadReg(RegBase, XAXIDMA_CR_OFFSET));
 	xil_printf("Status REG: %08x\r\n",
@@ -1424,5 +1456,5 @@ void XAxiDma_BdRingDumpRegs(XAxiDma_BdRing *RingPtr) {
 		(unsigned int)XAxiDma_ReadReg(RegBase, XAXIDMA_CDESC_OFFSET));
 	xil_printf("Tail BD REG: %08x\r\n",
 		(unsigned int)XAxiDma_ReadReg(RegBase, XAXIDMA_TDESC_OFFSET));
-	xil_printf("\r\n");
+	xil_printf("\r\n");*/
 }

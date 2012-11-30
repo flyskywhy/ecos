@@ -53,9 +53,9 @@
 #define TEMACDMA_H     /* by using protection macros */
 
 
-#include "src/xlltemac.h"
-#include "src/xlldma.h"
-#include "src/xlltemac_hw.h"
+#include "src/xaxiethernet.h"
+#include "src/xaxidma.h"
+#include "src/xaxiethernet_hw.h"
 #include "src/xil_assert.h"
 #include "src/xil_io.h"
 #include <cyg/io/eth/eth_drv.h>
@@ -70,13 +70,18 @@
 #define TEMACDMA_IRQ_TX 0x01
 #define TEMACDMA_IRQ_RX 0x02
 
+#define MAX_MULTICAST_ADDR   (1<<23) //Maximum number of multicast ethernet mac addresses
+
+cyg_uint32 McastAddressTable[(MAX_MULTICAST_ADDR>>3)/sizeof(cyg_uint32)]; //1 MB for storing multicast address table
+
+
 /// \brief handle of Temac DMA, contains receive/transmit buffers
 struct temacdma_handle
 {
-    XLlDma      temac_dma __attribute__ ((aligned (HAL_DCACHE_LINE_SIZE)));
+    XAxiDma      temac_dma __attribute__ ((aligned (HAL_DCACHE_LINE_SIZE)));
 
-    char mem4rxring[XLlDma_BdRingMemCalc(XLLDMA_BD_MINIMUM_ALIGNMENT, CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE)] __attribute__ ((aligned (XLLDMA_BD_MINIMUM_ALIGNMENT)));
-    char mem4txring[XLlDma_BdRingMemCalc(XLLDMA_BD_MINIMUM_ALIGNMENT, CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE)] __attribute__ ((aligned (XLLDMA_BD_MINIMUM_ALIGNMENT)));
+    char mem4rxring[XAxiDma_BdRingMemCalc(XAXIDMA_BD_MINIMUM_ALIGNMENT, CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE)] __attribute__ ((aligned (XAXIDMA_BD_MINIMUM_ALIGNMENT)));
+    char mem4txring[XAxiDma_BdRingMemCalc(XAXIDMA_BD_MINIMUM_ALIGNMENT, CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE)] __attribute__ ((aligned (XAXIDMA_BD_MINIMUM_ALIGNMENT)));
 
 
 	unsigned char temac_rx_bufs[CYGNUM_DEVS_ETH_MICROBLAZE_DMA_BDRING_SIZE][TEMACDMA_MTU] __attribute__ ((aligned (HAL_DCACHE_LINE_SIZE)));

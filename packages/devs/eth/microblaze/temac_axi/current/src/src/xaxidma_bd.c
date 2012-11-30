@@ -134,9 +134,9 @@ int XAxiDma_BdSetBufAddr(XAxiDma_Bd* BdPtr, u32 Addr)
 
 	if (Addr & (WordLen - 1)) {
 		if ((HasDRE & XAXIDMA_BD_HAS_DRE_MASK) == 0) {
-			xil_printf("Error set buf addr %x with %x and %x,"
-			" %x\r\n",Addr, HasDRE, (WordLen - 1),
-			Addr & (WordLen - 1));
+			//xil_printf("Error set buf addr %x with %x and %x,"
+			//" %x\r\n",Addr, HasDRE, (WordLen - 1),
+			//Addr & (WordLen - 1));
 
 			return XST_INVALID_PARAM;
 		}
@@ -273,7 +273,7 @@ void XAxiDma_BdSetCtrl(XAxiDma_Bd* BdPtr, u32 Data)
 void XAxiDma_DumpBd(XAxiDma_Bd* BdPtr)
 {
 
-	xil_printf("Dump BD %x:\r\n", (unsigned int)BdPtr);
+	/*xil_printf("Dump BD %x:\r\n", (unsigned int)BdPtr);
 	xil_printf("\tNext Bd Ptr: %x\r\n",
 	    (unsigned int)XAxiDma_BdRead(BdPtr, XAXIDMA_BD_NDESC_OFFSET));
 	xil_printf("\tBuff addr: %x\r\n",
@@ -300,5 +300,5 @@ void XAxiDma_DumpBd(XAxiDma_Bd* BdPtr)
 	xil_printf("\tDRE: %x\r\n",
 	    (unsigned int)XAxiDma_BdRead(BdPtr, XAXIDMA_BD_HAS_DRE_OFFSET));
 
-	xil_printf("\r\n");
+	xil_printf("\r\n");*/
 }
