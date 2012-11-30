@@ -261,7 +261,8 @@ typedef int XENV_TIME_STAMP;
 
 /* Check if MicroBlaze data cache was built into the core.
  */
-#if (XPAR_MICROBLAZE_USE_DCACHE == 1)
+//#if (XPAR_MICROBLAZE_USE_DCACHE == 1)
+#if (1)
 #  define XCACHE_ENABLE_DCACHE()		microblaze_enable_dcache()
 #  define XCACHE_DISABLE_DCACHE()		microblaze_disable_dcache()
 #  define XCACHE_INVALIDATE_DCACHE()  	microblaze_invalidate_dcache()
@@ -269,7 +270,8 @@ typedef int XENV_TIME_STAMP;
 #  define XCACHE_INVALIDATE_DCACHE_RANGE(Addr, Len) \
 			microblaze_invalidate_dcache_range((int)(Addr), (int)(Len))
 
-#if (XPAR_MICROBLAZE_DCACHE_USE_WRITEBACK == 1)
+//#if (XPAR_MICROBLAZE_DCACHE_USE_WRITEBACK == 1)
+#if (0)
 #  define XCACHE_FLUSH_DCACHE()  		microblaze_flush_dcache()
 #  define XCACHE_FLUSH_DCACHE_RANGE(Addr, Len) \
 			microblaze_flush_dcache_range((int)(Addr), (int)(Len))
