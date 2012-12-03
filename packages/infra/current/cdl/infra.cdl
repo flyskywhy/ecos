@@ -59,6 +59,7 @@ cdl_package CYGPKG_INFRA {
     compile startup.cxx prestart.cxx pkgstart.cxx userstart.cxx      \
             dummyxxmain.cxx null.cxx simple.cxx fancy.cxx buffer.cxx \
             diag.cxx tcdiag.cxx memcpy.c memset.c delete.cxx eprintf.c \
+			mem_logging.c \
 	    pure.cxx gccsupport.cxx
 
 
@@ -319,7 +320,7 @@ cdl_package CYGPKG_INFRA {
             display "Additional linker flags"
             flavor  data
             no_define
-            default_value { "-Wl,--fatal-warnings" }
+            default_value { "" }
             description   "
                 This option modifies the set of linker flags for
                 building the eCos infra package tests. These flags are added to

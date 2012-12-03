@@ -65,7 +65,23 @@
 #ifdef CYG_HAL_DIAG_LOCK_DATA_DEFN
 CYG_HAL_DIAG_LOCK_DATA_DEFN;
 #endif
-  
+
+/************************************************************************/
+//TUPN.TEST
+
+#ifdef TEST_MACRO_USE_MEMORY_LOGGING
+
+#include <pkgconf/macros.h>
+
+#warning #### TUPN.TEST #### Modify log ouput ####
+#include <cyg/infra/mem_logging.h>
+
+#undef HAL_DIAG_WRITE_CHAR
+#define HAL_DIAG_WRITE_CHAR(ch)		MEM_LOG_WRITE_CHAR(ch)
+
+#endif
+/************************************************************************/
+
 /*----------------------------------------------------------------------*/
 
 externC void diag_write_num(
@@ -373,7 +389,8 @@ _vprintf(void (*putc)(char c, void **param), void **param, const char *fmt, va_l
                     }
                 } else {
                     // Mask to unsigned, sized quantity
-                    if (islong) {
+                    // warning: longlong has the islong parameter turned on too.
+                    if (islong && (!islonglong)) {
                         val &= ((long long)1 << (sizeof(long) * 8)) - 1;
                     } else if (!islonglong) { // no need to mask longlong
                         val &= ((long long)1 << (sizeof(int) * 8)) - 1;

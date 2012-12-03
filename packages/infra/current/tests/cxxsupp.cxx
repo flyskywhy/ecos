@@ -58,7 +58,7 @@
 // The H8300 does not have C++ support in its toolchain
 #ifndef CYGPKG_HAL_H8300
 
-#include <new>
+//#include <new>
 
 //==========================================================================
 
