@@ -263,7 +263,7 @@ cyg_start( void )
 #endif
     
     if (passed) {
-        CYG_TEST_PASS_FINISH("FLASH test1");
+        CYG_TEST_PASS_FINISH("FLASH test1 - Test OK!!!!!!!!!!!!!!");
     } else {
         CYG_TEST_FAIL_FINISH("FLASH test1");
     }
