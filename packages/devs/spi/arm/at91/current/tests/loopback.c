@@ -73,7 +73,7 @@
 #include <cyg/kernel/kapi.h>
 
 #include <cyg/io/spi.h>                 // Common SPI API
-#include <cyg/io/spi_stm32.h>           // STM32 data structures
+#include <cyg/io/spi_at91.h>            // at91 data structures
 
 #include <string.h>
 
@@ -84,13 +84,13 @@ cyg_uint8 stack [CYGNUM_HAL_STACK_SIZE_TYPICAL];
 cyg_thread thread_data;
 cyg_handle_t thread_handle;
 
-externC cyg_spi_cortexm_stm32_bus_t cyg_spi_stm32_bus2;
+externC cyg_spi_at91_bus_t cyg_spi_at91_bus0, cyg_spi_at91_bus1;
 
 //---------------------------------------------------------------------------
 // SPI loopback device driver data structures.
 
-cyg_spi_cortexm_stm32_device_t loopback_device = {
-    .spi_device.spi_bus = &cyg_spi_stm32_bus1.spi_bus,
+cyg_spi_at91_device_t loopback_device = {
+    .spi_device.spi_bus = &cyg_spi_at91_bus0.spi_bus,
     .dev_num = 0 ,                      // Only 1 device. 
     .cl_pol = 1,
     .cl_pha = 1,
@@ -98,7 +98,6 @@ cyg_spi_cortexm_stm32_device_t loopback_device = {
     .cs_up_udly = 1,
     .cs_dw_udly = 1,
     .tr_bt_udly = 1,
-    .bus_16bit = false,
 };
 
 //---------------------------------------------------------------------------
