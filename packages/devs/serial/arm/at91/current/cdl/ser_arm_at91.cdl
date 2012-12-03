@@ -53,7 +53,9 @@ cdl_package CYGPKG_IO_SERIAL_ARM_AT91 {
 
     parent        CYGPKG_IO_SERIAL_DEVICES
     active_if     CYGPKG_IO_SERIAL
-    active_if     CYGPKG_HAL_ARM_AT91
+#Exegin changed
+#    active_if     CYGPKG_HAL_ARM_AT91
+    active_if     { CYGPKG_HAL_ARM_AT91 || CYGPKG_HAL_CORTEXM_SAM3U }
 
     requires      CYGPKG_ERROR
     include_dir   cyg/io
@@ -191,7 +193,7 @@ cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2 {
         port 2 (serial C)."
 
     cdl_option CYGDAT_IO_SERIAL_ARM_AT91_SERIAL2_NAME {
-        display       "Device name for Atmel AT91 serial port 1 driver"
+        display       "Device name for Atmel AT91 serial port 2 driver"
         flavor        data
         default_value {"\"/dev/ser2\""}
         description   "
@@ -222,6 +224,227 @@ cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2 {
     }
     
     cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_RCV_CHUNK_SIZE {
+        display       "Receive data chunk size"
+        flavor        data
+        legal_values  1 to 65519
+        default_value 1
+        description   "
+            This parameter can be used to reduce the number of interrupts
+            that must be processed by the driver. An interrupt will only
+            be generated if either this many data bytes have been received
+            or the receiver has been idle for some time. This reduces
+            overall system load at the expense of making the driver less
+            responsive and using slightly more memory for buffering data.
+            Setting this parameter to 1 will give standard behavior."
+    }
+}
+
+#Exegin changed
+cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3 {
+    display       "Atmel AT91 serial port 3 driver"
+    flavor        bool
+    default_value 0
+    description   "
+        This option includes the serial device driver for the Atmel AT91
+        port 3 (serial C)."
+
+    cdl_option CYGDAT_IO_SERIAL_ARM_AT91_SERIAL3_NAME {
+        display       "Device name for Atmel AT91 serial port 3 driver"
+        flavor        data
+        default_value {"\"/dev/ser3\""}
+        description   "
+            This option specifies the name of the serial device for the
+            Atmel AT91 port 3."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BAUD {
+        display       "Baud rate for the Atmel AT91 serial port 3 driver"
+        flavor        data
+        legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
+                      4800 7200 9600 14400 19200 38400 57600 115200 230400
+        }
+        default_value 38400
+        description   "
+            This option specifies the default baud rate (speed) for the
+            Atmel AT91 port 3."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE {
+        display       "Buffer size for the Atmel AT91 serial port 3 driver"
+        flavor        data
+        legal_values  0 to 8192
+        default_value 128
+        description   "
+            This option specifies the size of the internal buffers used
+            for the Atmel AT91 port 3."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_RCV_CHUNK_SIZE {
+        display       "Receive data chunk size"
+        flavor        data
+        legal_values  1 to 65519
+        default_value 1
+        description   "
+            This parameter can be used to reduce the number of interrupts
+            that must be processed by the driver. An interrupt will only
+            be generated if either this many data bytes have been received
+            or the receiver has been idle for some time. This reduces
+            overall system load at the expense of making the driver less
+            responsive and using slightly more memory for buffering data.
+            Setting this parameter to 1 will give standard behavior."
+    }
+}
+
+cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4 {
+    display       "Atmel AT91 serial port 4 driver"
+    flavor        bool
+    default_value 3
+    description   "
+        This option includes the serial device driver for the Atmel AT91
+        port 4 (serial C)."
+
+    cdl_option CYGDAT_IO_SERIAL_ARM_AT91_SERIAL4_NAME {
+        display       "Device name for Atmel AT91 serial port 4 driver"
+        flavor        data
+        default_value {"\"/dev/ser4\""}
+        description   "
+            This option specifies the name of the serial device for the
+            Atmel AT91 port 4."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BAUD {
+        display       "Baud rate for the Atmel AT91 serial port 4 driver"
+        flavor        data
+        legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
+                      4800 7200 9600 14400 19200 38400 57600 115200 230400
+        }
+        default_value 38400
+        description   "
+            This option specifies the default baud rate (speed) for the
+            Atmel AT91 port 4."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE {
+        display       "Buffer size for the Atmel AT91 serial port 4 driver"
+        flavor        data
+        legal_values  0 to 8192
+        default_value 128
+        description   "
+            This option specifies the size of the internal buffers used
+            for the Atmel AT91 port 4."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_RCV_CHUNK_SIZE {
+        display       "Receive data chunk size"
+        flavor        data
+        legal_values  1 to 65519
+        default_value 1
+        description   "
+            This parameter can be used to reduce the number of interrupts
+            that must be processed by the driver. An interrupt will only
+            be generated if either this many data bytes have been received
+            or the receiver has been idle for some time. This reduces
+            overall system load at the expense of making the driver less
+            responsive and using slightly more memory for buffering data.
+            Setting this parameter to 1 will give standard behavior."
+    }
+}
+
+cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5 {
+    display       "Atmel AT91 serial port 5 driver"
+    flavor        bool
+    default_value 1
+    description   "
+        This option includes the serial device driver for the Atmel AT91
+        port 5 (serial C)."
+
+    cdl_option CYGDAT_IO_SERIAL_ARM_AT91_SERIAL5_NAME {
+        display       "Device name for Atmel AT91 serial port 5 driver"
+        flavor        data
+        default_value {"\"/dev/ser5\""}
+        description   "
+            This option specifies the name of the serial device for the
+            Atmel AT91 port 5."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BAUD {
+        display       "Baud rate for the Atmel AT91 serial port 5 driver"
+        flavor        data
+        legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
+                      4800 7200 9600 14400 19200 38400 57600 115200 230400
+        }
+        default_value 38400
+        description   "
+            This option specifies the default baud rate (speed) for the
+            Atmel AT91 port 5."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE {
+        display       "Buffer size for the Atmel AT91 serial port 5 driver"
+        flavor        data
+        legal_values  0 to 8192
+        default_value 128
+        description   "
+            This option specifies the size of the internal buffers used
+            for the Atmel AT91 port 5."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_RCV_CHUNK_SIZE {
+        display       "Receive data chunk size"
+        flavor        data
+        legal_values  1 to 65519
+        default_value 1
+        description   "
+            This parameter can be used to reduce the number of interrupts
+            that must be processed by the driver. An interrupt will only
+            be generated if either this many data bytes have been received
+            or the receiver has been idle for some time. This reduces
+            overall system load at the expense of making the driver less
+            responsive and using slightly more memory for buffering data.
+            Setting this parameter to 1 will give standard behavior."
+    }
+}
+
+cdl_component CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6 {
+    display       "Atmel AT91 serial port 6 driver"
+    flavor        bool
+    default_value 1
+    description   "
+        This option includes the serial device driver for the Atmel AT91
+        port 6 (serial C)."
+
+    cdl_option CYGDAT_IO_SERIAL_ARM_AT91_SERIAL6_NAME {
+        display       "Device name for Atmel AT91 serial port 6 driver"
+        flavor        data
+        default_value {"\"/dev/ser6\""}
+        description   "
+            This option specifies the name of the serial device for the
+            Atmel AT91 port 6."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BAUD {
+        display       "Baud rate for the Atmel AT91 serial port 6 driver"
+        flavor        data
+        legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
+                      4800 7200 9600 14400 19200 38400 57600 115200 230400
+        }
+        default_value 38400
+        description   "
+            This option specifies the default baud rate (speed) for the
+            Atmel AT91 port 6."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE {
+        display       "Buffer size for the Atmel AT91 serial port 6 driver"
+        flavor        data
+        legal_values  0 to 8192
+        default_value 128
+        description   "
+            This option specifies the size of the internal buffers used
+            for the Atmel AT91 port 6."
+    }
+
+    cdl_option CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_RCV_CHUNK_SIZE {
         display       "Receive data chunk size"
         flavor        data
         legal_values  1 to 65519

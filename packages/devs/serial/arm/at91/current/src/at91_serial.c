@@ -64,6 +64,7 @@
 #include <cyg/infra/diag.h>
 #include <cyg/infra/cyg_type.h>
 #include <cyg/infra/cyg_ass.h>
+#include <cyg/hal/hal_cache.h>
 
 externC void * memcpy( void *, const void *, size_t );
 
@@ -71,7 +72,7 @@ externC void * memcpy( void *, const void *, size_t );
 
 #include "at91_serial.h"
 
-#define RCVBUF_EXTRA 16
+#define RCVBUF_EXTRA 128
 #define RCV_TIMEOUT 10
 
 #define SIFLG_NONE          0x00
@@ -96,7 +97,11 @@ static bool at91_serial_init(struct cyg_devtab_entry *tab);
 static bool at91_serial_putc_interrupt(serial_channel *chan, unsigned char c);
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE == 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE == 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE == 0)
 static bool at91_serial_putc_polled(serial_channel *chan, unsigned char c);
 #endif
 static Cyg_ErrNo at91_serial_lookup(struct cyg_devtab_entry **tab, 
@@ -105,7 +110,11 @@ static Cyg_ErrNo at91_serial_lookup(struct cyg_devtab_entry **tab,
 static unsigned char at91_serial_getc_interrupt(serial_channel *chan);
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE == 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE == 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE == 0)
 static unsigned char at91_serial_getc_polled(serial_channel *chan);
 #endif
 static Cyg_ErrNo at91_serial_set_config(serial_channel *chan, cyg_uint32 key,
@@ -118,7 +127,11 @@ static void       at91_serial_DSR(cyg_vector_t vector, cyg_ucount32 count, cyg_a
 
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE > 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE > 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE > 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE > 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE > 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE > 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE > 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE > 0)
 static SERIAL_FUNS(at91_serial_funs_interrupt, 
                    at91_serial_putc_interrupt, 
                    at91_serial_getc_interrupt,
@@ -130,7 +143,11 @@ static SERIAL_FUNS(at91_serial_funs_interrupt,
 
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE == 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE == 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE == 0)
 static SERIAL_FUNS(at91_serial_funs_polled, 
                    at91_serial_putc_polled, 
                    at91_serial_getc_polled,
@@ -282,6 +299,119 @@ DEVTAB_ENTRY(at91_serial_io2,
     );
 #endif //  CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2
 
+// Serial receive buffer macro.
+#define AT91_SER_RCVBUF(num) static cyg_uint8 at91_serial_rcv_buffer_ ## num \
+    [2][CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _RCV_CHUNK_SIZE + RCVBUF_EXTRA]
+
+// Serial info macro.
+#define AT91_SER_INFO(num) \
+    static at91_serial_info at91_serial_info ## num = { \
+        base            : (CYG_ADDRWORD) AT91_USART ## num , \
+        int_num         : CYGNUM_HAL_INTERRUPT_USART ## num , \
+        rcv_chunk_size  : CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _RCV_CHUNK_SIZE, \
+        rcv_buffer      : {at91_serial_rcv_buffer_ ## num [0], at91_serial_rcv_buffer_ ## num [1]} \
+    }
+
+// Interrupt-drive buffer macros.
+#define AT91_SER_OUTBUF(num) static unsigned char at91_serial_out_buf ## num [CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _BUFSIZE]
+#define AT91_SER_INBUF(num) static unsigned char at91_serial_in_buf ## num [CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _BUFSIZE]
+
+#define AT91_SER_SERIAL_CHANNEL_USING_INTERRUPTS(num) \
+static SERIAL_CHANNEL_USING_INTERRUPTS(at91_serial_channel ## num , \
+                                       at91_serial_funs_interrupt, \
+                                       at91_serial_info ## num , \
+                                       CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _BAUD), \
+                                       CYG_SERIAL_STOP_DEFAULT, \
+                                       CYG_SERIAL_PARITY_DEFAULT, \
+                                       CYG_SERIAL_WORD_LENGTH_DEFAULT, \
+                                       CYG_SERIAL_FLAGS_DEFAULT, \
+                                       &at91_serial_out_buf ## num [0], sizeof(at91_serial_out_buf ## num), \
+                                       &at91_serial_in_buf ## num [0], sizeof(at91_serial_in_buf ## num) \
+    )
+
+#define AT91_SER_SERIAL_CHANNEL(num) \
+static SERIAL_CHANNEL(at91_serial_channel ## num , \
+                      at91_funs_polled, \
+                      at91_serial_info ## num , \
+                      CYG_SERIAL_BAUD_RATE(CYGNUM_IO_SERIAL_ARM_AT91_SERIAL ## num ## _BAUD), \
+                      CYG_SERIAL_STOP_DEFAULT, \
+                      CYG_SERIAL_PARITY_DEFAULT, \
+                      CYG_SERIAL_WORD_LENGTH_DEFAULT, \
+                      CYG_SERIAL_FLAGS_DEFAULT \
+    )
+
+
+#define AT91_SER_DEVTAB_ENTRY(num)  \
+    DEVTAB_ENTRY(at91_serial_io ## num , \
+                 CYGDAT_IO_SERIAL_ARM_AT91_SERIAL ## num ## _NAME, \
+                 0, \
+                 &cyg_io_serial_devio, \
+                 at91_serial_init, \
+                 at91_serial_lookup, \
+                 &at91_serial_channel ## num \
+    )
+
+#ifdef CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3
+AT91_SER_RCVBUF(3);
+AT91_SER_INFO(3);
+
+#if CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE > 0
+AT91_SER_OUTBUF(3);
+AT91_SER_INBUF(3);
+AT91_SER_SERIAL_CHANNEL_USING_INTERRUPTS(3);
+#else
+AT91_SER_SERIAL_CHANNEL(3);
+#endif
+
+AT91_SER_DEVTAB_ENTRY(3);
+#endif //  CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3
+
+#ifdef CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4
+AT91_SER_RCVBUF(4);
+AT91_SER_INFO(4);
+
+#if CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE > 0
+AT91_SER_OUTBUF(4);
+AT91_SER_INBUF(4);
+AT91_SER_SERIAL_CHANNEL_USING_INTERRUPTS(4);
+#else
+AT91_SER_SERIAL_CHANNEL(4);
+#endif
+
+AT91_SER_DEVTAB_ENTRY(4);
+#endif //  CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4
+
+#ifdef CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5
+AT91_SER_RCVBUF(5);
+AT91_SER_INFO(5);
+
+#if CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE > 0
+AT91_SER_OUTBUF(5);
+AT91_SER_INBUF(5);
+AT91_SER_SERIAL_CHANNEL_USING_INTERRUPTS(5);
+#else
+AT91_SER_SERIAL_CHANNEL(5);
+#endif
+
+AT91_SER_DEVTAB_ENTRY(5);
+#endif //  CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5
+
+#ifdef CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6
+
+AT91_SER_RCVBUF(6);
+AT91_SER_INFO(6);
+
+#if CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE > 0
+AT91_SER_OUTBUF(6);
+AT91_SER_INBUF(6);
+AT91_SER_SERIAL_CHANNEL_USING_INTERRUPTS(6);
+#else
+AT91_SER_SERIAL_CHANNEL(6);
+#endif
+
+AT91_SER_DEVTAB_ENTRY(6);
+#endif //  CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6
+
 
 // Internal function to actually configure the hardware to desired baud rate, etc.
 static bool
@@ -404,7 +534,11 @@ at91_serial_putc_interrupt(serial_channel *chan, unsigned char c)
 
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE == 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE == 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE == 0)
 static bool
 at91_serial_putc_polled(serial_channel *chan, unsigned char c)
 {
@@ -434,7 +568,11 @@ at91_serial_getc_interrupt(serial_channel *chan)
 
 #if (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL0) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL0_BUFSIZE == 0) \
  || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL1) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL1_BUFSIZE == 0) \
- || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0)
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL2) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL2_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL3) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL3_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL4) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL4_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL5) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL5_BUFSIZE == 0) \
+ || (defined(CYGPKG_IO_SERIAL_ARM_AT91_SERIAL6) && CYGNUM_IO_SERIAL_ARM_AT91_SERIAL6_BUFSIZE == 0)
 static unsigned char 
 at91_serial_getc_polled(serial_channel *chan)
 {
@@ -483,10 +621,14 @@ at91_serial_start_xmit(serial_channel *chan)
     
     cyg_drv_dsr_lock();
     if ((at91_chan->flags & SIFLG_XMIT_CONTINUE) == 0) {
+
         res = (chan->callbacks->data_xmt_req)(chan, 0xffff, &at91_chan->transmit_size, &chars);
         switch (res)
         {
             case CYG_XMT_OK:
+                //flush cache
+                HAL_DCACHE_STORE( chars, at91_chan->transmit_size);
+
                 HAL_WRITE_UINT32(base + AT91_US_TPR, (CYG_WORD32) chars);
                 HAL_WRITE_UINT32(base + AT91_US_TCR, at91_chan->transmit_size);
                 at91_chan->flags |= SIFLG_XMIT_CONTINUE;
@@ -576,8 +718,13 @@ at91_serial_DSR(cyg_vector_t vector, cyg_ucount32 count, cyg_addrword_t data)
         HAL_WRITE_UINT32(base + AT91_US_RCR, 0);
         HAL_READ_UINT32(base + AT91_US_RPR, temp_word);
         end = (const cyg_uint8 *)temp_word;
+
+        //invalidate cache
+        CYG_ASSERT( p < end, "ERROR: buffer position is invalid\n");
+        HAL_DCACHE_INVALIDATE( at91_chan->rcv_buffer[cb], end - p );
+
         HAL_WRITE_UINT32(base + AT91_US_RTO, RCV_TIMEOUT);
-	HAL_WRITE_UINT32(base + AT91_US_CR, AT91_US_CR_RSTATUS | AT91_US_CR_STTTO);
+        HAL_WRITE_UINT32(base + AT91_US_CR, AT91_US_CR_RSTATUS | AT91_US_CR_STTTO);
         HAL_WRITE_UINT32(base + AT91_US_RPR, (CYG_ADDRESS) at91_chan->rcv_buffer[nb]);
         HAL_WRITE_UINT32(base + AT91_US_RCR, at91_chan->rcv_chunk_size);
         HAL_WRITE_UINT32(
@@ -630,10 +777,12 @@ at91_serial_DSR(cyg_vector_t vector, cyg_ucount32 count, cyg_addrword_t data)
             xmt_req_reply_t res;
 
             res = (chan->callbacks->data_xmt_req)(chan, 0xffff, &at91_chan->transmit_size, &chars);
-
             switch (res)
             {
                 case CYG_XMT_OK:
+                    //flush cache
+                    HAL_DCACHE_STORE( chars, at91_chan->transmit_size);
+
                     HAL_WRITE_UINT32(base + AT91_US_TPR, (CYG_WORD32) chars);
                     HAL_WRITE_UINT32(base + AT91_US_TCR, at91_chan->transmit_size);
                     at91_chan->flags |= SIFLG_XMIT_CONTINUE;
