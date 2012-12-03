@@ -218,6 +218,7 @@ void Cyg_Counter::tick( cyg_uint32 ticks )
         // alarm function.
 
         cyg_bool rescan = true;
+        Cyg_DNode_T<Cyg_Alarm> *prev = 0 ;
 
         while( rescan )
         {
@@ -262,8 +263,11 @@ void Cyg_Counter::tick( cyg_uint32 ticks )
                 // with.
                 if( next == alarm_list_ptr->get_head() || node == next )
                     node = NULL;
-                else
+                else {
+                    /* for debugging */
+                    prev = node;
                     node = next;
+                }
             }
 
         }

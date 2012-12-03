@@ -185,7 +185,8 @@ void time1II(void)
 #ifdef HAL_DCACHE_INVALIDATE_ALL
 static void time0DI(register cyg_uint32 stride)
 {
-    register cyg_uint32 j,k;
+    register cyg_uint32 j;// __asm("r6");
+    register cyg_uint32 k;// __asm("r7");
     volatile cyg_tick_count_t count0;
     cyg_tick_count_t count1;
     cyg_ucount32 t;

@@ -75,7 +75,7 @@
     !defined(CYGDBG_INFRA_DIAG_USE_DEVICE) &&   \
     (CYGNUM_KERNEL_SCHED_PRIORITIES > 12)
 
-#define NTHREADS 1
+#define NTHREADS 5
 #include "testaux.hxx"
 
 // Structure used to keep track of times
@@ -193,6 +193,15 @@ extern cyg_tick_count total_clock_dsr_latency, total_clock_dsr_calls;
 extern cyg_int32 min_clock_dsr_latency, max_clock_dsr_latency;
 extern bool measure_clock_latency;
 #endif
+
+//TUPN.TEST.ADD.Start
+#define TRACELOG(string) 			diag_write_string(string)
+#define MSG_INFO(s, s1, s2, s3 )   {									\
+										char sz[256];					\
+										sprintf( sz, s, s1, s2, s3 );	\
+										TRACELOG( sz );					\
+									}
+//TUPN.TEST.ADD.End
 
 void run_sched_tests(void);
 void run_thread_tests(void);
@@ -1636,6 +1645,7 @@ run_sched_tests(void)
 static void 
 _run_all_tests(CYG_ADDRESS id)
 {
+	TRACELOG("### _run_all_tests in\n");
     int i, j;
     cyg_uint32 tv[nsamples], tv0, tv1;
     cyg_uint32 min_stack, max_stack, total_stack, actual_stack;
@@ -1657,6 +1667,18 @@ _run_all_tests(CYG_ADDRESS id)
 #endif
     
     diag_printf("\neCos Kernel Timings\n");
+    
+    
+/*    //////////
+	int abstime;
+	cyg_uint32 pvalue;
+	hal_clock_read(&pvalue);
+	abstime = int(cyg_current_time());
+	// long rtc_resolution[] = CYGNUM_KERNEL_COUNTERS_RTC_RESOLUTION;
+	 diag_printf("!!!!!counter = %d;ticks %d  \n",pvalue,abstime);
+    //////////*/
+    
+    
     diag_printf("Notes: all times are in microseconds (.000001) unless otherwise stated\n");
 #ifdef STATS_WITHOUT_FIRST_SAMPLE
     diag_printf("       second line of results have first sample removed\n");
@@ -1778,11 +1800,54 @@ _run_all_tests(CYG_ADDRESS id)
 
     ticks = cyg_current_time();
     diag_printf("\nTiming complete - %d ms total\n\n", (int)((ticks*ns_per_system_clock)/1000));
+    TRACELOG("### _run_all_tests out\n");
 }
 
 void 
 run_all_tests(CYG_ADDRESS id)
 {
+	TRACELOG("### run_all_tests in\n");
+	//cyg_tick_count_t abstime;
+	/*int abstime,res1,res2;
+	cyg_uint32 pvalue;
+	hal_clock_read(&pvalue);
+	abstime = int(cyg_current_time());
+	res1 = cyg_clock_get_resolution(cyg_real_time_clock()).dividend;
+	res2 = cyg_clock_get_resolution(cyg_real_time_clock()).divisor;
+	// long rtc_resolution[] = CYGNUM_KERNEL_COUNTERS_RTC_RESOLUTION;
+	 diag_printf("res1 = %d;res2 = %d;counter = %d;abstime = %d; \n",res1,res2,pvalue,abstime);
+	*/
+	/*
+	////////////////////////////
+	
+	int old_ticks, new_ticks;
+	    int ii;
+	    cyg_uint32 j;
+	    cyg_uint32 loops_per_tick;
+
+
+	    //if (loops_per_tick != 0) return;
+
+	    loops_per_tick = 0;
+	    old_ticks = (int) cyg_current_time();
+	    // Wait for time to roll
+	    while ((new_ticks = (int)cyg_current_time()) == old_ticks) ;
+	    // Now, see how many loops can happen before the next tick
+
+	    // Wait for time to roll
+	        i=0;
+	    while ((old_ticks = (int)cyg_current_time()) == new_ticks) {
+	          ii++;
+	       for (j = 0; j < 3399980 ; j++);
+	        }
+
+	        loops_per_tick=j;
+
+	        diag_printf("%d, %lu loops per tick \n", i , j);
+	*/
+/////////////////////////////////	        
+	        
+	
 #if CYGNUM_TESTS_RUN_COUNT < 0
     while (1)
 #else       
@@ -1791,10 +1856,27 @@ run_all_tests(CYG_ADDRESS id)
 #endif
         _run_all_tests(id);
     CYG_TEST_PASS_FINISH("Basic timing OK");
+
+    TRACELOG("### run_all_tests out\n");
 }
 
+int main(void)
+{
+//	TRACELOG( "##### main in\n" );
+//	TRACELOG( "##### main out\n" );
+//	int abstime1;
+	while(1);
+		/*{
+		abstime1 = int(cyg_current_time());
+		diag_printf("Current tick = %d\n",abstime1);
+		}*/
+		
+
+	return 0;
+}
 void tm_basic_main( void )
 {
+	TRACELOG( "##### tm_basic main in\n" );
     CYG_TEST_INIT();
 
     if (cyg_test_is_simulator) {
@@ -1843,6 +1925,8 @@ void tm_basic_main( void )
     
     Cyg_Scheduler::scheduler.start();
 
+    TRACELOG( "##### tm_basic main out\n" );
+    while(1);
 }
 
 #ifdef CYGSEM_HAL_STOP_CONSTRUCTORS_ON_FLAG

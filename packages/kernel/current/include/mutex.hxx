@@ -76,6 +76,15 @@ class Cyg_Mutex
 
     Cyg_ThreadQueue     queue;          // Queue of waiting threads
 
+public:
+    enum cyg_type
+    {
+        NORMAL = 0,
+        RECURSIVE,
+    };
+private:
+    cyg_type            type;
+    cyg_uint32          nest;
 #ifdef CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_DYNAMIC
 
 public:    
@@ -138,6 +147,8 @@ public:
     void        set_protocol( cyg_protcol new_protocol );
 #endif
     
+    // Set type (e.g. recursive)
+    void        set_type( cyg_type new_type );
 };
 
 // -------------------------------------------------------------------------
