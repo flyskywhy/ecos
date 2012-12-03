@@ -1,0 +1,140 @@
+
+cdl_package CYGPKG_DEVS_ETH_POWERPC_MPC8xx {
+    display       "MPC8xx ethernet support"
+    description   "Fast ethernet driver for PowerPC MPC8xx boards."
+
+    parent        CYGPKG_IO_ETH_DRIVERS
+    active_if     CYGPKG_IO_ETH_DRIVERS
+    active_if     CYGPKG_HAL_POWERPC
+    active_if     CYGPKG_HAL_POWERPC_MPC8xx
+
+    implements    CYGHWR_NET_DRIVERS
+    implements    CYGHWR_NET_DRIVER_ETH0
+    implements    CYGINT_IO_ETH_MULTICAST
+    include_dir   .
+    include_files ;
+
+    define_proc {
+        puts $::cdl_system_header "#define CYGDAT_DEVS_FEC_ETH_INL <cyg/io/mpc8xxt_eth.inl>"
+    }
+
+    compile       -library=libextras.a if_fec.c
+
+    cdl_option CYGDAT_DEVS_ETH_POWERPC_MPC8xx_ETH_NAME {
+        display       "Device name for the ethernet driver"
+        flavor        data
+        default_value {"\"eth0\""}
+        description   "
+            This option sets the name of the ethernet device."
+    }
+
+    cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_INT_LEVEL {
+        display       "SIU Interrupt Level"
+        flavor        data
+        legal_values  { "CYGNUM_HAL_INTERRUPT_SIU_LVL1"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL2"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL3"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL4"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL5"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL6"
+                        "CYGNUM_HAL_INTERRUPT_SIU_LVL7" }
+        default_value { "CYGNUM_HAL_INTERRUPT_SIU_LVL3" }
+        description   "
+            This option specifies the SIU interrupt level for the FEC
+            interrupts."
+    }
+
+    cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_PHY_ADDR {
+        display       "Address of PHY (transceiver) device"
+        flavor        data
+        legal_values  0 to 1
+        default_value 0
+        description   "
+            This option specifies the address of PHY (transceiver) device."
+    }
+
+    cdl_option CYGDAT_DEVS_ETH_POWERPC_MPC8xx_DEFAULT_MAC {
+    display          "Default Ethernet address"
+    flavor           data
+    default_value    { "0x00,0x00,0x00,0x00,0x00,0x00" }
+    description      "
+        This is the default Ethernet address if none is found in
+        the FLASH config."
+    }
+
+    cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_BUFSIZE {
+        display       "Buffer size"
+        flavor        data
+        default_value 1520
+        description   "
+            This option specifies the size of the internal buffers used
+            for the PowerPC FEC/ethernet device."
+    }
+
+    cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_TxNUM {
+        display       "Number of output buffers"
+        flavor        data
+        legal_values  2 to 64
+        default_value 16
+        description   "
+            This option specifies the number of output buffer packets
+            to be used for the PowerPC FEC/ethernet device."
+    }
+
+    cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_RxNUM {
+        display       "Number of input buffers"
+        flavor        data
+        legal_values  2 to 64
+        default_value 16
+        description   "
+            This option specifies the number of input buffer packets
+            to be used for the PowerPC FEC/ethernet device."
+    }
+
+    cdl_component CYGSEM_DEVS_ETH_POWERPC_MPC8xx_RESET_PHY {
+        display         "Reset and reconfigure PHY"
+        flavor          bool
+        calculated      1
+        #default_value   { CYG_HAL_STARTUP != "RAM" }
+        description     "This option allows control over the physical transceiver"
+
+        cdl_option CYGNUM_DEVS_ETH_POWERPC_MPC8xx_LINK_MODE {
+            display         "Initial link mode"
+            flavor          data
+            legal_values    { "10Mb" "100Mb" "Auto" }
+            default_value   { "Auto" }
+            description     "
+                This option specifies initial mode for the physical
+                link.  The PHY will be reset and then set to this mode."
+        }
+    }
+
+    cdl_component CYGSEM_DEVS_ETH_POWERPC_MPC8xx_STATUS_LEDS {
+        display "Display I/O status via LEDs"
+        flavor  bool
+        default_value 0
+        description "
+            If this option is set, and the platform defines LED access
+            functions, then I/O status will be displayed using the LEDs.
+            In particular, varying LEDs will be illuminated while the
+            device is busy transmitting a buffer, or handing an input
+            packet."
+    }
+
+    cdl_component CYGPKG_DEVS_ETH_POWERPC_MPC8xx_OPTIONS {
+        display "MPC8xx FEC ethernet driver build options"
+        flavor  none
+    no_define
+
+        cdl_option CYGPKG_DEVS_ETH_POWERPC_MPC8xx_CFLAGS_ADD {
+            display "Additional compiler flags"
+            flavor  data
+            no_define
+            default_value { "-D_KERNEL -D__ECOS" }
+            description   "
+                This option modifies the set of compiler flags for
+                building the MPC8xx FEC ethernet driver package. These flags are used in addition
+                to the set of global flags."
+        }
+    }
+}
