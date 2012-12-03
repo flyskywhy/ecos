@@ -1,8 +1,8 @@
 # ====================================================================
 #
-#      flash_ixdp425.cdl
+#      flash_mbx.cdl
 #
-#      FLASH memory - Hardware support on IXDP425 board
+#      FLASH memory - Hardware support on Microblaze
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -48,15 +48,15 @@
 #
 # ====================================================================
 
-cdl_package CYGPKG_DEVS_FLASH_IXDP425 {
-    display       "IXDP425 board FLASH memory support"
+cdl_package CYGPKG_DEVS_FLASH_MICROBLAZE {
+    display       "MICROBLAZE FLASH memory support"
 
     parent        CYGPKG_IO_FLASH
     active_if     CYGPKG_IO_FLASH
-    requires      CYGPKG_HAL_ARM_XSCALE_IXDP425
-    requires      CYGPKG_DEVS_FLASH_STRATA
 
-    implements    CYGHWR_IO_FLASH_BLOCK_LOCKING
+    implements    CYGHWR_IO_FLASH_DEVICE
+
+#    compile       microblaze_flash.c
 
     include_dir   cyg/io
 
@@ -68,10 +68,10 @@ cdl_package CYGPKG_DEVS_FLASH_IXDP425 {
 
     implements    CYGINT_DEVS_FLASH_STRATA_REQUIRED
 
-    define_proc {
-        puts $::cdl_system_header "/***** ixdp425 flash driver proc output start *****/"
-        puts $::cdl_system_header "#define CYGDAT_DEVS_FLASH_STRATA_INL <cyg/io/ixdp425_strataflash.inl>"
-        puts $::cdl_system_header "#define CYGDAT_DEVS_FLASH_STRATA_CFG <pkgconf/devs_flash_ixdp425.h>"
-        puts $::cdl_system_header "/*****  ixdp425 flash driver proc output end  *****/"
-    }
+#        define_proc {
+#        puts $::cdl_system_header "/***** ixdp425 flash driver proc output start
+#        puts $::cdl_system_header "#define CYGDAT_DEVS_FLASH_STRATA_INL <cyg/io/
+#        puts $::cdl_system_header "#define CYGDAT_DEVS_FLASH_STRATA_CFG <pkgconf
+#        puts $::cdl_system_header "/*****  ixdp425 flash driver proc output end
+#    }
 }
