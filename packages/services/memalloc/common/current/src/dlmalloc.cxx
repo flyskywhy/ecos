@@ -1266,10 +1266,16 @@ Cyg_Mempool_dlmalloc_Implementation::try_alloc( cyg_int32 bytes )
 
   /* Require that there be a remainder, ensuring top always exists  */
   remainder_size = long_sub_size_t(chunksize(top), nb);
-  if (chunksize(top) < nb || remainder_size < (long)MINSIZE)
+  if (chunksize(top) < nb)
   {
-      diag_printf("chunksize(top)=%X, nb=%d, remainder=%X minsize=%X \n", chunksize(top),
-                  nb, remainder_size,(long)MINSIZE);
+      diag_printf("chunksize(top)=%X, nb=%d \n", chunksize(top),nb);
+      MALLOC_UNLOCK;
+      CYG_MEMALLOC_FAIL(bytes);
+      return NULL; /* propagate failure */
+    }
+  if((unsigned long)remainder_size < (long)MINSIZE)
+  {
+      diag_printf("remainder=%X minsize=%X \n", remainder_size,(long)MINSIZE);
       MALLOC_UNLOCK;
       CYG_MEMALLOC_FAIL(bytes);
       return NULL; /* propagate failure */
