@@ -1,11 +1,11 @@
-#ifndef CYGONCE_DEVS_FLASH_SPI_M25PXX_H
-#define CYGONCE_DEVS_FLASH_SPI_M25PXX_H
+#ifndef CYGONCE_DEVS_FLASH_SPI_W25XXX_H
+#define CYGONCE_DEVS_FLASH_SPI_W25XXX_H
 
 //=============================================================================
 //
-//      m25pxx.h
+//      w25xxx.h
 //
-//      SPI flash driver for Numonyx M25Pxx devices and compatibles.
+//      SPI flash driver for Winbond W25xxx devices and compatibles.
 //
 //=============================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -42,9 +42,9 @@
 //=============================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):   Chris Holgate
-// Date:        2008-12-22
-// Purpose:     Numonyx M25Pxx SPI flash driver implementation
+// Author(s):   Daniel Helgason
+// Date:        2011-01-01
+// Purpose:     Windbond W25Xxx SPI flash driver implementation
 //
 //####DESCRIPTIONEND####
 //
@@ -54,10 +54,10 @@
 #include <cyg/io/flash_dev.h>
 
 // Exported handle on the driver function table.
-externC struct cyg_flash_dev_funs cyg_devs_flash_spi_m25pxx_funs;
+externC struct cyg_flash_dev_funs cyg_devs_flash_spi_w25xxx_funs;
 
 //-----------------------------------------------------------------------------
-// Macro used to generate a flash device object with the default M25PXX 
+// Macro used to generate a flash device object with the default W25XXX 
 // settings.  Even though the block info data structure is declared here, the 
 // details are not filled in until the device type is inferred during 
 // initialisation.  This also applies to the 'end' field which is calculated 
@@ -68,11 +68,11 @@ externC struct cyg_flash_dev_funs cyg_devs_flash_spi_m25pxx_funs;
 // _spidev_ is a pointer to a SPI device object of type cyg_spi_device.  This
 //          is not typechecked during compilation so be careful!
 
-#define CYG_DEVS_FLASH_SPI_M25PXX_DRIVER(_name_, _start_, _spidev_) \
+#define CYG_DEVS_FLASH_SPI_W25XXX_DRIVER(_name_, _start_, _spidev_) \
 struct cyg_flash_block_info _name_ ##_block_info; \
-CYG_FLASH_DRIVER(_name_, &cyg_devs_flash_spi_m25pxx_funs, 0, \
+CYG_FLASH_DRIVER(_name_, &cyg_devs_flash_spi_w25xxx_funs, 0, \
   _start_, _start_, 1, & _name_ ##_block_info, (void*) _spidev_)
 
 //=============================================================================
 
-#endif // CYGONCE_DEVS_FLASH_SPI_M25PXX_H
+#endif // CYGONCE_DEVS_FLASH_SPI_W25XXX_H

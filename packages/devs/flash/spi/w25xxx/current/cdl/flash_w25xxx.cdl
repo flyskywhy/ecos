@@ -1,8 +1,8 @@
 ##=============================================================================
 ##
-##      flash_m25pxx.cdl
+##      flash_w25xxx.cdl
 ##
-##      M25Pxx SPI flash driver configuration options.
+##      W25Xxx SPI flash driver configuration options.
 ##
 ##=============================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -39,28 +39,28 @@
 ##=============================================================================
 #######DESCRIPTIONBEGIN####
 ##
-## Author(s):   Chris Holgate
-## Date:        2008-12-22
-## Purpose:     Configure M25Pxx SPI flash driver.
+## Author(s):   Daniel Helgason
+## Date:        2011-01-01
+## Purpose:     Configure W25Xxx SPI flash driver.
 ##
 ######DESCRIPTIONEND####
 ##
 ##=============================================================================
 
-cdl_package CYGPKG_DEVS_FLASH_SPI_M25PXX {
-    display	"M25PXX flash memory support"
+cdl_package CYGPKG_DEVS_FLASH_SPI_W25XXX {
+    display	"W25Xxx flash memory support"
     parent	CYGPKG_IO_FLASH
     active_if	CYGPKG_IO_FLASH CYGPKG_IO_SPI
     implements	CYGHWR_IO_FLASH_DEVICE
     implements  CYGHWR_IO_FLASH_INDIRECT_READS 
     include_dir	cyg/io
-    compile	m25pxx.c
+    compile	w25xxx.c
 
     description "
-        Flash memory support for Numonyx M25Pxx SPI flash devices and 
+        Flash memory support for Windbond W25Xxx SPI flash devices and 
         compatibles.  This driver implements the V2 flash driver API"
 
-cdl_option CYGNUM_DEVS_FLASH_SPI_M25PXX_READ_BLOCK_SIZE {
+cdl_option CYGNUM_DEVS_FLASH_SPI_W25XXX_READ_BLOCK_SIZE {
     display       "Maximum read block size"
     description   "
         In theory it is possible to read back the entire flash contents using
