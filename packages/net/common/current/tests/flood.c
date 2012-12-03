@@ -341,7 +341,7 @@ net_test(cyg_addrword_t param)
 
     TNR_ON();                // then enable the test
 
-    cyg_thread_delay( 12000 ); // run for a couple of minutes
+    cyg_thread_delay( 24000 ); // run for a couple of minutes
 
     TNR_OFF();
 
