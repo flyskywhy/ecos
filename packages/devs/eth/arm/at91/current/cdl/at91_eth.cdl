@@ -55,14 +55,23 @@ cdl_package CYGPKG_DEVS_ETH_ARM_AT91 {
     active_if     CYGPKG_IO_ETH_DRIVERS
     implements    CYGHWR_NET_DRIVERS
     implements    CYGHWR_NET_DRIVER_ETH0
+    implements    CYGINT_IO_ETH_MULTICAST
 
     include_dir   net
     description   "
-       Ethernet driver for Atmel AT91 core. This has been tested with the 
+       Ethernet driver for Atmel AT91 core. This has been tested with the
        AT91SAM7X, but should be easy to get to work on other AT91 cores that
        have the EMAC core."
 
     compile       -library=libextras.a if_at91.c
+
+    cdl_interface CYGHWR_DEV_ETH_ARM_AT91_USE_RMII {
+        display   "Use RMII instead of MII"
+        flavor    bool
+        description "
+            If RMII is used on the device, then the platform HAL will
+            implement this interface."
+    }
 
     cdl_option CYGPKG_DEVS_ETH_ARM_AT91_DEBUG_LEVEL {
          display "Driver debug output level"
