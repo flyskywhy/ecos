@@ -110,6 +110,7 @@ isr(cyg_vector vector, CYG_ADDRWORD data)
   HAL_READ_UINT32(AT91_WDTC + AT91_WDTC_WDSR, sr);
   
   wd->trigger();
+  wd->reset();
   Cyg_Interrupt::acknowledge_interrupt(CYGNUM_HAL_INTERRUPT_WDTC);
   CYG_REPORT_RETVAL(Cyg_Interrupt::HANDLED);
   return Cyg_Interrupt::HANDLED;

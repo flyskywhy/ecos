@@ -51,7 +51,8 @@ cdl_package CYGPKG_DEVICES_WATCHDOG_ARM_AT91WDTC {
     parent        CYGPKG_IO_WATCHDOG
     active_if     CYGPKG_IO_WATCHDOG
     display       "ARM AT91 WDTC watchdog driver"
-    requires      CYGPKG_HAL_ARM_AT91
+# Exegin changed
+    requires      { CYGPKG_HAL_ARM_AT91 || CYGPKG_HAL_CORTEXM_SAM3 }
     requires      CYGPKG_KERNEL
     hardware
     define_header devs_watchdog_arm_at91wdtc.h
