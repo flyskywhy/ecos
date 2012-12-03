@@ -1268,8 +1268,8 @@ Cyg_Mempool_dlmalloc_Implementation::try_alloc( cyg_int32 bytes )
   remainder_size = long_sub_size_t(chunksize(top), nb);
   if (chunksize(top) < nb || remainder_size < (long)MINSIZE)
   {
-      //diag_printf("chunksize(top)=%ld, nb=%d, remainder=%ld\n", chunksize(top),
-      //            nb, remainder_size);
+      diag_printf("chunksize(top)=%X, nb=%d, remainder=%X minsize=%X \n", chunksize(top),
+                  nb, remainder_size,(long)MINSIZE);
       MALLOC_UNLOCK;
       CYG_MEMALLOC_FAIL(bytes);
       return NULL; /* propagate failure */
