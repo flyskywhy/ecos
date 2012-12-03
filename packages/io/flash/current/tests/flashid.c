@@ -69,8 +69,6 @@
 #include <cyg/infra/cyg_ass.h>          // Assertion macros
 #include <cyg/infra/diag.h>             // Diagnostic output
 
-#include <pkgconf/devs_spi_microblaze.h>            // at91 data structures
-
 #include <cyg/hal/hal_arch.h>           // CYGNUM_HAL_STACK_SIZE_TYPICAL
 #include <cyg/kernel/kapi.h>
 
@@ -86,9 +84,7 @@ cyg_uint8 stack [CYGNUM_HAL_STACK_SIZE_TYPICAL];
 cyg_thread thread_data;
 cyg_handle_t thread_handle;
 
-#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
-externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0;
-#endif
+externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0, cyg_spi_microblaze_bus1;
 
 //---------------------------------------------------------------------------
 // SPI loopback device driver data structures.
@@ -98,6 +94,7 @@ externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0;
     .spi_device.spi_bus = &cyg_spi_microblaze_bus0.spi_bus,
     .spi_cpol = 1,
     .spi_cpha = 1,
+    .spi_baud = 8000000,                // Nominal 8Mhz.
     .spi_lsbf = 1,
  };
 
@@ -118,15 +115,9 @@ char tx_data1[] = "Testing FLASH 25p05 write/read..";
 #define CMD_SERR 0xD8
 #define CMD_BERR 0xC7
 
-//const char tx_wren[] = {}; // write enable 98
-//const char tx_wrdi[] = {0x04}; // write disable 80
-//const char tx_[] = {0xc0}; // read cmd + 6 bit addr
-
-
 
 char rx_data [sizeof(tx_data)];
 char rx_data1 [sizeof(tx_data1)];
-//char rx_data2 [sizeof(tx_data2)];
 
 //---------------------------------------------------------------------------
 
@@ -148,211 +139,10 @@ void run_test_1 ()
 
 //---------------------------------------------------------------------------
 
-void run_test_2 ()
-{
-    char comm_code;
-    diag_printf ("Test 2 : Extended API test.\n");
-
-
-//!Write enable section
-
-    comm_code = CMD_WREN;
-
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, 1, 
-        (const cyg_uint8*) &comm_code, (cyg_uint8*) &rx_data1[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-//! Use sleep for providing program time tpp
-    sleep(1);
-//////////////////////////
-
-
-
-
-//! Erase sector section
-    diag_printf("Erase sector: address = 0x00\n\n");
-    tx_data1[0] = CMD_SERR;
-    tx_data1[1] = 0x00;
-    tx_data1[2] = 0x00;
-    tx_data1[3] = 0x00;
-
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, 4, 
-        (const cyg_uint8*) &tx_data1[0], (cyg_uint8*) &rx_data1[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-//! Use sleep for providing program time tpp
-    sleep(1);
-/////////////////////
-
-
-
-//! Read section
-    diag_printf("Reading after erase: address 0x00\n");
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    tx_data1[0] = CMD_RD;
-    tx_data1[1] = 0x00;
-    tx_data1[2] = 0x00;
-    tx_data1[3] = 0x00;
-    
-    
-    tx_data1[4] = 0xff;
-    tx_data1[5] = 0xff;
-    tx_data1[6] = 0xff;
-    tx_data1[7] = 0xff;
-    tx_data1[8] = 0xff;
-    tx_data1[9] = 0xff;
-    tx_data1[10] = 0xff;
-    tx_data1[11] = 0xff;
-
-    tx_data1[12] = 0xff;
-    tx_data1[13] = 0xff;
-    tx_data1[14] = 0xff;
-    tx_data1[15] = 0xff;
-    tx_data1[16] = 0xff;
-    tx_data1[17] = 0xff;
-    tx_data1[18] = 0xff;
-    tx_data1[19] = 0xff;
-
-    tx_data1[20] = 0xff;
-    tx_data1[21] = 0xff;
-    tx_data1[22] = 0xff;
-    tx_data1[23] = 0xff;
-    tx_data1[24] = 0xff;
-    tx_data1[25] = 0xff;
-    tx_data1[26] = 0xff;
-    tx_data1[27] = 0xff;
-
-    tx_data1[28] = 0xff;
-    tx_data1[29] = 0xff;
-    tx_data1[30] = 0xff;
-    tx_data1[31] = 0xff;
-    tx_data1[32] = 0xff;
-    tx_data1[33] = 0xff;
-    tx_data1[34] = 0xff;
-    tx_data1[35] = 0xff;
-
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, 36, 
-        (const cyg_uint8*) &tx_data1[0], (cyg_uint8*) &rx_data1[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-
-
-    diag_printf ("    Rx data 1 : 0x%X, 0x%X,  0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X\n\n\n",
-     rx_data1[4],rx_data1[5],rx_data1[6],rx_data1[7],rx_data1[8],rx_data1[9],rx_data1[10],rx_data1[11]);
-
-
-///////////////////
-
-
-
-
-
-
-
-
-
-
-
-//!Write enable section
-
-    comm_code = CMD_WREN;
-
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, 1, 
-        (const cyg_uint8*) &comm_code, (cyg_uint8*) &rx_data1[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-//! Use sleep for providing program time tpp
-    sleep(1);
-//////////////////////////
-
-
-
-
-//! Program page section
-    diag_printf("Program page : address 0x00\n");
-    char tx_data2[] = "    Test FLASH 25p05 write/read.";
-    char rx_data2[sizeof(tx_data2)];
-    diag_printf ("    Tx data : %s\n", &tx_data2[4]);
-    tx_data2[0] = CMD_PP;
-    tx_data2[1] = 0x00;
-    tx_data2[2] = 0x00;
-    tx_data2[3] = 0x00;
-
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, sizeof(tx_data2), 
-        (const cyg_uint8*) &tx_data2[0], (cyg_uint8*) &rx_data2[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-//! Use sleep for providing program time tpp
-    sleep(1);
-///////////////////////////////
-
-
-
-//! Read section
-    cyg_spi_transaction_begin (&loopback_device.spi_device);
-    tx_data1[0] = CMD_RD;
-    tx_data1[1] = 0x00;
-    tx_data1[2] = 0x00;
-    tx_data1[3] = 0x00;
-    
-    
-    tx_data1[4] = 0xff;
-    tx_data1[5] = 0xff;
-    tx_data1[6] = 0xff;
-    tx_data1[7] = 0xff;
-    tx_data1[8] = 0xff;
-    tx_data1[9] = 0xff;
-    tx_data1[10] = 0xff;
-    tx_data1[11] = 0xff;
-
-    tx_data1[12] = 0xff;
-    tx_data1[13] = 0xff;
-    tx_data1[14] = 0xff;
-    tx_data1[15] = 0xff;
-    tx_data1[16] = 0xff;
-    tx_data1[17] = 0xff;
-    tx_data1[18] = 0xff;
-    tx_data1[19] = 0xff;
-
-    tx_data1[20] = 0xff;
-    tx_data1[21] = 0xff;
-    tx_data1[22] = 0xff;
-    tx_data1[23] = 0xff;
-    tx_data1[24] = 0xff;
-    tx_data1[25] = 0xff;
-    tx_data1[26] = 0xff;
-    tx_data1[27] = 0xff;
-
-    tx_data1[28] = 0xff;
-    tx_data1[29] = 0xff;
-    tx_data1[30] = 0xff;
-    tx_data1[31] = 0xff;
-    tx_data1[32] = 0xff;
-    tx_data1[33] = 0xff;
-    tx_data1[34] = 0xff;
-    tx_data1[35] = 0xff;
-
-    cyg_spi_transaction_transfer (&loopback_device.spi_device, true, 36, 
-        (const cyg_uint8*) &tx_data1[0], (cyg_uint8*) &rx_data1[0], true);
-    cyg_spi_transaction_end (&loopback_device.spi_device);
-
-
-
-
-
-    diag_printf ("    Rx data : %s\n",&rx_data1[4]);
-
-///////////////////
-
-
-}
-
-//---------------------------------------------------------------------------
-
 void run_tests (void)
 {
-    diag_printf ("Running Microblaze SPI driver tests.\n");
+    diag_printf ("Running Microblaze Strata flash driver test.\n");
     run_test_1 ();
-    run_test_2 (); 
     CYG_TEST_PASS_FINISH ("SPI driver tests OK");
 }
 
@@ -362,7 +152,6 @@ void run_tests (void)
 void cyg_user_start(void)
 {
     CYG_TEST_INIT();
-#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
     cyg_thread_create(
         10,                                   // Arbitrary priority
         (cyg_thread_entry_t*) run_tests,      // Thread entry point
@@ -375,9 +164,6 @@ void cyg_user_start(void)
     );
     cyg_thread_resume(thread_handle);
     cyg_scheduler_start();
-#else
-    diag_printf("ERROR: There are no any SPI buses.... \n");
-#endif
 }
 
 //=============================================================================
