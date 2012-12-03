@@ -171,6 +171,37 @@ Cyg_Watchdog::uninstall_action( Cyg_Watchdog_Action *action )
 // -------------------------------------------------------------------------
 // Implementation of the C-api
 
+static Cyg_Watchdog_Action* wdaction;
+#ifndef CYGSEM_WATCHDOG_RESETS_ON_TIMEOUT
+externC void
+watchdog_init(void (*wdtAction)(CYG_ADDRWORD))
+{
+    //static Cyg_Watchdog_Action wdaction(wdtAction, 0);
+    //wdaction.install();
+    wdaction = new Cyg_Watchdog_Action( wdtAction, 0 );
+    //wdaction->install();
+    Cyg_Watchdog::watchdog.install_action( wdaction );
+
+}
+
+externC void
+watchdog_uninstall(void)
+{
+    Cyg_Watchdog::watchdog.uninstall_action( wdaction );
+}
+#else
+
+externC void
+watchdog_init(void (*wdtAction)(CYG_ADDRWORD))
+{
+}
+
+externC void
+watchdog_uninstall(void)
+{
+}
+#endif /* CYGSEM_WATCHDOG_RESETS_ON_TIMEOUT */
+
 externC void
 watchdog_start(void)
 {
