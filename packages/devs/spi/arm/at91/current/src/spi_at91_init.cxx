@@ -50,7 +50,7 @@
 
 // This file is not needed if we support CYGBLD_ATTRIB_C_INIT_PRI, as the
 // init happens directly in spi_at91.c then.
-#ifndef CYGBLD_ATTRIB_C_INIT_PRI
+//#ifndef CYGBLD_ATTRIB_C_INIT_PRI
 
 // -------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ public:
 
 static cyg_spi_at91_bus_init_class spi_at91_bus_init CYGBLD_ATTRIB_INIT_PRI(CYG_INIT_BUS_SPI);
 
-#endif // ifndef CYGBLD_ATTRIB_C_INIT_PRI
+//#endif // ifndef CYGBLD_ATTRIB_C_INIT_PRI
 
 // -------------------------------------------------------------------------
 // EOF spi_at91_init.cxx

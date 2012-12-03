@@ -108,7 +108,7 @@ cdl_package CYGPKG_DEVS_SPI_ARM_AT91 {
         cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS1 {
             display       "PIO-Pin used for NPSC1"
             flavor        data
-            default_value  {"AT91_SPI_NPCS1"}
+            default_value  {"AT91_SPI0_NPCS1"}
             description   "Any GPIO pin is able to be used as the SPI driver
 	                   uses GPIO to control the chip selects. Specify the pin
 			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
@@ -117,7 +117,7 @@ cdl_package CYGPKG_DEVS_SPI_ARM_AT91 {
         cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS2 {
             display       "PIO-Pin used for NPSC2"
             flavor        data
-            default_value  {"AT91_SPI_NPCS2"}
+            default_value  {"AT91_SPI0_NPCS2"}
             description   "Any GPIO pin is able to be used as the SPI driver
 	                   uses GPIO to control the chip selects. Specify the pin
 			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
@@ -126,7 +126,7 @@ cdl_package CYGPKG_DEVS_SPI_ARM_AT91 {
         cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS3 {
             display       "PIO-Pin used for NPSC3"
             flavor        data
-            default_value  {"AT91_SPI_NPCS3"}
+            default_value  {"AT91_SPI0_NPCS3"}
             description   "Any GPIO pin is able to be used as the SPI driver
 	                   uses GPIO to control the chip selects. Specify the pin
 			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
@@ -220,6 +220,12 @@ cdl_package CYGPKG_DEVS_SPI_ARM_AT91 {
                 the set of global flags if present."
         }
     }
+    cdl_option CYGPKG_DEVS_SPI_ARM_AT91_TESTS {
+        display         "SPI tests"
+        flavor          data
+        no_define
+        calculated      { "tests/loopback tests/m25p05 tests/altera" }
+    } 
 }
 
 # EOF spi_at91.cdl

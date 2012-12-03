@@ -55,6 +55,7 @@
 #include <cyg/hal/hal_io.h>
 #include <cyg/hal/hal_if.h>
 #include <cyg/hal/hal_intr.h>
+#include <cyg/hal/hal_cache.h>
 #include <cyg/hal/drv_api.h>
 #include <cyg/io/spi.h>
 #include <cyg/io/spi_at91.h>
@@ -105,7 +106,7 @@ cyg_spi_at91_bus_t cyg_spi_at91_bus0 = {
     .spi_bus.spi_transaction_end      = spi_at91_transaction_end,
     .spi_bus.spi_get_config           = spi_at91_get_config,
     .spi_bus.spi_set_config           = spi_at91_set_config,
-    .interrupt_number                 = CYGNUM_HAL_INTERRUPT_SPI,
+    .interrupt_number                 = CYGNUM_HAL_INTERRUPT_SPI0,
     .base                             = AT91_SPI,
 #ifndef CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS0_NONE
     .cs_en[0]                         = true,
@@ -173,16 +174,20 @@ cyg_spi_at91_bus_t cyg_spi_at91_bus1 = {
 
 CYG_SPI_DEFINE_BUS_TABLE(cyg_spi_at91_device_t, 1);
 #endif
+
+// A buffer of 64 zeros for dummy transmits
+static const cyg_uint32 zeros[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+
 // -------------------------------------------------------------------------
 
 // If C constructor with init priority functionality is not in compiler,
 // rely on spi_at91_init.cxx to init us.
-#ifndef CYGBLD_ATTRIB_C_INIT_PRI
-# define CYGBLD_ATTRIB_C_INIT_PRI(x)
-#endif
+//#ifndef CYGBLD_ATTRIB_C_INIT_PRI
+//# define CYGBLD_ATTRIB_C_INIT_PRI(x)
+//#endif
 
-void CYGBLD_ATTRIB_C_INIT_PRI(CYG_INIT_BUS_SPI)
-cyg_spi_at91_bus_init(void)
+//void CYGBLD_ATTRIB_C_INIT_PRI(CYG_INIT_BUS_SPI)
+void cyg_spi_at91_bus_init(void)
 {
 
 #ifdef CYGHWR_DEVS_SPI_ARM_AT91_BUS0
@@ -405,24 +410,34 @@ spi_at91_transfer(cyg_spi_at91_device_t *dev,
                   cyg_uint8             *rx_data)
 {
     cyg_spi_at91_bus_t *spi_bus = (cyg_spi_at91_bus_t *)dev->spi_device.spi_bus;
+    cyg_uint16 tr_count;
 
-    // Since PDC transfer buffer counters are 16 bit long, 
-    // we have to split longer transfers into chunks. 
     while (count > 0)
     {
-        cyg_uint16 tr_count = count > 0xFFFF ? 0xFFFF : count;
+        // Set tx buf pointer and counter
+        if (NULL != tx_data)
+        {
+            // Since PDC transfer buffer counters are 16 bit long,
+            // we have to split longer transfers into chunks.
+            tr_count = count > 0xFFFF ? 0xFFFF : count;
+
+            HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TPR, (cyg_uint32)tx_data);
+            HAL_DCACHE_STORE(tx_data, tr_count);
+        }
+        else {
+            tr_count = count > sizeof(zeros) ? sizeof(zeros) : count;
+            HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TPR, (cyg_uint32)zeros);
+        }
+        HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TCR, (cyg_uint32)tr_count);
 
         // Set rx buf pointer and counter 
         if (NULL != rx_data)
         {
             HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_RPR, (cyg_uint32)rx_data);
             HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_RCR, (cyg_uint32)tr_count);
+            HAL_DCACHE_FLUSH(rx_data, tr_count);
         }
 
-        // Set tx buf pointer and counter  
-        HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TPR, (cyg_uint32)tx_data);
-        HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TCR, (cyg_uint32)tr_count);
-   
 #ifdef AT91_SPI_PTCR
         HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_PTCR, 
                          AT91_SPI_PTCR_RXTEN | AT91_SPI_PTCR_TXTEN);
@@ -448,6 +463,7 @@ spi_at91_transfer(cyg_spi_at91_device_t *dev,
         }    
         cyg_drv_mutex_unlock(&spi_bus->transfer_mx);
 
+#if 0
         if (NULL == rx_data)
         {
             cyg_uint32 val;
@@ -468,12 +484,28 @@ spi_at91_transfer(cyg_spi_at91_device_t *dev,
             // Clear the rx data reg
             HAL_READ_UINT32(spi_bus->base+AT91_SPI_RDR, val);
         }
+#else
+        if (NULL == rx_data)
+        {
+            cyg_uint32 stat;
+
+            do {
+                HAL_READ_UINT32(spi_bus->base+AT91_SPI_SR, stat);
+            } while (!(stat & AT91_SPI_SR_TXEMPTY));
+
+//            CYGACC_CALL_IF_DELAY_US(1);
+
+            // Clear the rx data reg with a dummy read
+            HAL_READ_UINT32(spi_bus->base+AT91_SPI_RDR, stat);
+        }
+#endif
 
         // Adjust running variables
         
         if (NULL != rx_data)
             rx_data += tr_count;
-        tx_data += tr_count;
+        if (NULL != tx_data)
+            tx_data += tr_count;
         count   -= tr_count;
     }
 }
@@ -497,7 +529,10 @@ spi_at91_transfer_polled(cyg_spi_at91_device_t *dev,
         } while ( !(val & AT91_SPI_SR_TDRE) );
        
         // Send next byte over the wire 
-        val = *tx_data++;
+        if (NULL != tx_data)
+            val = *tx_data++;
+        else
+            val = 0;
         HAL_WRITE_UINT32(spi_bus->base+AT91_SPI_TDR, val);
         
         // Wait for reveive data register full 
@@ -600,8 +635,6 @@ spi_at91_transaction_tick(cyg_spi_device *dev,
                           cyg_bool        polled,  
                           cyg_uint32      count)
 {
-    const cyg_uint32 zeros[10] = { 0,0,0,0,0,0,0,0,0,0 };
-
     cyg_spi_at91_device_t *at91_spi_dev = (cyg_spi_at91_device_t *) dev;
     
     // Transfer count zeros to the device - we don't touch the
@@ -611,8 +644,8 @@ spi_at91_transaction_tick(cyg_spi_device *dev,
     
     while (count > 0)
     {
-        int tcnt = count > 40 ? 40 : count;
-        
+        int tcnt = count > sizeof(zeros) ? sizeof(zeros) : count;
+
         if (polled)
             spi_at91_transfer_polled(at91_spi_dev, tcnt, 
                                      (const cyg_uint8 *) zeros, NULL);

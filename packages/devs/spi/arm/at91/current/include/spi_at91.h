@@ -76,6 +76,14 @@ typedef struct cyg_spi_at91_bus_s
     cyg_addrword_t    base;                 // Base Address of the SPI peripheral
     cyg_uint8         cs_en[4];             // The Configurations state for the CS
     cyg_uint32        cs_gpio[4];           // The GPIO Configurations for the CS
+
+    cyg_haladdress    dma_reg_base;    // Base address of DMA register block.
+    cyg_uint8         dma_tx_channel;  // TX DMA channel for this bus.
+    cyg_uint8         dma_rx_channel;  // RX DMA channel for this bus.
+    cyg_vector_t      dma_tx_intr;     // Interrupt used for DMA transmit.
+    cyg_vector_t      dma_rx_intr;     // Interrupt used for DMA receive.
+    cyg_bool          tx_dma_done;     // Flags used to signal completion.
+    cyg_bool          rx_dma_done;     // Flags used to signal completion.
 } cyg_spi_at91_bus_t;
 
 //-----------------------------------------------------------------------------
