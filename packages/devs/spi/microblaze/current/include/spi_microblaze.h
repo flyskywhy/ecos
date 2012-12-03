@@ -1,10 +1,11 @@
-#ifndef CYGONCE_DEVS_SPI_ARM_AT91_H
-#define CYGONCE_DEVS_SPI_ARM_AT91_H
+//#ifndef CYGONCE_DEVS_SPI_MICROBLAZE_H
+//#define CYGONCE_DEVS_SPI_MMICROBLAZE_H
+
 //==========================================================================
 //
-//      spi_at91.h
+//      spi_microblaze.h
 //
-//      Atmel AT91 (ARM) SPI driver defines
+//      SPI driver for Microblaze
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -41,89 +42,56 @@
 //==========================================================================
 //#####DESCRIPTIONBEGIN####
 //
-// Author(s):     Savin Zlobec <savin@elatec.si> 
-// Date:          2004-08-25
-//
+// Author(s):    Alexander Kolb
+// Contributors: 
+// Date:         2011-10-12
+// Purpose:      
+// Description:  
+//              
 //####DESCRIPTIONEND####
 //
 //==========================================================================
 
 #include <pkgconf/hal.h>
 #include <pkgconf/io_spi.h>
+#include <cyg/io/spi.h>
 
 #include <cyg/infra/cyg_type.h>
 #include <cyg/hal/drv_api.h>
-#include <cyg/io/spi.h>
+//#include "src/xspi.h"
+#include "src/xspi.h"
 
-//-----------------------------------------------------------------------------
-// AT91 SPI BUS
 
-typedef struct cyg_spi_at91_bus_s
-{
-    // ---- Upper layer data ----
+#include <pkgconf/hal_microblaze_platform.h>
 
-    cyg_spi_bus   spi_bus;                  // Upper layer SPI bus data
+typedef struct cyg_spi_microblaze_bus_s {
+	cyg_spi_bus	spi_bus;
+	cyg_interrupt   spi_intr;
+	cyg_handle_t    spi_hand;
+	cyg_vector_t    spi_vect;
+	cyg_priority_t  spi_prio;
+	cyg_drv_mutex_t spi_lock;
+	cyg_drv_cond_t  spi_wait;
+	XSpi *spi_dev;
 
-    // ---- Lower layer data ----
-     
-    cyg_interrupt     spi_interrupt;        // SPI interrupt object
-    cyg_handle_t      spi_interrupt_handle; // SPI interrupt handle
-    cyg_drv_mutex_t   transfer_mx;          // Transfer mutex
-    cyg_drv_cond_t    transfer_cond;        // Transfer condition
-    cyg_bool          transfer_end;         // Transfer end flag
-    cyg_bool          cs_up;                // Chip Select up flag 
-    cyg_vector_t      interrupt_number;     // SPI Interrupt Number
-    cyg_addrword_t    base;                 // Base Address of the SPI peripheral
-    cyg_uint8         cs_en[4];             // The Configurations state for the CS
-    cyg_uint32        cs_gpio[4];           // The GPIO Configurations for the CS
+	volatile cyg_uint32       count;
+	volatile const cyg_uint8 *tx;
+	volatile cyg_uint8       *rx;
+} cyg_spi_microblaze_bus_t;
 
-    cyg_haladdress    dma_reg_base;    // Base address of DMA register block.
-    cyg_uint8         dma_tx_channel;  // TX DMA channel for this bus.
-    cyg_uint8         dma_rx_channel;  // RX DMA channel for this bus.
-    cyg_vector_t      dma_tx_intr;     // Interrupt used for DMA transmit.
-    cyg_vector_t      dma_rx_intr;     // Interrupt used for DMA receive.
-    cyg_bool          tx_dma_done;     // Flags used to signal completion.
-    cyg_bool          rx_dma_done;     // Flags used to signal completion.
-} cyg_spi_at91_bus_t;
+typedef struct cyg_spi_microblaze_dev_s {
+  cyg_spi_device  spi_device;
+  cyg_uint8       spi_cpha;
+  cyg_uint8       spi_cpol;
+  cyg_uint8       spi_lsbf;
+} cyg_spi_microblaze_dev_t;
 
-//-----------------------------------------------------------------------------
-// AT91 SPI DEVICE
+struct spi_config {
+  XSpi_Config *conf;
+};
 
-typedef struct cyg_spi_at91_device_s
-{
-    // ---- Upper layer data ----
+//#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
+externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0;
+//#endif
 
-    cyg_spi_device spi_device;  // Upper layer SPI device data
 
-    // ---- Lower layer data (configurable) ----
-
-    cyg_uint8  dev_num;         // Device number
-    cyg_uint8  cl_pol;          // Clock polarity (0 or 1)
-    cyg_uint8  cl_pha;          // Clock phase    (0 or 1)
-    cyg_uint32 cl_brate;        // Clock baud rate
-    cyg_uint16 cs_up_udly;      // Delay in us between CS up and transfer start
-    cyg_uint16 cs_dw_udly;      // Delay in us between transfer end and CS down
-    cyg_uint16 tr_bt_udly;      // Delay in us between two transfers
-
-    // ---- Lower layer data (internal) ----
-
-    cyg_bool   init;            // Is device initialized
-    cyg_uint8  cl_scbr;         // Value of SCBR (SPI clock) reg field
-    cyg_uint8  cl_div32;        // Divide SPI master clock by 32
-} cyg_spi_at91_device_t;
-
-//-----------------------------------------------------------------------------
-// AT91 SPI exported busses
-
-/* For backwards compatability  */
-#define cyg_spi_at91_bus cyg_spi_at91_bus0
-
-externC cyg_spi_at91_bus_t cyg_spi_at91_bus0;
-externC cyg_spi_at91_bus_t cyg_spi_at91_bus1;
-
-//-----------------------------------------------------------------------------
-
-#endif // CYGONCE_DEVS_SPI_ARM_AT91_H 
-
-//-----------------------------------------------------------------------------
-// End of spi_at91.h

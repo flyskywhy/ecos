@@ -1,8 +1,8 @@
 # ====================================================================
 #
-#      spi_at91.cdl
+#      spi_microblaze.cdl
 #
-#      Atmel AT91 (ARM) SPI driver configuration data 
+#      Microblaze SPI driver configuration data 
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -46,186 +46,50 @@
 #
 # ====================================================================
 
-cdl_package CYGPKG_DEVS_SPI_ARM_AT91 {
+cdl_package CYGPKG_DEVS_SPI_MICROBLAZE {
     parent        CYGPKG_IO_SPI
     active_if     CYGPKG_IO_SPI
-    display       "Atmel AT91 SPI driver"
-    requires      CYGPKG_HAL_ARM_AT91
+    display       "Microblaze SPI driver"
+    description   "Microblaze SPI driver"
     requires      CYGPKG_ERROR
     hardware
+    active_if     CYGPKG_HAL_MICROBLAZE
+    requires      CYGPKG_HAL_MICROBLAZE_GENERIC
+    
+    active_if     MON_SPI_0
+    
     include_dir   cyg/io
-    compile       spi_at91.c
-    compile       -library=libextras.a spi_at91_init.cxx
+    compile       -library=libextras.a spi_microblaze.c src/xspi.c src/xspi_g.c src/xspi_options.c \
+                  src/xspi_selftest.c src/xspi_sinit.c src/xspi_stats.c
 
-    cdl_option CYGHWR_DEVS_SPI_ARM_AT91_BUS0 {
-        display       "Enable support for SPI bus 0"
+    cdl_component CYGPKG_DEVS_SPI_MICROBLAZE_BUS0 {
+        display       "Enable SPI interface 0"
         flavor        bool
         default_value 1
-        description   "Enable this option to add support for the first 
-	               SPI peripheral. The most AT91 devices only have one bus" 
+        description   "Enable this component to get support for SPI interface 0."
     }
 
-    cdl_interface CYGINT_DEVS_SPI_ARM_AT91_HAS_BUS1 {
-        description   "
-            This interface is implemented by HALs for devices which have
-            the second SPI bus controller."
-    }
-        
 
-    cdl_option CYGHWR_DEVS_SPI_ARM_AT91_BUS1 {
-	active_if     CYGINT_DEVS_SPI_ARM_AT91_HAS_BUS1
-        display       "Enable support for SPI bus 1"
-        flavor        bool
-        default_value 0
-        description   "Enable this option to add support for the second 
-	               SPI peripheral. The most AT91 devices only have one bus" 
-    }
 
-    cdl_component CYGPKG_DEVS_SPI_ARM_AT91_BUS0_CFG {
-        active_if   CYGHWR_DEVS_SPI_ARM_AT91_BUS0
-	display     "Configuration options for SPI Bus 0"
-	flavor      none
-	description "This is the configuration options for SPI Bus 0"
+
+    cdl_component CYGPKG_DEVS_SPI_MICROBLAZE_OPTIONS {
+        display "SPI build options"
+        flavor  none
+        no_define
 	
-        cdl_option CYGHWR_DEVS_SPI_ARM_AT91_BUS0_PCSDEC {
-            display       "Support 4 to 16 decoder of chip select signals."
-            flavor        bool
-            default_value 0
-            description   "Enable this option if SPI peripheral chip 
-                selects are connected through an 4 to 16 decoder."
-        }
-
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS0 {
-            display       "PIO-Pin used for NPSC0"
-            flavor        data
-            default_value  {"AT91_SPI_NPCS0"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-	
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS1 {
-            display       "PIO-Pin used for NPSC1"
-            flavor        data
-            default_value  {"AT91_SPI0_NPCS1"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS2 {
-            display       "PIO-Pin used for NPSC2"
-            flavor        data
-            default_value  {"AT91_SPI0_NPCS2"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS0_NPCS3 {
-            display       "PIO-Pin used for NPSC3"
-            flavor        data
-            default_value  {"AT91_SPI0_NPCS3"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-
-    }
-
-    cdl_component CYGPKG_DEVS_SPI_ARM_AT91_BUS1_CFG {
-        active_if   CYGHWR_DEVS_SPI_ARM_AT91_BUS1
-	display     "Configuration options for SPI Bus 1"
-	flavor      none
-	description "This is the configuration options for SPI Bus 1"
-	
-        cdl_option CYGHWR_DEVS_SPI_ARM_AT91_BUS1_PCSDEC {
-            display       "Support 4 to 16 decoder of chip select signals."
-            flavor        bool
-            default_value 0
-            description   "Enable this option if SPI peripheral chip 
-                selects are connected through an 4 to 16 decoder."
-        }
-
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS1_NPCS0 {
-            display       "PIO-Pin used for NPSC0"
-            flavor        data
-            default_value  {"AT91_SPI1_NPCS0"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-	
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS1_NPCS1 {
-            display       "PIO-Pin used for NPSC1"
-            flavor        data
-            default_value  {"AT91_SPI1_NPCS1"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS1_NPCS2 {
-            display       "PIO-Pin used for NPSC2"
-            flavor        data
-            default_value  {"AT91_SPI1_NPCS2"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-        cdl_option CYGDAT_DEVS_SPI_ARM_AT91_BUS1_NPCS3 {
-            display       "PIO-Pin used for NPSC3"
-            flavor        data
-            default_value  {"AT91_SPI1_NPCS3"}
-            description   "Any GPIO pin is able to be used as the SPI driver
-	                   uses GPIO to control the chip selects. Specify the pin
-			   as \"AT91_GPIO_PA13\" or \"AT91_GPIO_PB5\" etc. Specify 
-			   \"NONE\" if this chip select is to be disabled"
-        }
-
-    }
+	}
 
     
-    cdl_component CYGPKG_DEVS_SPI_ARM_AT91_OPTIONS {
-        display "Atmel AT91 SPI driver build options"
-        flavor  none
-        description   "
-	        Package specific build options including control over
-	        compiler flags used only in building this package,
-	        and details of which tests are built."
-
-        cdl_option CYGPKG_DEVS_SPI_ARM_AT91_CFLAGS_ADD {
-            display "Additional compiler flags"
-            flavor  data
-            no_define
-            default_value { "" }
-            description   "
-                This option modifies the set of compiler flags for
-                building the SPI device. These flags are used in addition
-                to the set of global flags."
-        }
-
-        cdl_option CYGPKG_DEVS_SPI_ARM_AT91_CFLAGS_REMOVE {
-            display "Suppressed compiler flags"
-            flavor  data
-            no_define
-            default_value { "" }
-            description   "
-                This option modifies the set of compiler flags for
-                building the SPI device. These flags are removed from
-                the set of global flags if present."
-        }
-    }
-    cdl_option CYGPKG_DEVS_SPI_ARM_AT91_TESTS {
+    cdl_option CYGPKG_DEVS_SPI_MICROBLAZE_TESTS {
         display         "SPI tests"
         flavor          data
         no_define
-        calculated      { "tests/loopback tests/m25p05 tests/altera" }
+        calculated      { "tests/m25p05" }
+        #tests/eth_test tests/spi 
+#        default value {"tests/spi"}
     } 
+                                            
+    
 }
 
 # EOF spi_at91.cdl
