@@ -7077,6 +7077,14 @@ package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	description	"Xilinx Uart16550 serial driver"
 }
 
+package CYGPKG_DEVS_SPI_MICROBLAZE {
+	alias		{"Xilinx SPI driver" devs_mb_spi}
+	hardware
+	directory	devs/spi/microblaze
+	script		spi_microblaze.cdl
+	description	"Xilinx SPI driver"
+}
+
 # --------------------------------------------------------------------------
 
 ## XILINX Spartan 3E Starter Kit (Microblaze 4a) packages
