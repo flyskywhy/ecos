@@ -114,8 +114,9 @@ serial_test( void )
     int count = sizeof(test_configs) / sizeof(cyg_ser_cfg_t);
     int i;
 
-    test_open_ser(&ser_handle);
-
+//    test_open_ser(&ser_handle);
+   cyg_io_lookup("/dev/ttydiag",tty_handle);
+   
     // We need the filter for this test.
     test_ping(ser_handle);
 

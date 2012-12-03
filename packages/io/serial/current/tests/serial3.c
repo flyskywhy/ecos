@@ -76,8 +76,8 @@ serial_test( void )
 {
     cyg_io_handle_t ser_handle;
 
-    test_open_ser(&ser_handle);
-
+    //test_open_ser(&ser_handle);
+    cyg_io_lookup("/dev/ttydiag",ser_handle);
     // We need the filter for this test.
     test_ping(ser_handle);
 

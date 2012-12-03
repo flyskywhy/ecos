@@ -77,7 +77,9 @@ tty_test( void )
     cyg_uint32 msglen;
     cyg_io_handle_t tty_handle;
 
-    test_open_tty(&tty_handle);
+//    test_open_tty(&tty_handle);
+   cyg_io_lookup("/dev/ttydiag",tty_handle);
+       
 
     CYG_TEST_INFO("Writing a raw string to the TTY device...");
     msglen = strlen(&test_msg1[0]);

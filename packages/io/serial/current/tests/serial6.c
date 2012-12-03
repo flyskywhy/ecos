@@ -1,8 +1,8 @@
 //==========================================================================
 //
-//        serial5.c
+//        serial3.c
 //
-//        Test data duplex receive and send.
+//        Test data half-duplex receive and send.
 //
 //==========================================================================
 // ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -41,10 +41,11 @@
 //
 // Author(s):     jskov
 // Contributors:  jskov
-// Date:          1999-03-19
-// Description:   Test the duplex receive and send capabilities of 
+// Date:          1999-03-17
+// Description:   Test the half-duplex receive and send capabilities of 
 //                the serial driver.
 // Requirements:  This test requires the ser_filter on the host side.
+// 
 //####DESCRIPTIONEND####
 
 #include <pkgconf/system.h>
@@ -75,11 +76,10 @@ serial_test( void )
 {
     cyg_io_handle_t ser_handle;
 
-    //test_open_ser(&ser_handle);
-    cyg_io_lookup("/dev/ttydiag",ser_handle);
+    test_open_ser(&ser_handle);
+
     // We need the filter for this test.
     test_ping(ser_handle);
-
 
 #if (CYGINT_IO_SERIAL_TEST_SKIP_38400 > 0)
     {
@@ -96,36 +96,48 @@ serial_test( void )
     }
 #endif
 
-    // Start out slow, then go for many tests. Each cycle causes
-    // 512 bytes to be sent over the wire.
-    test_binary(ser_handle,    1, MODE_DUPLEX_ECHO);
-    test_binary(ser_handle,    2, MODE_DUPLEX_ECHO);
-    test_binary(ser_handle,    5, MODE_DUPLEX_ECHO);
+    // Start slowly, then go for max size.
+    {
+        test_binary(ser_handle,             16, MODE_EOP_ECHO);
+        test_binary(ser_handle,            128, MODE_EOP_ECHO);
+        test_binary(ser_handle,            256, MODE_EOP_ECHO);
+        test_binary(ser_handle, IN_BUFFER_SIZE, MODE_EOP_ECHO);
+    }
 
-#if 0 // Disable these until the ser_filter produces status output.
-    test_binary(ser_handle,  128, MODE_DUPLEX_ECHO);
-    test_binary(ser_handle,  512, MODE_DUPLEX_ECHO);
-    test_binary(ser_handle, 1024, MODE_DUPLEX_ECHO);
+    // Write some varying length packets.
+    {
+        int i;
+        for(i = 0; i < 8; i++) {
+            // No echo.
+            test_binary(ser_handle,   256 + 42*i, MODE_NO_ECHO);
+            test_binary(ser_handle,    64 +  7*i, MODE_NO_ECHO);
+            // Echo.
+            test_binary(ser_handle,   256 + 42*i, MODE_EOP_ECHO);
+            test_binary(ser_handle,    64 +  7*i, MODE_EOP_ECHO);
+        }
+    }
+
+#if 0 // Disable this for now.
+    // End with some long packets.
+    {
+        test_binary(ser_handle,  2048, MODE_NO_ECHO);
+        test_binary(ser_handle, 16384, MODE_NO_ECHO);
+        test_binary(ser_handle, 65536, MODE_NO_ECHO);
+    }
 #endif
 
-    CYG_TEST_PASS_FINISH("serial5 test OK");
+    CYG_TEST_PASS_FINISH("serial3 test OK");
 }
 
 void
 cyg_start(void)
 {
-    CYG_TEST_INIT();
-    cyg_thread_create(10,                   // Priority - just a number
-                      (cyg_thread_entry_t*)serial_test,         // entry
-                      0,                    // 
-                      "serial_thread",     // Name
-                      &stack[0],            // Stack
-                      CYGNUM_HAL_STACK_SIZE_TYPICAL,           // Size
-                      &thread_handle,       // Handle
-                      &thread_data          // Thread data structure
-        );
-    cyg_thread_resume(thread_handle);
-    cyg_scheduler_start();
+    cyg_io_handle_t uart_handle;
+    char* mess = "Trololo!!!";
+    Cyg_ErrNo error;
+    error = cyg_io_lookup("/dev/ttydiag",uart_handle);
+    diag_printf("!!Error = %X",error);
+    cyg_io_write(uart_handle,"12345678",8);
 }
 
 #else // CYGFUN_KERNEL_API_C
@@ -144,4 +156,4 @@ cyg_start( void )
     CYG_TEST_NA( N_A_MSG);
 }
 #endif // N_A_MSG
-// EOF serial5.c
+// EOF serial3.c

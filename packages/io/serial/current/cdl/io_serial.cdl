@@ -295,7 +295,7 @@ cdl_package CYGPKG_IO_SERIAL {
             display "Serial device driver tests"
             flavor  data
             no_define
-            calculated { CYGPKG_IO_SERIAL_DEVICES ? "tests/serial1 tests/serial2 tests/serial3 tests/serial4 tests/serial5 tests/tty1 tests/tty2 tests/flow1 tests/flow2" : "" }
+            calculated { CYGPKG_IO_SERIAL_DEVICES ? "tests/serial1 tests/serial2 tests/serial3 tests/serial4 tests/serial5 tests/serial6 tests/serial7 tests/tty1 tests/tty2 tests/flow1 tests/flow2" : "" }
             description   "
                 This option specifies the set of tests for the serial device drivers."
         }

@@ -119,8 +119,8 @@ tty_test( void )
 {
     cyg_io_handle_t tty_handle;
 
-    test_open_tty(&tty_handle);
-
+//    test_open_tty(&tty_handle);
+    cyg_io_lookup("/dev/ttydiag",tty_handle);
     tty_api_test(&tty_handle);
 
     CYG_TEST_PASS_FINISH("tty1 test OK");
