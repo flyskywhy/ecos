@@ -172,7 +172,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             display "Global command prefix"
             flavor  data
             no_define
-            default_value { "microblaze-uclinux" }
+            default_value { "microblazeel-unknown-linux-gnu" }
             description "
                 This option specifies the command prefix used when
                 invoking the build tools."
