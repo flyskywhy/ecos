@@ -576,8 +576,10 @@ eth_drv_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
         // Note: drivers may behave like IFF_ALLMULTI if the list is 
         // more than their hardware can handle, e.g. some can only handle 1.
         if ((sc->funs->control)(sc, mode, &mc_list, sizeof(mc_list))) {
+#ifdef CYGDBG_IO_ETH_DRIVERS_DEBUG
             diag_printf( "[%s] Warning: Driver can't set multi-cast mode\n",
                          __FUNCTION__ );
+#endif
             error = EINVAL;
         }
         break;
@@ -644,7 +646,10 @@ eth_drv_send(struct ifnet *ifp)
     if ((ifp->if_flags & IFF_RUNNING) != IFF_RUNNING) {
          return;
     }
-
+    /* TO BE REMOVED !! - add in for debugging */
+    if (IF_QFULL(&ifp->if_snd)) {
+        diag_printf("The queue is full now\n ");
+    }
     // If nothing on the queue, no need to bother hardware
     if (IF_IS_EMPTY(&ifp->if_snd)) {
         return;
