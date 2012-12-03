@@ -419,6 +419,9 @@ flash_erase_block(void* block, unsigned int size)
         if (bootblock) {
             len = *bootblocks++;
         }
+        else {
+            len = flash_dev_info->block_size;
+        }
     }
     return res;
 }

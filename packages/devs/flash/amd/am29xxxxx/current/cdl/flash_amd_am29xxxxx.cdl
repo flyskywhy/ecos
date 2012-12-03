@@ -53,7 +53,9 @@ cdl_package CYGPKG_DEVS_FLASH_AMD_AM29XXXXX {
     parent        CYGPKG_IO_FLASH
     active_if	  CYGPKG_IO_FLASH
 
-    active_if     CYGINT_DEVS_FLASH_AMD_AM29XXXXX_REQUIRED
+    # Don't need separate module for this.  Being handled within 
+    # hal_aux.c as part of its include files.
+    #active_if     CYGINT_DEVS_FLASH_AMD_AM29XXXXX_REQUIRED
 
     implements    CYGHWR_IO_FLASH_DEVICE
     implements    CYGHWR_IO_FLASH_DEVICE_LEGACY
