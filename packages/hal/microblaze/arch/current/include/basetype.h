@@ -56,7 +56,7 @@
 //-----------------------------------------------------------------------------
 // Characterize the architecture
 
-#define CYG_BYTEORDER           CYG_MSBFIRST    // Big endian
+#define CYG_BYTEORDER           CYG_LSBFIRST    // Little endian
 
 //-----------------------------------------------------------------------------
 // Microblaze does not usually use labels with underscores.
