@@ -139,9 +139,9 @@
 #define _eth_drv_recv(sc,len) \
   (sc->funs->eth_drv->recv)(sc,len)
 
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
 static cyg_uint32 at91_eth_isr(cyg_vector_t vector, cyg_addrword_t data);
-#endif
+//#endif
 
 // --------------------------------------------------------------
 // RedBoot configuration options for managing ESAs for us
@@ -230,10 +230,10 @@ typedef struct at91_eth_priv_s
   cyg_uint32 rx_head_idx;
   cyg_uint32 rx_tail_idx;
   cyg_uint32 rx_frame_cnt;
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
   cyg_interrupt intr;
   cyg_handle_t  intr_handle;
-#endif
+//#endif
 } at91_eth_priv_t;
 
 // AT91 multicast hash mask (64-bit hash in two 32-bit words)
@@ -648,6 +648,52 @@ at91_add_mc_mac(at91_eth_priv_t * priv, cyg_uint8 * mc_addr)
   HAL_WRITE_UINT32(priv->base + AT91_EMAC_NCFG, t);
 }
 
+// Remove a multicast MAC address from the hardware and enable hash matching.
+// Packets received which match these addresses will not be passed on.
+static void
+at91_rem_mc_mac(at91_eth_priv_t * priv, cyg_uint8 * mc_addr)		// Added function (Remove multicast MAC address)
+{
+  cyg_uint32 t, mc_lo, mc_hi, hash_lo, hash_hi;
+  int i, bit_idx, bit_cnt;
+
+  // Split multicast mac address into two words.
+  mc_lo = (mc_addr[3] << 24) |
+          (mc_addr[2] << 16) |
+          (mc_addr[1] <<  8) |
+           mc_addr[0];
+
+  mc_hi = (mc_addr[5] << 8) |
+           mc_addr[4];
+
+  // Build the 6-bit hash_bit index.
+  bit_idx = 0;
+  for (i = 0; i < 6; i++) {
+    bit_cnt =  at91_mc_bitcnt(mc_lo & at91_mc_hash_masks[i].lo);
+    bit_cnt += at91_mc_bitcnt(mc_hi & at91_mc_hash_masks[i].hi);
+
+    bit_idx |= (bit_cnt & 1) << i;
+  }
+
+  // Read the current 64-bit hardware hash value.
+  HAL_READ_UINT32(priv->base + AT91_EMAC_HRB, hash_lo);
+  HAL_READ_UINT32(priv->base + AT91_EMAC_HRT, hash_hi);
+
+  // Set a single bit in the hash value according to the index.
+  if (bit_idx > 31)
+    hash_hi &= 0 << (bit_idx - 32);
+  else
+    hash_lo &= 0 << bit_idx;
+
+  // Write the new 64-bit hardware hash value.
+  HAL_WRITE_UINT32(priv->base + AT91_EMAC_HRB, hash_lo);
+  HAL_WRITE_UINT32(priv->base + AT91_EMAC_HRT, hash_hi);
+
+  // Enable hardware to do multicast hash matching.
+  HAL_READ_UINT32(priv->base + AT91_EMAC_NCFG, t);
+  t |= AT91_EMAC_NCFG_MTI;
+  HAL_WRITE_UINT32(priv->base + AT91_EMAC_NCFG, t);
+}
+
 static void
 at91_clear_stats(at91_eth_priv_t *priv)
 {
@@ -704,7 +750,7 @@ at91_eth_init(struct cyg_netdevtab_entry *tab)
 
   // If we are building an interrupt enabled version,
   // then install the interrupt handler
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
   AT91_ETH_DEBUG1(true, "AT91_ETH: Installing Interrupts on IRQ %d\n",
                   priv->int_vector);
   cyg_drv_interrupt_create(priv->int_vector,
@@ -717,8 +763,8 @@ at91_eth_init(struct cyg_netdevtab_entry *tab)
 
   cyg_drv_interrupt_configure(priv->int_vector, false, false);
   cyg_drv_interrupt_attach(priv->intr_handle);
-  cyg_drv_interrupt_unmask(priv->int_vector);
-#endif
+  cyg_drv_interrupt_unmask(priv->int_vector);				// !!! Warning	!!!	// FIXME unmask
+//#endif
 
 #ifdef CYGHWR_DEVS_ETH_ARM_AT91_GET_ESA
   // Get MAC address from RedBoot configuration variables.
@@ -810,9 +856,9 @@ at91_eth_stop(struct eth_drv_sc *sc)
 {
   at91_eth_priv_t *priv = (at91_eth_priv_t *)sc->driver_private;
 
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
   HAL_WRITE_UINT32(priv->base + AT91_EMAC_IDR, AT91_ETH_INT_MASK);
-#endif
+//#endif
 
   at91_disable(priv);
 }
@@ -858,7 +904,7 @@ at91_eth_control(struct eth_drv_sc *sc, unsigned long key,
       return 0;
     }
 
-#ifdef ETH_DRV_GET_MAC_ADDRESS
+#ifdef ETH_DRV_GET_MAC_ADDRESS						// Added
     // Get Ethernet MAC address from hardware
     case ETH_DRV_GET_MAC_ADDRESS:
     {
@@ -934,7 +980,26 @@ at91_eth_control(struct eth_drv_sc *sc, unsigned long key,
 
       return 0;
     }
+    case ETH_DRV_ADD_MC:										// Added
+    {
+        cyg_uint8 *mac_addr = (cyg_uint8 *)data;
 
+        if (mac_addr == NULL || length < ETHER_ADDR_LEN)
+          return 1;
+
+    	at91_add_mc_mac(sc->driver_private, mac_addr);
+    	return 0;
+    }
+    case ETH_DRV_REM_MC:										// Added
+    {
+        cyg_uint8 *mac_addr = (cyg_uint8 *)data;
+
+        if (mac_addr == NULL || length < ETHER_ADDR_LEN)
+          return 1;
+
+    	at91_rem_mc_mac(sc->driver_private, mac_addr);
+    	return 0;
+    }
     // Unknown or unhandled key
     default:
     {
@@ -963,7 +1028,7 @@ at91_eth_can_send(struct eth_drv_sc *sc)
 
 
 // This routine is called to send data to the hardware
-static void
+static int
 at91_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len,
               int total_len, unsigned long key)
 {
@@ -976,13 +1041,14 @@ at91_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len,
   // ever used by a transmitted packet.
   if (sg_len > priv->tx_max_frame_sglen) {
     priv->tx_max_frame_sglen = sg_len;
-    AT91_ETH_DEBUG1(true, "AT91_ETH: Tx sg_len increased to %d\n", sg_len);
+    AT91_ETH_DEBUG1(true, "AT91_ETH: Tx sg_len increased to %d\n", sg_len);		// Commented
   }
 
   if (sg_len > priv->tx_free) {
-    AT91_ETH_DEBUG1(true, "AT91_ETH: not enough free tx descriptors\n");
-    (sc->funs->eth_drv->tx_done)(sc, key, 1);
-    return;
+    AT91_ETH_DEBUG1(true, "AT91_ETH: not enough free tx descriptors\n");		// Commented
+//    (sc->funs->eth_drv->tx_done)(sc, key, 1);
+    return 0;
+//	  return;
   }
 
   // Disable transmit interrupts.
@@ -1025,12 +1091,13 @@ at91_eth_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list, int sg_len,
   // Enable transmit interrupts and start transmit.
   at91_start_transmitter(priv);
   cyg_drv_dsr_unlock();
+  return 1;
 }
 
 
 //======================================================================
 
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
 static cyg_uint32
 at91_eth_isr (cyg_vector_t vector, cyg_addrword_t data)
 {
@@ -1041,7 +1108,7 @@ at91_eth_isr (cyg_vector_t vector, cyg_addrword_t data)
   cyg_drv_interrupt_acknowledge(priv->int_vector);
   return CYG_ISR_HANDLED | CYG_ISR_CALL_DSR;
 }
-#endif
+//#endif
 
 
 /* Handle transmit-complete events. */
@@ -1113,7 +1180,7 @@ at91_eth_tx(struct eth_drv_sc *sc)
       // If this descriptor is the last in a frame, then notify
       // the TCP/IP stack about the status of the transmit.
       if (sr & AT91_EMAC_TBD_SR_EOF) {
-        _eth_drv_tx_done(sc, priv->tx_keys[priv->tx_tail_idx], tx_err);
+//        _eth_drv_tx_done(sc, priv->tx_keys[priv->tx_tail_idx], tx_err);
 
         // Exegin specific. Do transmit callback.
         if (!tx_err && at91_eth_tx_callback_func)
@@ -1258,9 +1325,9 @@ at91_eth_deliver(struct eth_drv_sc *sc)
       at91_eth_tx(sc);
   } while (isr);
 
-#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED
+//#ifdef CYGINT_IO_ETH_INT_SUPPORT_REQUIRED		// Commented
   cyg_drv_interrupt_unmask(priv->int_vector);
-#endif
+//#endif
 }
 
 
@@ -1339,7 +1406,7 @@ at91_eth_priv_t at91_priv_data = {
 };
 
 ETH_DRV_SC(at91_sc,
-           &at91_priv_data,       // Driver specific data
+		   &at91_priv_data,       // Driver specific data
            "eth0",                // Name for this interface
            at91_eth_start,
            at91_eth_stop,
