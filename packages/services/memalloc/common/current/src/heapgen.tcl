@@ -67,10 +67,8 @@ proc dputs { args } {
 }
 
 proc tcl_path { posix_path } {
-    # Use the HOST setting from the toplevel makefile in preference to
-    # tcl_platform() since we have more control over the former than the
-    # latter.
-    if { [info exists ::env(HOST)] && [string equal $::env(HOST) "CYGWIN"] } {
+    global tcl_platform
+    if { $tcl_platform(platform) == "windows" } {
         return [ exec cygpath -w $posix_path ]
     } else {
         return $posix_path
