@@ -134,6 +134,9 @@ __enet_poll(void)
 #endif
 
     while (true) {
+#if defined(HAL_WATCHDOG_RESET)
+        HAL_WATCHDOG_RESET;
+#endif
         /*
          * Try to get a free pktbuf and return if none
          * are available.
