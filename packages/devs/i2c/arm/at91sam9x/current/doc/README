@@ -1,0 +1,57 @@
+Preliminary documentation for AT91SAM9X I2C driver
+===================================================
+
+This Driver hasn't been tested on any AT91SAM9X based board.
+
+ADDING A DEVICE
+================
+    A device is added to the system using macro
+
+    CYG_I2C_AT91SAM9X_DEVICE(name, cyg_i2c_bus* i2c_bus, cyg_uint16 i2c_address
+        cyg_uint16 i2c_flags, cyg_uint32 i2c_delay, cyg_uint8 int_addr_sz);
+
+    Usage of this macro is similar to using CYG_I2C_DEVICE except the last
+    argument int_addr_sz, which is extra.
+        
+        name           
+        i2c_bus         :-  This specifies the bus which this device is 
+                            connected to.Here it is a pointer to 
+                            "cyg_i2c_at91sam9x_bus".
+
+        i2c_address     :-  This is 7 bit I2C address of the device.
+
+        i2c_flags       :-  This flag is not used presently.
+
+        i2c_delay       :-  This is the clock period which should be used when 
+                            interacting with the device, in nanoseconds.
+
+        int_addr_sz     :-  Some I2C devices (like EEPROM,FRAM etc) requires
+                            internal address to access locations in it.
+                            If you are using such devices you can give the
+                            number of internal address bytes used.
+
+                            WHILE USING I2C APIS THE DRIVER WILL EXPECT
+                            FIRST "int_addr_sz" BYTES TO BE THE INTERNAL
+                            ADDRESS OF COMMUNICATING DEVICE.
+                            SIZE ARGUMENT GIVEN WILL BE TAKEN AS THE NUMBER OF
+                            DATA BYTES TO BE TRANSFERRED EXCLUDING THE INTERNAL
+                            ADDRESS.
+
+                            THIS FEATURE CAN BE DISABLED BY GIVING ZERO HERE
+
+    EXAMPLE
+    =======
+        
+        Adding EEPROM device to the system.
+            
+            EEPROM specifications
+                    address = 56
+                    frequency = 400Khz
+                    size = 64K (8132 * 8)
+                    data word address (internal address) = 2 bytes
+    
+    Adding this eeprom to the system will be like given below
+
+            CYG_I2C_AT91SAM9X_DEVICE(cyg_i2c_at91_dev_eeprom,
+                    &cyg_i2c_at91sam9x_bus, 0x56, 0x00, 2500, 2);
+

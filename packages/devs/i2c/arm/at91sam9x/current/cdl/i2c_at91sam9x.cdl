@@ -1,0 +1,81 @@
+# ====================================================================
+#
+#      i2c_at91sam9x.cdl
+#
+#      I2C driver for AT91SAM9x configuration data 
+#
+# ====================================================================
+## ####ECOSGPLCOPYRIGHTBEGIN####                                            
+## -------------------------------------------                              
+## This file is part of eCos, the Embedded Configurable Operating System.   
+## Copyright (C) 1998, 1999, 2000, 2001, 2002, 2009 Free Software Foundation, Inc.
+##
+## eCos is free software; you can redistribute it and/or modify it under    
+## the terms of the GNU General Public License as published by the Free     
+## Software Foundation; either version 2 or (at your option) any later      
+## version.                                                                 
+##
+## eCos is distributed in the hope that it will be useful, but WITHOUT      
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or    
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License    
+## for more details.                                                        
+##
+## You should have received a copy of the GNU General Public License        
+## along with eCos; if not, write to the Free Software Foundation, Inc.,    
+## 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.            
+##
+## As a special exception, if other files instantiate templates or use      
+## macros or inline functions from this file, or you compile this file      
+## and link it with other works to produce a work based on this file,       
+## this file does not by itself cause the resulting work to be covered by   
+## the GNU General Public License. However the source code for this file    
+## must still be made available in accordance with section (3) of the GNU   
+## General Public License v2.                                               
+##
+## This exception does not invalidate any other reasons why a work based    
+## on this file might be covered by the GNU General Public License.         
+## -------------------------------------------                              
+## ####ECOSGPLCOPYRIGHTEND####                                              
+# ====================================================================
+######DESCRIPTIONBEGIN####
+#
+# Date:           2011-04-21
+#
+#####DESCRIPTIONEND####
+#
+# ====================================================================
+
+cdl_package CYGPKG_DEVS_I2C_ARM_AT91SAM9X {
+    display     "I2C driver for AT91SAM9X family of ARM controllers"
+    parent      CYGPKG_IO_I2C
+    active_if   CYGPKG_IO_I2C
+    active_if   CYGPKG_HAL_ARM_AT91SAM9
+    description "This package provides a driver for the I2C module found in
+                 Atmel AT91SAM9X controllers."
+    hardware
+    include_dir   cyg/io
+    compile     i2c_at91sam9x.c
+    cdl_component CYGOPT_IO_I2C_SUPPORT_TIMEOUTS {
+        display "Support read/write timeouts for I2C driver"
+        flavor  bool
+        default_value 1
+        description   "This option enables timeouts for Atmel I2C driver."
+    }
+    cdl_component CYGOPT_IO_I2C_TIMEOUT {
+        display "Timeout value for I2C driver"
+        flavor  data
+        default_value 2000
+        description   "This option specifies timeout value for Atmel I2C driver."
+	active_if      CYGOPT_IO_I2C_SUPPORT_TIMEOUTS 
+    }
+    cdl_component CYGPKG_DEVS_I2C_ARM_AT91SAM9X_TESTS {
+        display "Atmel AT91SAM9X I2C driver tests"
+        flavor  data
+        no_define
+        default_value {"tests/lm75a"}
+        description   "This option specifies test for lm75a sensor."
+    }
+
+
+
+}
