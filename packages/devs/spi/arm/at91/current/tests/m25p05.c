@@ -90,9 +90,9 @@ externC cyg_spi_at91_bus_t cyg_spi_at91_bus0, cyg_spi_at91_bus1;
 // SPI loopback device driver data structures.
 
 cyg_spi_at91_device_t loopback_device = {
-    .spi_device.spi_bus = &cyg_spi_at91_bus0.spi_bus,
+    .spi_device.spi_bus = &cyg_spi_at91_bus1.spi_bus,
     .dev_num = 0 ,                      // Only 1 device. 
-    .cl_pol = 1,
+    .cl_pol = 0,
     .cl_pha = 1,
     .cl_brate = 8000000,                // Nominal 8Mhz.
     .cs_up_udly = 1,
@@ -102,9 +102,20 @@ cyg_spi_at91_device_t loopback_device = {
 
 //---------------------------------------------------------------------------
 
-const char tx_data[] = "Testing, testing, 12, 123.";
-const char tx_data1[] = "Testing extended API...";
-const char tx_data2[] = "Testing extended API for a second transaction.";
+char tx_data[] = "Testing, testing, 12, 123.";
+char tx_data1[] = "Testing extended API...";
+char tx_data2[] = "Testing extended API for a second transaction.";
+
+
+#define CMD_WREN 0x06
+#define CMD_WRDI 0x04
+#define CMD_RDID 0xAB
+
+//const char tx_wren[] = {}; // write enable 98
+//const char tx_wrdi[] = {0x04}; // write disable 80
+//const char tx_[] = {0xc0}; // read cmd + 6 bit addr
+
+
 
 char rx_data [sizeof(tx_data)];
 char rx_data1 [sizeof(tx_data1)];
@@ -115,14 +126,28 @@ char rx_data2 [sizeof(tx_data2)];
 
 void run_test_1 (cyg_bool polled)
 {
-    diag_printf ("Test 1 : Simple transfer test (polled = %d).\n", polled ? 1 : 0);
-    cyg_spi_transfer (&loopback_device.spi_device, polled, sizeof (tx_data), 
-        (const cyg_uint8*) &tx_data[0], (cyg_uint8*) &rx_data[0]);
+//    diag_printf ("Test 1 : Simple transfer test ).\n");
+    tx_data[0] = CMD_WREN;
+    
+    //while(1)
+    //{
+//	cyg_spi_transfer (&loopback_device.spi_device, 0, 1,
+//	    (const cyg_uint8*) tx_data, (cyg_uint8*) rx_data);
+//    }
+//    diag_printf ("1    Rx data : %s\n", rx_data);
+    tx_data[0] = CMD_RDID;
+    tx_data[1] = 0xff;
+    tx_data[2] = 0xff;
+    tx_data[3] = 0xff;
+    tx_data[4] = 0xff;
 
-    diag_printf ("    Tx data : %s\n", tx_data);
-    diag_printf ("    Rx data : %s\n", rx_data);
-    CYG_ASSERT (memcmp (tx_data, rx_data, sizeof (tx_data)) == 0,
-        "Simple transfer loopback failed - mismatched data.\n");
+    while(1){
+	cyg_spi_transfer (&loopback_device.spi_device, 0, 5, 
+	    (const cyg_uint8*) tx_data, (cyg_uint8*) rx_data);
+	diag_printf("2    RX DATA : 0x%x,0x%x,0x%x,0x%x,0x%x\n", rx_data[0], rx_data[1], rx_data[2], rx_data[3],rx_data[4]);
+    }
+//    diag_printf ("2    Rx data : %s\n", rx_data);
+
 }
 
 //---------------------------------------------------------------------------
