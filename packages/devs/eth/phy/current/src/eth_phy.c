@@ -166,6 +166,10 @@ _eth_phy_init(eth_phy_access_t *f)
             if (_eth_phy_read(f, PHY_ID2, addr, &state)) {
                 id |= state;
                 f->phy_addr = addr;
+
+                //TUPN.ADD.Test
+                eth_phy_printf("PHY id=%X, addr=%d\n", id, addr);
+                //TUPN.ADD.Test
                 for (dev = __ETH_PHY_TAB__; dev != &__ETH_PHY_TAB_END__;  dev++) {
                     if (dev->id == id) {
                         eth_phy_printf("PHY: %s at addr %x\n", dev->name, f->phy_addr);

@@ -94,4 +94,9 @@ static bool dp83847_stat(eth_phy_access_t *f, int *state)
     return false;
 }
 
+#ifdef CYGHWR_DEVS_ETH_PHY_DP83847
 _eth_phy_dev("National Semiconductor DP83847", 0x20005c30, dp83847_stat)
+#endif
+#ifdef CYGHWR_DEVS_ETH_PHY_DP83848
+_eth_phy_dev("National Semiconductor DP83848", 0x20005c90, dp83847_stat)
+#endif
