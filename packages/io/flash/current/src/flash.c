@@ -65,6 +65,17 @@
 #include <cyg/io/flash_dev.h>
 #include "flash_legacy.h"
 
+/* Exegin specific change to make flash package aware of watchdog */
+#if defined(CYGPKG_IO_WATCHDOG)
+#include <cyg/io/watchdog.h>
+#define FLASH_WATCHDOG_RESET        watchdog_reset()
+#elif defined(HAL_WATCHDOG_RESET)
+// Usually defined in var_io.h or plf_io.h
+#define FLASH_WATCHDOG_RESET        HAL_WATCHDOG_RESET
+#else
+#define FLASH_WATCHDOG_RESET        CYG_EMPTY_STATEMENT
+#endif
+
 // When this flag is set, do not actually jump to the relocated code.
 // This can be used for running the function in place (RAM startup
 // only), allowing calls to diag_printf() and similar.
@@ -537,6 +548,7 @@ cyg_flash_erase(cyg_flashaddr_t flash_base,
       }
     }
     if (!erased) {
+      FLASH_WATCHDOG_RESET;
       stat = dev->funs->flash_erase_block(dev,block);
     }
     if (CYG_FLASH_ERR_OK != stat) {
@@ -619,6 +631,7 @@ cyg_flash_program(cyg_flashaddr_t flash_base,
     // Only the first block may need the offset.
     offset       = 0;
     
+    FLASH_WATCHDOG_RESET;
     stat = dev->funs->flash_program(dev, addr, ram, this_write);
 #ifdef CYGSEM_IO_FLASH_VERIFY_PROGRAM
     if (CYG_FLASH_ERR_OK == stat) // Claims to be OK
@@ -645,6 +658,7 @@ cyg_flash_program(cyg_flashaddr_t flash_base,
     return (stat);
   }
   if (len > (dev->end + 1 - flash_base)) {
+    FLASH_WATCHDOG_RESET;
     return cyg_flash_program(dev->end+1, ram, 
                              len - (dev->end + 1 - flash_base),
                              err_address);
@@ -715,6 +729,7 @@ cyg_flash_read(const cyg_flashaddr_t flash_base,
           // Only the first block may need the offset
           offset      = 0;
     
+          FLASH_WATCHDOG_RESET;
           stat = dev->funs->flash_read(dev, addr, ram, this_read);
           if (CYG_FLASH_ERR_OK != stat && err_address) {
               *err_address = addr;
@@ -735,6 +750,7 @@ cyg_flash_read(const cyg_flashaddr_t flash_base,
     return (stat);
   }
   if (len > (dev->end + 1 - flash_base)) {
+      FLASH_WATCHDOG_RESET;
       return cyg_flash_read(dev->end+1, ram,
                             len - (dev->end + 1 - flash_base),
                             err_address);
