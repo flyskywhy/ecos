@@ -7085,6 +7085,14 @@ package CYGPKG_DEVS_SPI_MICROBLAZE {
 	description	"Xilinx SPI driver"
 }
 
+package CYGPKG_DEVS_FLASH_MICROBLAZE {
+	alias		{"Xilinx FLASH driver" devs_mb_flash}
+	hardware
+	directory	devs/flash/microblaze
+	script		flash_microblaze.cdl
+	description	"Xilinx FLASH driver"
+}
+
 # --------------------------------------------------------------------------
 
 ## XILINX Spartan 3E Starter Kit (Microblaze 4a) packages
