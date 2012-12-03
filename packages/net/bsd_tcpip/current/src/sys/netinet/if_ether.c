@@ -128,15 +128,19 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
 static void	arp_rtrequest __P((int, struct rtentry *, struct sockaddr *));
-static void	arprequest __P((struct arpcom *,
+void	arprequest __P((struct arpcom *,
 			struct in_addr *, struct in_addr *, u_char *));
 static void	arpintr __P((void));
 static void	arptfree __P((struct llinfo_arp *));
 static void	arptimer __P((void *));
-static struct llinfo_arp
+struct llinfo_arp
 		*arplookup __P((u_long, int, int));
 #ifdef INET
 static void	in_arpinput __P((struct mbuf *));
+struct in_arpinput_aux_t {
+    void        (*inaddrFunc)(in_addr_t, unsigned char *);
+};
+struct in_arpinput_aux_t in_arpinput_aux = {0};
 #endif
 
 /*
@@ -298,7 +302,7 @@ arp_rtrequest(req, rt, sa)
  *	- arp header target ip address
  *	- arp header source ethernet address
  */
-static void
+void
 arprequest(ac, sip, tip, enaddr)
 	register struct arpcom *ac;
 	register struct in_addr *sip, *tip;
@@ -523,6 +527,11 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	&log_arp_wrong_iface, 0,
 	"log arp packets arriving on the wrong interface");
 
+void
+arp_setauxin_func(void (*inaddrFunc)(in_addr_t, unsigned char *))
+{
+    in_arpinput_aux.inaddrFunc = inaddrFunc;
+} /* arp_setauxin_func */
 static void
 in_arpinput(m)
 	struct mbuf *m;
@@ -593,6 +602,14 @@ in_arpinput(m)
 		itaddr = myaddr;
 		goto reply;
 	}
+    if ( (op == ARPOP_REPLY) && (in_arpinput_aux.inaddrFunc) ) {
+        if ( itaddr.s_addr == myaddr.s_addr ) {
+            in_arpinput_aux.inaddrFunc(isaddr.s_addr, ea->arp_sha);
+        }
+        else if ( (itaddr.s_addr == isaddr.s_addr) && ( memcmp(ea->arp_tha, ea->arp_sha, sizeof(ea->arp_sha)) == 0 ) ) {
+            in_arpinput_aux.inaddrFunc(isaddr.s_addr, ea->arp_sha);
+        }
+    }
 	la = arplookup(isaddr.s_addr, itaddr.s_addr == myaddr.s_addr, 0);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
 		/* the following is not an error when doing bridging */
@@ -785,7 +802,7 @@ arptfree(la)
 /*
  * Lookup or enter a new address in arptab.
  */
-static struct llinfo_arp *
+struct llinfo_arp *
 arplookup(addr, create, proxy)
 	u_long addr;
 	int create, proxy;

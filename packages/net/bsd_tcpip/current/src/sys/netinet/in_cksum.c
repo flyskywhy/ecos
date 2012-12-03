@@ -287,9 +287,32 @@ skip_start:
 
 u_int in_cksum_hdr(const struct ip *ip)
 {
-    u_int64_t sum = in_cksumdata((caddr_t) ip, sizeof(struct ip));
+/*    u_int64_t sum = in_cksumdata((caddr_t) ip, sizeof(struct ip));
     union q_util q_util;
     union l_util l_util;
     REDUCE16;
-    return (~sum & 0xffff);
+    return (~sum & 0xffff);*/
+    register int nleft = sizeof(struct ip);
+    register u_short *w = (caddr_t) ip;
+    register u_short answer;
+    register u_int sum = 0;
+    u_short odd_byte = 0;
+    if ((0x1 & w == 0) && nleft == 20) {
+         sum = w[0] + w[1] + w[2] + w[3] + w[4] + w[5] + w[6] + w[7] + w[8] + w[9];
+    }
+    else
+    {
+        while( nleft > 1 )  {
+            sum += *w++;
+            nleft -= 2;
+        }
+        if( nleft == 1 ) {
+            *(u_char *)(&odd_byte) = *(u_char *)w;
+            sum += odd_byte;
+        }
+    }
+    sum = (sum >> 16) + (sum & 0x0000ffff); /* add hi 16 to low 16 */
+    sum += (sum >> 16);                     /* add carry */
+    answer = ~sum;                          /* truncate to 16 bits */
+    return (answer);
 }

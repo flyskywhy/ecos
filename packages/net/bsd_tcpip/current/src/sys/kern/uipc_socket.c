@@ -140,19 +140,27 @@ socreate(dom, aso, type, proto, p)
 	register struct protosw *prp;
 	register struct socket *so;
 	register int error;
+    int s = splnet();
 
-	if (proto)
+    if (proto) {
 		prp = pffindproto(dom, proto, type);
-	else
+    }
+    else {
 		prp = pffindtype(dom, type);
+    }
 
-	if (prp == 0 || prp->pr_usrreqs->pru_attach == 0)
+    if (prp == 0 || prp->pr_usrreqs->pru_attach == 0) {
+        splx(s);
 		return (EPROTONOSUPPORT);
+    }
 
-	if (prp->pr_type != type)
+    if (prp->pr_type != type) {
+        splx(s);
 		return (EPROTOTYPE);
+    }
 	so = soalloc(p != 0);
 	if (so == 0) {
+        splx(s);
 		return (ENOBUFS);
         }
 
@@ -164,9 +172,11 @@ socreate(dom, aso, type, proto, p)
 	if (error) {
 		so->so_state |= SS_NOFDREF;
 		sofree(so);
+        splx(s);
 		return (error);
 	}
 	*aso = so;
+    splx(s);
 	return (0);
 }
 

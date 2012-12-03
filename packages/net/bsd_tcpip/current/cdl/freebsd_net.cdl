@@ -285,7 +285,7 @@ cdl_package CYGPKG_NET_FREEBSD_STACK {
     cdl_option CYGPKG_NET_MEM_USAGE {
         display "Memory designated for networking buffers."
         flavor  data
-        default_value (256*1024)+(CYGPKG_NET_MAXSOCKETS*1024)
+        default_value   (1024 * 1024) + (CYGPKG_NET_MAXSOCKETS * 1024 * 2)
         description   "
             This option controls the amount of memory pre-allocated
         for buffers used by the networking code.  The number is an
@@ -298,7 +298,7 @@ cdl_package CYGPKG_NET_FREEBSD_STACK {
     cdl_option CYGPKG_NET_MEMPOOL_SIZE {
         display "Memory designated for network dynamically allocated memory"
         flavor  data
-        default_value CYGPKG_NET_MEM_USAGE/4
+        calculated CYGPKG_NET_MEM_USAGE*4/8
         description   "
             Controls the amount of memory in the pool used for dynamically
             allocated memory. This does not include mbufs or clusters."
@@ -307,7 +307,7 @@ cdl_package CYGPKG_NET_FREEBSD_STACK {
     cdl_option CYGPKG_NET_MBUFS_SIZE {
         display "MBUFs memory size"
         flavor  data
-        default_value CYGPKG_NET_MEM_USAGE/4
+        calculated CYGPKG_NET_MEM_USAGE*1/8
         description   "
             Size of MBUFs pool."
     }
@@ -315,7 +315,7 @@ cdl_package CYGPKG_NET_FREEBSD_STACK {
     cdl_option CYGPKG_NET_CLUSTERS_SIZE {
         display "Clusters size"
         flavor  data
-        default_value CYGPKG_NET_MEM_USAGE/2
+        calculated CYGPKG_NET_MEM_USAGE*3/8
         description   "
             Clusters size."
     }
