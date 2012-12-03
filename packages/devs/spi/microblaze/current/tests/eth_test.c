@@ -72,6 +72,10 @@ net_test(cyg_addrword_t param)
 const char eth_hdr[14] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x12,0x34,0x3E,0x28,0x7A,0xBA,0x00,0x0E};
 const char buf[14] = {0x00,0x00,0x00,0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A};
 
+
+char eth_hdr_rx[14];
+char buf_rx[1526];
+
 static void
 cyg_net_init_devs(void *ignored)
 {
@@ -98,16 +102,18 @@ cyg_net_init_devs(void *ignored)
     #endif
 #endif
     cyg_uint32 i,j;
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < 160; i++)
     {
     	eth_drv_write((char *)eth_hdr, (char *)buf, 14);
     }
-    char *eth_hdr_rx;
-    char *buf_rx;
-    int len_rx = 3;
-    eth_drv_read(eth_hdr_rx,buf_rx,len_rx);
-    diag_printf("!!!ETH_HDR = %X ; RX_DATA = %X!!!\n",eth_hdr_rx,buf_rx);
+
+ //   int len_rx = 1526;
+    while(1)
+    {
+		eth_drv_read(eth_hdr_rx,buf_rx,sizeof(buf_rx));
+    }
     diag_printf("!!!Test finished!!!\n");
+
 //    cyg_drv_interrupt_mask(4);
 //    cyg_drv_interrupt_acknowledge(3);
     cyg_test_exit();
