@@ -105,7 +105,8 @@ typedef struct
     void                *retval;                // return value
     void                *(*start_routine)(void *); // start routine
     void                *start_arg;             // argument to start routine
-    char                name[20];               // name string for debugging
+#define PTHREAD_NAME_MAXLEN     19
+    char                name[PTHREAD_NAME_MAXLEN + 1]; // name string for debugging
     Cyg_Condition_Variable *joiner;             // joining threads wait here
     CYG_ADDRWORD        stackmem;               // base of stack memory area
                                                 // only valid if freestack == true
@@ -247,6 +248,8 @@ externC cyg_tick_count cyg_timespec_to_ticks( const struct timespec *tp,
 externC void cyg_ticks_to_timespec( cyg_tick_count ticks, struct timespec *tp );
 
 #endif
+
+externC cyg_bool valid_timespec( const struct timespec *tp );
 
 #ifdef CYGPKG_POSIX_TIMERS
 

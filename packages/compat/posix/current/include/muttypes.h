@@ -71,6 +71,8 @@ typedef struct
     CYG_WORD32  locked;
     CYG_ADDRESS owner;
     CYG_ADDRESS queue;
+    CYG_WORD32  type;           /* Mutex type (e.g. recursive)  */
+    CYG_WORD32  nest;           /* Recursive nest count         */
 
 #ifdef CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_DYNAMIC
     CYG_WORD32  protocol;       // this mutex's protocol
@@ -100,8 +102,13 @@ typedef struct
     int         protocol;
 #ifdef _POSIX_THREAD_PRIO_PROTECT    
     int         prioceiling;
-#endif    
+#endif
+    int         type;
 } pthread_mutexattr_t;
+
+/* Mutex types.  */
+#define PTHREAD_MUTEX_NORMAL            1
+#define PTHREAD_MUTEX_RECURSIVE         2
 
 // Values for protocol
 #define PTHREAD_PRIO_NONE       1

@@ -588,23 +588,23 @@ externC int pthread_create ( pthread_t *thread,
     nthread->cancelpending      = false;
 
     nthread->thread_data        = NULL;
-    
-#ifdef CYGVAR_KERNEL_THREADS_NAME    
-    // generate a name for this thread
 
-    char *name = nthread->name;
-    static char *name_template = "pthread.00000000";
-    pthread_t id = nthread->id;
-    
-    for( int i = 0; name_template[i]; i++ ) name[i] = name_template[i];
-
-    // dump the id, in hex into the name.
-    for( int i = 15; i >= 8; i-- )
+#ifdef CYGVAR_KERNEL_THREADS_NAME
     {
-        name[i] = "0123456789ABCDEF"[id&0xF];
-        id >>= 4;
-    }
+        // generate a name for this thread
+        char *name = nthread->name;
+        const char *name_template = "pthread.00000000";
+        pthread_t id = nthread->id;
+        int i;
 
+        CYG_ASSERT(strlen(name_template) == 16, "Invalid name length");
+        strcpy(name, name_template);
+        // dump the id, in hex into the name.
+        for(i=15; i>=8; i--) {
+            name[i] = "0123456789ABCDEF"[id & 0xF];
+            id >>= 4;
+        }
+    }
 #endif
 
     // Initialize the joiner condition variable
@@ -630,18 +630,17 @@ externC int pthread_create ( pthread_t *thread,
 #endif
 
     // create the underlying eCos thread
-
     nthread->thread = new(&nthread->thread_obj[0])
-        Cyg_Thread ( PTHREAD_ECOS_PRIORITY(use_attr.schedparam.sched_priority),
-                     pthread_entry,
-                     (CYG_ADDRWORD)nthread,
+    Cyg_Thread(PTHREAD_ECOS_PRIORITY(use_attr.schedparam.sched_priority),
+            pthread_entry,
+            (CYG_ADDRWORD)nthread,
 #ifdef CYGVAR_KERNEL_THREADS_NAME
-                     name,
+            nthread->name,
 #else
-		     NULL,
+            NULL,
 #endif
-                     stackbase,
-                     stacksize);
+            stackbase,
+            stacksize);
 
     // Put pointer to pthread_info into eCos thread's per-thread data.
     nthread->thread->set_data( CYGNUM_KERNEL_THREADS_DATA_POSIX, (CYG_ADDRWORD)nthread );
@@ -1665,18 +1664,41 @@ externC void pthread_cleanup_pop_inner (struct pthread_cleanup_buffer *buffer,
 
 // -------------------------------------------------------------------------
 // eCos-specific function to measure stack usage of the supplied thread
-
-#ifdef CYGFUN_KERNEL_THREADS_STACK_MEASUREMENT
 externC size_t pthread_measure_stack_usage (pthread_t thread)
 {
+#ifdef CYGFUN_KERNEL_THREADS_STACK_MEASUREMENT
     pthread_info *th = pthread_info_id(thread);
 
-    if ( NULL == th )
-      return (size_t)-1;
-
+    if ( NULL == th ) {
+        return (size_t)-1;
+    }
     return (size_t)th->thread->measure_stack_usage();
-}
+#else
+    return (size_t)-1;
 #endif
+}
+
+// -------------------------------------------------------------------------
+// Extra functions for retrieving thread info
+__externC void * pthread_get_startarg(pthread_t thread)
+{
+    pthread_info *      th = pthread_info_id(thread);
+
+    if ( th == NULL ) {
+        return NULL;
+    }
+    return th->start_arg;
+}
+
+externC int pthread_getstacksize (pthread_t thread, size_t * stacksize)
+{
+    pthread_info *      th = pthread_info_id(thread);
+
+    if ( th == NULL ) {
+        return -1;
+    }
+    return pthread_attr_getstacksize(&th->attr, stacksize);
+}
 
 // -------------------------------------------------------------------------
 // EOF pthread.cxx

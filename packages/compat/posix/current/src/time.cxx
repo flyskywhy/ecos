@@ -169,7 +169,7 @@ static void init_converters()
     }
 }
 
-static cyg_bool valid_timespec( const struct timespec *tp )
+externC cyg_bool valid_timespec( const struct timespec *tp )
 {
     // Fail a NULL pointer
     if( tp == NULL ) return false;
