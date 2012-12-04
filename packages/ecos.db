@@ -7225,5 +7225,32 @@ target xilinx_sp605_xps_edk132 {
 }
 ### end CYGPKG_HAL_MICROBLAZE_XILINX_SP605_XPS_EDK132
 
+### start CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1
+###############################################################################
+# Generate by ecos_v2.00.a - Copyright (C) Michal Simek 2008 <monstr@monstr.eu>
+###############################################################################
+package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
+	alias	{ "Avnet S6LX9 MMU tiny 13.1" hal_microblaze_avnet_s6lx9_mmu_tiny_13_1 microblaze_avnet_s6lx9_mmu_tiny_13_1_hal }
+	directory	hal/microblaze/avnet_s6lx9_mmu_tiny_13_1
+	script		hal_microblaze_avnet_s6lx9_mmu_tiny_13_1.cdl
+	hardware
+	description " This platform is create by ecos_v2.00.a"
+}
+
+target avnet_s6lx9_mmu_tiny_13_1 {
+	alias	{ "Avnet S6LX9 MMU tiny 13.1" avnet_s6lx9_mmu_tiny_13_1 }
+	packages {	CYGPKG_HAL_MICROBLAZE
+			CYGPKG_HAL_MICROBLAZE_MB4A
+			CYGPKG_HAL_MICROBLAZE_GENERIC
+			CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1
+			CYGPKG_IO_SERIAL_GENERIC_16X5X
+			CYGPKG_IO_SERIAL_MICROBLAZE_UART16550
+			CYGPKG_IO_ETH_DRIVERS
+			CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE
+	}
+	description " This target is create by ecos_v2.00.a"
+}
+### end CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1
+
 # ==========================================================================
 # End of ecos.db
