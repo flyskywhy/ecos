@@ -7077,6 +7077,14 @@ package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
 	description	"Xilinx Uart16550 serial driver"
 }
 
+package CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE {
+	alias		{ "Xilinx Uartlite serial driver" devs_serial_mb_uartlite }
+	hardware
+	directory	devs/serial/microblaze/uartlite
+	script		ser_microblaze_uartlite.cdl
+	description	"Xilinx Uartlite serial driver"
+}
+
 package CYGPKG_DEVS_SPI_MICROBLAZE {
 	alias		{"Xilinx SPI driver" devs_mb_spi}
 	hardware
@@ -7243,8 +7251,7 @@ target avnet_s6lx9_mmu_tiny_13_1 {
 			CYGPKG_HAL_MICROBLAZE_MB4A
 			CYGPKG_HAL_MICROBLAZE_GENERIC
 			CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1
-			CYGPKG_IO_SERIAL_GENERIC_16X5X
-			CYGPKG_IO_SERIAL_MICROBLAZE_UART16550
+			CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE
 			CYGPKG_IO_ETH_DRIVERS
 			CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE
 	}
