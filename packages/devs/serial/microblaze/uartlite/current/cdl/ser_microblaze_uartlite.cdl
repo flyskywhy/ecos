@@ -1,9 +1,9 @@
 # ====================================================================
 #
-#      ser_microblaze_uart16550.cdl
+#      ser_microblaze_uartlite.cdl
 #
-#      eCos serial driver configuration data for uart16550
-#      Taken from Xilinx VIRTEX4 serial driver
+#      eCos serial driver configuration data for uartlite
+#      Taken from Xilinx uartlite serial driver
 #
 # ====================================================================
 ## ####ECOSGPLCOPYRIGHTBEGIN####                                            
@@ -40,31 +40,31 @@
 # ====================================================================
 ######DESCRIPTIONBEGIN####
 #
-# Author(s):      Michal Pfeifer
+# Author(s):      Li Zheng
 # Original data:
-# Contributors:   cduclos
-# Date:           2000-10-10
-#                 2005-04-19
+# Contributors:   
+# Date:           2012-10-23
+#                 2012-10-23
 #
 #####DESCRIPTIONEND####
 #
 # ====================================================================
 
 
-cdl_package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
-    display       "Uart16550 serial device drivers"
+cdl_package CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE {
+    display       "Uartlite serial device drivers"
 
     parent        CYGPKG_IO_SERIAL_DEVICES
     active_if     CYGPKG_IO_SERIAL
     active_if     CYGPKG_HAL_MICROBLAZE_GENERIC  
-    active_if     MON_UART16550_0
+    active_if     MON_UARTLITE_0
 
     requires      CYGPKG_ERROR
     include_dir   cyg/io
 
     description   "
-           This option enables uart16550 serial device drivers for the
-           Xilins platform."
+           This option enables uartlite serial device drivers for the
+           Xilinx platform."
 
     # FIXME: This really belongs in the GENERIC_16X5X package
     cdl_interface CYGINT_IO_SERIAL_GENERIC_16X5X_REQUIRED {
@@ -74,45 +74,41 @@ cdl_package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
     define_proc {
         puts $::cdl_system_header "/***** serial driver proc output start *****/"
         puts $::cdl_header "#define CYGPRI_IO_SERIAL_GENERIC_16X5X_STEP 4"
-        puts $::cdl_system_header "#define CYGDAT_IO_SERIAL_GENERIC_16X5X_INL <cyg/io/microblaze_uart16550_ser.inl>"
-        puts $::cdl_system_header "#define CYGDAT_IO_SERIAL_GENERIC_16X5X_CFG <pkgconf/io_serial_microblaze_uart16550.h>"
+        puts $::cdl_system_header "#define CYGDAT_IO_SERIAL_GENERIC_16X5X_INL <cyg/io/microblaze_uartlite_ser.inl>"
+        puts $::cdl_system_header "#define CYGDAT_IO_SERIAL_GENERIC_16X5X_CFG <pkgconf/io_serial_microblaze_uartlite.h>"
         puts $::cdl_system_header "/*****  serial driver proc output end  *****/"
     }
 
-    cdl_component CYGPKG_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0 {
-        display       "Serial 0 for uart16550"
+    cdl_component CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0 {
+        display       "Serial 0 for uartlite"
         flavor        bool
         default_value 1
 
-        implements CYGINT_IO_SERIAL_GENERIC_16X5X_REQUIRED
-        implements CYGINT_IO_SERIAL_FLOW_CONTROL_HW
-        implements CYGINT_IO_SERIAL_LINE_STATUS_HW
-
         description   "
             This option includes the serial device driver for the 
-            uart16550 port 0."
+            uartlite port 0."
 
-        cdl_option CYGDAT_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_NAME {
-            display       "Device name for uart16550 serial driver"
+        cdl_option CYGDAT_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0_NAME {
+            display       "Device name for uartlite serial driver"
             flavor        data
             default_value {"\"/dev/ser0\""}
             description   "
                 This option specifies the name of the serial device."
         }
 
-        cdl_option CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BAUD {
-            display       "Baud rate for uart16550 driver"
+        cdl_option CYGNUM_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0_BAUD {
+            display       "Baud rate for uartlite driver"
             flavor        data
             legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400
                             3600 4800 7200 9600 14400 19200 38400
                             57600 115200 }
-            default_value 9600
+            default_value 115200
             description   "
                 This option specifies the default baud rate (speed)."
          }
 
-         cdl_option CYGNUM_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_BUFSIZE {
-             display       "Buffer size for uart16550 serial port 0"
+         cdl_option CYGNUM_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0_BUFSIZE {
+             display       "Buffer size for uartlite serial port 0"
              flavor        data
              legal_values  0 to 8192
              default_value 128
@@ -121,11 +117,11 @@ cdl_package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
          }
     }
 
-    cdl_component CYGPKG_IO_SERIAL_MICROBLAZE_UART16550_TESTING {
+    cdl_component CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE_TESTING {
         display    "Testing parameters"
         flavor     bool
         calculated 1
-        active_if  CYGPKG_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0
+        active_if  CYGPKG_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0
 
         implements	CYGINT_IO_SERIAL_TEST_SKIP_9600
         implements	CYGINT_IO_SERIAL_TEST_SKIP_115200
@@ -133,15 +129,15 @@ cdl_package CYGPKG_IO_SERIAL_MICROBLAZE_UART16550 {
         cdl_option CYGPRI_SER_TEST_SER_DEV {
             display       "Serial device used for testing"
             flavor        data
-            default_value { CYGDAT_IO_SERIAL_MICROBLAZE_UART16550_SERIAL0_NAME }
+            default_value { CYGDAT_IO_SERIAL_MICROBLAZE_UARTLITE_SERIAL0_NAME }
         }
 
         define_proc {
-            puts $::cdl_header "#define CYGPRI_SER_TEST_CRASH_ID \"uart16550\""
+            puts $::cdl_header "#define CYGPRI_SER_TEST_CRASH_ID \"uartlite\""
             puts $::cdl_header "#define CYGPRI_SER_TEST_TTY_DEV  \"/dev/tty0\""
         }
     }
 
 }
 
-# EOF ser_microblaze_uart16550.cdl
+# EOF ser_microblaze_uartlite.cdl

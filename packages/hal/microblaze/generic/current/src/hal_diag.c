@@ -69,7 +69,11 @@
 
 //#include <cyg/hal/mb_regs.h>
 
+#ifdef MON_UART16550_0
 #include "src/xuartns550.h"
+#else
+#include "src/xuartlite.h"
+#endif
 #include <pkgconf/hal_microblaze_platform.h>
 
 //=============================================================================
@@ -88,16 +92,26 @@ typedef struct {
     unsigned char inq[16];
     unsigned char *qp;
     int            qlen;
+#ifdef MON_UART16550_0
     XUartNs550 dev; //structure for uart16550 driver
+#else
+    XUartLite dev; //structure for uartlite driver
+#endif
 } channel_data_t;
 
 
 // initialize part of structure
 static channel_data_t channels[] = {
+#ifdef MON_UART16550_0
      { 0, 1000, MON_UART16550_0_INTR },
+#else
+     { 0, 1000, MON_UARTLITE_0_INTR },
+#endif
 };
 
+#ifdef MON_UART16550_0
 static void cyg_hal_plf_serial_isr_handler(channel_data_t *chan, int event, int len);
+#endif
 
 //-----------------------------------------------------------------------------
 static void
@@ -274,6 +288,7 @@ cyg_hal_plf_serial_control(channel_data_t *chan, __comm_control_cmd_t func, ...)
 
     if (!chan->dev_ok) return ret;
 
+#ifdef MON_UART16550_0
     switch (func) {
     case __COMMCTL_IRQ_ENABLE:
         opt = XUartNs550_GetOptions(&chan->dev) | XUN_OPTION_DATA_INTR;
@@ -305,6 +320,7 @@ cyg_hal_plf_serial_control(channel_data_t *chan, __comm_control_cmd_t func, ...)
     default:
         break;
     }
+#endif
     return ret;
 }
 
@@ -313,11 +329,16 @@ cyg_hal_plf_serial_isr(channel_data_t *chan, int *ctrlc,
                        CYG_ADDRWORD vector, CYG_ADDRWORD data)
 {
     chan->ctrlc = ctrlc;
+#ifdef MON_UART16550_0
     XUartNs550_InterruptHandler(&chan->dev);
+#else
+    XUartLite_InterruptHandler(&chan->dev);
+#endif
     HAL_INTERRUPT_ACKNOWLEDGE(chan->isr_vector);
     return CYG_ISR_HANDLED;
 }
 
+#ifdef MON_UART16550_0
 static void
 cyg_hal_plf_serial_isr_handler(channel_data_t *chan,
                                int event, int len)
@@ -347,6 +368,7 @@ cyg_hal_plf_serial_isr_handler(channel_data_t *chan,
     	break;
     }
 }                               
+#endif
 
 void
 cyg_hal_plf_serial_init(void)

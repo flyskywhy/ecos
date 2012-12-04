@@ -56,9 +56,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
         Generic support."
 
     compile       plf_io.c hal_diag.c hal_aux.c platform.S \
-                  src/xuartns550_g.c src/xuartns550_intr.c src/xbasic_types.c src/xil_assert.c src/xil_io.c \
-                  src/xuartns550_options.c  src/xuartns550_stats.c src/xuartns550.c src/xuartns550_l.c \
-                  src/xuartns550_selftest.c src/xuartns550_format.c src/xuartns550_sinit.c \
+                  src/xbasic_types.c src/xil_assert.c src/xil_io.c \
                   src/xintc.c src/xintc_g.c src/xintc_intr.c src/xintc_l.c src/xintc_options.c
 
     implements    CYGINT_HAL_DEBUG_GDB_STUBS
@@ -66,6 +64,25 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
     implements    CYGINT_HAL_VIRTUAL_VECTOR_SUPPORT
 # For now, until RedBoot is working
 #    implements    CYGINT_HAL_USE_ROM_MONITOR_UNSUPPORTED
+
+
+    cdl_option CYGNUM_HAL_UARTLITE {
+        display       "Serial port of UART Lite"
+        default_value 1
+        active_if     { MON_UARTLITE_0 == 1 }
+        compile       src/xuartlite_g.c src/xuartlite_intr.c \
+            src/xuartlite_stats.c src/xuartlite.c src/xuartlite_l.c \
+            src/xuartlite_selftest.c src/xuartlite_sinit.c
+    }
+
+    cdl_option CYGNUM_HAL_UART16550 {
+        display       "Serial port of UART 16550"
+        active_if     { MON_UART16550_0 == 1 }
+        default_value 1
+        compile       src/xuartns550_g.c src/xuartns550_intr.c \
+            src/xuartns550_options.c  src/xuartns550_stats.c src/xuartns550.c src/xuartns550_l.c \
+            src/xuartns550_selftest.c src/xuartns550_format.c src/xuartns550_sinit.c
+    }
 
     define_proc {
         puts $::cdl_system_header "#define CYGBLD_HAL_PLATFORM_H <pkgconf/hal_microblaze_platform.h>"
@@ -121,7 +138,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
         legal_values  { 50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600
                       4800 7200 9600 14400 19200 38400 57600 115200 230400
         }
-        default_value 9600
+        default_value 115200
         description   "
             This option specifies the default baud rate (speed) for the 
             HAL diagnostic port."

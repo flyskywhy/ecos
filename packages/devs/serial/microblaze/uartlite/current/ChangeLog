@@ -1,12 +1,6 @@
-2005-08-25  Markus Schade  <marks@peppercon.de>
+2012-10-23  Li Zheng  <flyskywhy@gmail.com>
 
-	* enabled build for PowerPC 405EP
-
-2003-09-19  Gary Thomas  <gary@mlbassoc.com>
-
-	* include/powerpc_ppc405_ser.inl: 
-	* cdl/ser_powerpc_ppc405.cdl: New package - support for PowerPC 405GP,
-	based on generic 165x5 uart.
+	* cdl/ser_microblaze_uartlite.cdl: New package - serial device driver.
 
 //===========================================================================
 // ####GPLCOPYRIGHTBEGIN####                                                
