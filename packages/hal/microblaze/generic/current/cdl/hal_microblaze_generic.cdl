@@ -165,7 +165,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             display       "Real-time clock period"
             flavor        data
 #            default_value    { ((MON_SYSTEM_CLK *1000000) / 100) }
-            default_value    833333
+            default_value    666667
         }
         cdl_option CYGHWR_HAL_RTC_USE_AUTO_RESET {
             display       "Real-time clock timer use autoreset"
