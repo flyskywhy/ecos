@@ -231,7 +231,7 @@ cdl_package CYGPKG_IO_SERIAL {
     cdl_component CYGPKG_IO_SERIAL_DEVICES {
         display       "Hardware serial device drivers"
         flavor        bool
-        default_value 0
+        default_value 1
         description   "
             This option enables the hardware device drivers
 	    for the current platform."

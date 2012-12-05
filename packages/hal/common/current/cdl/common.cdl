@@ -140,7 +140,7 @@ cdl_component CYGDBG_HAL_DIAG_TO_DEBUG_CHAN {
         display       "Mangler used on diag output"
         flavor        data
         legal_values  {"GDB" "None"}
-        default_value { "GDB" }
+        default_value { "None" }
         description   "
             It is sometimes necessary to mangle (encode) the
             diag ASCII text output in order for it to show up at the
