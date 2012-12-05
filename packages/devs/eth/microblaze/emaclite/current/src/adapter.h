@@ -103,10 +103,10 @@ struct emaclite_info {
     XEmacLite                 dev;
     unsigned short            rxlength;       // Rx buffer length
     unsigned short            txlength;       // Tx buffer length
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     cyg_interrupt             emaclite_interrupt;
     cyg_handle_t              emaclite_interrupt_handle;
-#endif
+//#endif
 	int						  sended;
 };
 

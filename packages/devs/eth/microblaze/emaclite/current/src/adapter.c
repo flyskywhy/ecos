@@ -147,7 +147,7 @@ static void emaclite_RxEvent(void *sc);
 static void emaclite_TxEvent(void *sc);
 
 // This ISR is called when the ethernet interrupt occurs
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
 static int
 emaclite_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *regs)
 {
@@ -157,20 +157,20 @@ emaclite_isr(cyg_vector_t vector, cyg_addrword_t data, HAL_SavedRegisters *regs)
     cyg_drv_interrupt_mask(qi->int_vector);
     return (CYG_ISR_HANDLED|CYG_ISR_CALL_DSR);  // Run the DSR
 }
-#endif
+//#endif
 
 // Deliver function (ex-DSR) handles the ethernet [logical] processing
 static void
 emaclite_deliver(struct eth_drv_sc * sc)
 {
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     struct emaclite_info *qi = (struct emaclite_info *)sc->driver_private;
     cyg_drv_interrupt_acknowledge(qi->int_vector);
-#endif
+//#endif
     emaclite_int(sc);
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     cyg_drv_interrupt_unmask(qi->int_vector);
-#endif
+//#endif
 
 }
 
@@ -221,7 +221,7 @@ static bool emaclite_init(struct cyg_netdevtab_entry *dtp)
     XEmacLite_SetRecvHandler(&qi->dev, sc, emaclite_RxEvent);
 
 
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     // Set up to handle interrupts
     cyg_drv_interrupt_create(qi->int_vector,
                              0,  // Highest //CYGARC_SIU_PRIORITY_HIGH,
@@ -233,7 +233,7 @@ static bool emaclite_init(struct cyg_netdevtab_entry *dtp)
     cyg_drv_interrupt_attach(qi->emaclite_interrupt_handle);
     cyg_drv_interrupt_acknowledge(qi->int_vector);
     cyg_drv_interrupt_unmask(qi->int_vector);
-#endif
+//#endif
 
     // Operating mode
     _s3esk_dev = &qi->dev;
@@ -303,11 +303,11 @@ static void emaclite_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list,
     volatile char *bp;
     int i;
 
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     cyg_uint32 int_state;
     HAL_DISABLE_INTERRUPTS(int_state);
     // FIXME: closer to Send
-#endif
+//#endif
 
 	//can be send max 1500 bytes
 	
@@ -335,9 +335,9 @@ static void emaclite_send(struct eth_drv_sc *sc, struct eth_drv_sg *sg_list,
     // sg_list can be freed! (maybe deferred)
     // FIXME this can be removed
     (sc->funs->eth_drv->tx_done)(sc, key, 0);
-#ifdef CYGPKG_NET
+//#ifdef CYGPKG_NET
     HAL_RESTORE_INTERRUPTS(int_state);
-#endif
+//#endif
 }
 
 //
