@@ -1,7 +1,7 @@
-/* $Id: xemaclite_g.c,v 1.1.2.1 2010/07/12 08:34:27 svemula Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2004-2009 Xilinx, Inc. All rights reserved.
+*
+* (c) Copyright 2009 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -38,31 +38,29 @@
 * THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
 * AT ALL TIMES.
 *
+*
 ******************************************************************************/
 /*****************************************************************************/
 /**
 *
-* @file xemaclite_g.c
+* @file xil_assert.c
 *
-* This file contains a configuration table that specifies the configuration
-* of EmacLite devices in the system.
+* This file contains basic assert related functions for Xilinx software IP.
 *
 * <pre>
 * MODIFICATION HISTORY:
 *
-* Ver   Who  Date     Changes
-* ----- ---- -------- -----------------------------------------------
-* 1.01a ecm  02/16/04 First release
-* 1.11a mta  03/21/07 Updated to new coding style
-* 2.00a ktn  02/16/09 Added support for MDIO
+* Ver   Who    Date   Changes
+* ----- ---- -------- -------------------------------------------------------
+* 1.00a hbm  07/14/09 Initial release
 * </pre>
 *
 ******************************************************************************/
 
 /***************************** Include Files *********************************/
 
-#include "xparameters.h"
-#include "xemaclite.h"
+#include "xil_types.h"
+#include "xil_assert.h"
 
 /************************** Constant Definitions *****************************/
 
@@ -70,22 +68,72 @@
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-/************************** Function Prototypes ******************************/
-
-/************************** Variable Prototypes ******************************/
+/************************** Variable Definitions *****************************/
 
 /**
- * This table contains configuration information for each EmacLite device
- * in the system.
+ * This variable allows testing to be done easier with asserts. An assert
+ * sets this variable such that a driver can evaluate this variable
+ * to determine if an assert occurred.
  */
-XEmacLite_Config XEmacLite_ConfigTable[XPAR_XEMACLITE_NUM_INSTANCES] = {
-	{
-	 XPAR_EMACLITE_0_DEVICE_ID,	/* Unique ID of device */
-	 XPAR_EMACLITE_0_BASEADDR,	/* Device base address */
-	 XPAR_EMACLITE_0_TX_PING_PONG,	/* Include TX Ping Pong buffers */
-	 XPAR_EMACLITE_0_RX_PING_PONG,	/* Include RX Ping Pong buffers */
-	 XPAR_EMACLITE_0_INCLUDE_MDIO	/* Include MDIO support */
-	 XPAR_EMACLITE_0_INCLUDE_INTERNAL_LOOPBACK /* Include Internal
-	 					    * loop back support */
-	 }
-};
+unsigned int Xil_AssertStatus;
+
+/**
+ * This variable allows the assert functionality to be changed for testing
+ * such that it does not wait infinitely. Use the debugger to disable the
+ * waiting during testing of asserts.
+ */
+int Xil_AssertWait = TRUE;
+
+/* The callback function to be invoked when an assert is taken */
+static Xil_AssertCallback Xil_AssertCallbackRoutine = NULL;
+
+/************************** Function Prototypes ******************************/
+
+/*****************************************************************************/
+/**
+*
+* Implement assert. Currently, it calls a user-defined callback function
+* if one has been set.  Then, it potentially enters an infinite loop depending
+* on the value of the Xil_AssertWait variable.
+*
+* @param    file is the name of the filename of the source
+* @param    line is the linenumber within File
+*
+* @return   None.
+*
+* @note     None.
+*
+******************************************************************************/
+void Xil_Assert(char *File, int Line)
+{
+	/* if the callback has been set then invoke it */
+	if (Xil_AssertCallbackRoutine != 0) {
+		(*Xil_AssertCallbackRoutine)(File, Line);
+	}
+
+	/* if specified, wait indefinitely such that the assert will show up
+	 * in testing
+	 */
+	while (Xil_AssertWait) {
+	}
+}
+
+/*****************************************************************************/
+/**
+*
+* Set up a callback function to be invoked when an assert occurs. If there
+* was already a callback installed, then it is replaced.
+*
+* @param    routine is the callback to be invoked when an assert is taken
+*
+* @return   None.
+*
+* @note     This function has no effect if NDEBUG is set
+*
+******************************************************************************/
+void Xil_AssertSetCallback(Xil_AssertCallback Routine)
+{
+	Xil_AssertCallbackRoutine = Routine;
+}
+
+

@@ -68,9 +68,9 @@ extern "C" {
 #elif defined XENV_INTTEST
 #include "int_xenv.h"
 
-/* No environment selected */
+/* Standalone environment selected */
 #else
-#include "xenv_none.h"
+#include "xenv_standalone.h"
 #endif
 
 

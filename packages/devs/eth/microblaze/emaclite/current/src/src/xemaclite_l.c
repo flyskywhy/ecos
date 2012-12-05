@@ -1,22 +1,42 @@
-/* $Id: xemaclite_l.c,v 1.7 2006/02/22 22:19:00 meinelte Exp $ */
+/* $Id: xemaclite_l.c,v 1.1.2.1 2010/07/12 08:34:27 svemula Exp $ */
 /******************************************************************************
 *
-*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
-*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
-*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
-*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
-*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
-*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
-*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
-*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
-*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
-*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
-*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
-*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*       FOR A PARTICULAR PURPOSE.
+* (c) Copyright 2004-2009 Xilinx, Inc. All rights reserved.
 *
-*       (c) Copyright 2004 Xilinx Inc.
-*       All rights reserved.
+* This file contains confidential and proprietary information of Xilinx, Inc.
+* and is protected under U.S. and international copyright and other
+* intellectual property laws.
+*
+* DISCLAIMER
+* This disclaimer is not a license and does not grant any rights to the
+* materials distributed herewith. Except as otherwise provided in a valid
+* license issued to you by Xilinx, and to the maximum extent permitted by
+* applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND WITH ALL
+* FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS, EXPRESS,
+* IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+* MERCHANTABILITY, NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE;
+* and (2) Xilinx shall not be liable (whether in contract or tort, including
+* negligence, or under any other theory of liability) for any loss or damage
+* of any kind or nature related to, arising under or in connection with these
+* materials, including for any direct, or any indirect, special, incidental,
+* or consequential loss or damage (including loss of data, profits, goodwill,
+* or any type of loss or damage suffered as a result of any action brought by
+* a third party) even if such damage or loss was reasonably foreseeable or
+* Xilinx had been advised of the possibility of the same.
+*
+* CRITICAL APPLICATIONS
+* Xilinx products are not designed or intended to be fail-safe, or for use in
+* any application requiring fail-safe performance, such as life-support or
+* safety devices or systems, Class III medical devices, nuclear facilities,
+* applications related to the deployment of airbags, or any other applications
+* that could lead to death, personal injury, or severe property or
+* environmental damage (individually and collectively, "Critical
+* Applications"). Customer assumes the sole risk and liability of any use of
+* Xilinx products in Critical Applications, subject only to applicable laws
+* and regulations governing limitations on product liability.
+*
+* THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS FILE
+* AT ALL TIMES.
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -37,13 +57,20 @@
 * 1.00a ecm  06/01/02 First release
 * 1.01a ecm  03/31/04 Additional functionality and the _AlignedRead and
 *                     _AlignedWrite functions.
+* 1.11a mta  03/21/07 Updated to new coding style
+* 2.01a ktn  07/20/09 Updated the XEmacLite_AlignedWrite and
+*                     XEmacLite_AlignedRead functions to use volatile
+*                     variables so that they are not optimized.
+* 3.00a ktn  10/22/09 The macros have been renamed to remove _m from the name.
+*
 * </pre>
 *
 ******************************************************************************/
 
 /***************************** Include Files *********************************/
 
-#include "xbasic_types.h"
+#include "xil_types.h"
+#include "xil_assert.h"
 #include "xemaclite_l.h"
 #include "xemaclite_i.h"
 
@@ -54,8 +81,8 @@
 /***************** Macros (Inline Functions) Definitions *********************/
 
 /************************** Function Prototypes ******************************/
-void XEmacLite_AlignedWrite(void *SrcPtr, Xuint32 *DestPtr, unsigned ByteCount);
-void XEmacLite_AlignedRead(Xuint32 *SrcPtr, void *DestPtr, unsigned ByteCount);
+void XEmacLite_AlignedWrite(void *SrcPtr, u32 *DestPtr, unsigned ByteCount);
+void XEmacLite_AlignedRead(u32 *SrcPtr, void *DestPtr, unsigned ByteCount);
 
 /************************** Variable Definitions *****************************/
 
@@ -65,13 +92,11 @@ void XEmacLite_AlignedRead(Xuint32 *SrcPtr, void *DestPtr, unsigned ByteCount);
 * Send an Ethernet frame. The size is the total frame size, including header.
 * This function blocks waiting for the frame to be transmitted.
 *
-* @param BaseAddress is the base address of the device
-* @param FramePtr is a pointer to frame
-* @param ByteCount is the size, in bytes, of the frame
+* @param 	BaseAddress is the base address of the device
+* @param 	FramePtr is a pointer to frame
+* @param 	ByteCount is the size, in bytes, of the frame
 *
-* @return
-*
-* None.
+* @return	None.
 *
 * @note
 *
@@ -84,30 +109,32 @@ void XEmacLite_AlignedRead(Xuint32 *SrcPtr, void *DestPtr, unsigned ByteCount);
 * If the pong buffer is the destination of the data, the argument should be
 * DeviceAddress + XEL_TXBUFF_OFFSET + XEL_BUFFER_OFFSET.
 * The function does not take the different buffers into consideration.
+*
 ******************************************************************************/
-void XEmacLite_SendFrame(Xuint32 BaseAddress, Xuint8 *FramePtr, unsigned ByteCount)
+void XEmacLite_SendFrame(u32 BaseAddress, u8 *FramePtr, unsigned ByteCount)
 {
-    Xuint32 Register;
+	u32 Register;
 
-    /*
-     * Write data to the EMAC Lite
-     */
-    XEmacLite_AlignedWrite(FramePtr, (Xuint32 *) (BaseAddress), ByteCount);
+	/*
+	 * Write data to the EmacLite
+	 */
+	XEmacLite_AlignedWrite(FramePtr, (u32 *) (BaseAddress), ByteCount);
 
-    /*
-     * The frame is in the buffer, now send it
-     */
-    XIo_Out32(BaseAddress + XEL_TPLR_OFFSET,
-              (ByteCount & (XEL_TPLR_LENGTH_MASK_HI | XEL_TPLR_LENGTH_MASK_LO)));
+	/*
+	 * The frame is in the buffer, now send it
+	 */
+	XEmacLite_WriteReg(BaseAddress,  XEL_TPLR_OFFSET,
+			  	(ByteCount & (XEL_TPLR_LENGTH_MASK_HI |
+				XEL_TPLR_LENGTH_MASK_LO)));
 
 
-    Register = XIo_In32(BaseAddress + XEL_TSR_OFFSET);
-    XIo_Out32(BaseAddress + XEL_TSR_OFFSET, (Register | XEL_TSR_XMIT_BUSY_MASK));
+	Register = XEmacLite_GetTxStatus(BaseAddress);
+	XEmacLite_SetTxStatus(BaseAddress, Register | XEL_TSR_XMIT_BUSY_MASK);
 
-    /*
-     * Loop on the status waiting for the transmit to be complete.
-     */
-    while (!XEmacLite_mIsTxDone(BaseAddress));
+	/*
+	 * Loop on the status waiting for the transmit to be complete.
+	 */
+	while (!XEmacLite_IsTxDone(BaseAddress));
 
 }
 
@@ -117,9 +144,9 @@ void XEmacLite_SendFrame(Xuint32 BaseAddress, Xuint8 *FramePtr, unsigned ByteCou
 *
 * Receive a frame. Wait for a frame to arrive.
 *
-* @param BaseAddress is the base address of the device
-* @param FramePtr is a pointer to a buffer where the frame will
-*        be stored.
+* @param	BaseAddress is the base address of the device
+* @param	FramePtr is a pointer to a buffer where the frame will
+*		be stored.
 *
 * @return
 *
@@ -137,55 +164,59 @@ void XEmacLite_SendFrame(Xuint32 BaseAddress, Xuint8 *FramePtr, unsigned ByteCou
 * If the pong buffer is the source of the data, the argument should be
 * DeviceAddress + XEL_RXBUFF_OFFSET + XEL_BUFFER_OFFSET.
 * The function does not take the different buffers into consideration.
+*
 ******************************************************************************/
-Xuint16 XEmacLite_RecvFrame(Xuint32 BaseAddress, Xuint8 *FramePtr)
+u16 XEmacLite_RecvFrame(u32 BaseAddress, u8 *FramePtr)
 {
-    Xuint16 LengthType;
-    Xuint16 Length;
-    Xuint32 Register;
+	u16 LengthType;
+	u16 Length;
+	u32 Register;
 
-    /*
-     * Wait for a frame to arrive - this is a blocking call
-     */
+	/*
+	 * Wait for a frame to arrive - this is a blocking call
+	 */
+	while (XEmacLite_IsRxEmpty(BaseAddress));
 
-    while (XEmacLite_mIsRxEmpty(BaseAddress));
+	/*
+	 * Get the length of the frame that arrived, only 32-bit reads are
+	 * allowed LengthType is in the upper half of the 32-bit word.
+	 */
+	Register = XEmacLite_ReadReg(BaseAddress, XEL_RPLR_OFFSET);
+	LengthType = (u16) ((Register >> 16) &
+			    (XEL_RPLR_LENGTH_MASK_HI |
+			     XEL_RPLR_LENGTH_MASK_LO));
 
-    /*
-     * Get the length of the frame that arrived, only 32-bit reads are allowed
-     * LengthType is in the upper half of the 32-bit word.
-     */
-    Register = XIo_In32(BaseAddress + XEL_RPLR_OFFSET);
-    LengthType = (Xuint16)((Register >> 16) &
-                           (XEL_RPLR_LENGTH_MASK_HI | XEL_RPLR_LENGTH_MASK_LO));
+	/*
+	 * Check if length is valid
+	 */
+	if (LengthType > XEL_MAX_FRAME_SIZE) {
+		/*
+		 * Field contain type, use max frame size and
+		 * let user parse it
+		 */
+		Length = XEL_MAX_FRAME_SIZE;
+	}
+	else {
+		/*
+		 * Use the length in the frame, plus the header and trailer
+		 */
+		Length = LengthType + XEL_HEADER_SIZE + XEL_FCS_SIZE;
+	}
 
-    /* check if length is valid */
+	/*
+	 * Read each byte from the EmacLite
+	 */
+	XEmacLite_AlignedRead((u32 *) (BaseAddress + XEL_RXBUFF_OFFSET),
+			      FramePtr, Length);
 
-    if (LengthType > XEL_MAX_FRAME_SIZE)
-    {
-        /* Field contain type, use max frame size and let user parse it */
-        Length = XEL_MAX_FRAME_SIZE;
-    }
-    else
-    {
-        /* Use the length in the frame, plus the header and trailer */
-        Length = LengthType + XEL_HEADER_SIZE + XEL_FCS_SIZE;
-    }
+	/*
+	 * Acknowledge the frame
+	 */
+	Register = XEmacLite_GetRxStatus(BaseAddress);
+	Register &= ~XEL_RSR_RECV_DONE_MASK;
+	XEmacLite_SetRxStatus(BaseAddress, Register);
 
-    /*
-     * Read each byte from the EMAC Lite
-     */
-    XEmacLite_AlignedRead((Xuint32 *) (BaseAddress + XEL_RXBUFF_OFFSET),
-                          FramePtr, Length);
-
-    /*
-     * Acknowledge the frame
-     */
-
-    Register = XIo_In32(BaseAddress + XEL_RSR_OFFSET);
-    Register &= ~XEL_RSR_RECV_DONE_MASK;
-    XIo_Out32(BaseAddress + XEL_RSR_OFFSET, Register);
-
-    return LengthType;
+	return LengthType;
 }
 
 /******************************************************************************/
@@ -194,179 +225,157 @@ Xuint16 XEmacLite_RecvFrame(Xuint32 BaseAddress, Xuint8 *FramePtr)
 * This function aligns the incoming data and writes it out to a 32-bit
 * aligned destination address range.
 *
-* @param SrcPtr is a pointer to incoming data of any alignment.
-* @param DestPtr is a pointer to outgoing data of 32-bit alignment.
-* @param ByteCount is the number of bytes to write.
+* @param	SrcPtr is a pointer to incoming data of any alignment.
+* @param	DestPtr is a pointer to outgoing data of 32-bit alignment.
+* @param	ByteCount is the number of bytes to write.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 ******************************************************************************/
-void XEmacLite_AlignedWrite(void *SrcPtr, Xuint32 *DestPtr, unsigned ByteCount)
+void XEmacLite_AlignedWrite(void *SrcPtr, u32 *DestPtr, unsigned ByteCount)
 {
-    unsigned i;
-    unsigned Length = ByteCount;
-    Xuint32 AlignBuffer;
-    Xuint32 *To32Ptr;
-    Xuint32 *From32Ptr;
-    Xuint16 *To16Ptr;
-    Xuint16 *From16Ptr;
-    Xuint8  *To8Ptr;
-    Xuint8  *From8Ptr;
+	unsigned Index;
+	unsigned Length = ByteCount;
+	volatile u32 AlignBuffer;
+	volatile u32 *To32Ptr;
+	u32 *From32Ptr;
+	volatile u16 *To16Ptr;
+	u16 *From16Ptr;
+	volatile u8 *To8Ptr;
+	u8 *From8Ptr;
 
-    To32Ptr = DestPtr;
+	To32Ptr = DestPtr;
 
-    if ((((Xuint32)SrcPtr) & 0x00000003) == 0)
-    {
+	if ((((u32) SrcPtr) & 0x00000003) == 0) {
 
-        /*
-         * Word aligned buffer, no correction needed.
-         */
+		/*
+		 * Word aligned buffer, no correction needed.
+		 */
+		From32Ptr = (u32 *) SrcPtr;
 
-        From32Ptr  = (Xuint32 *)SrcPtr;
+		while (Length > 3) {
+			/*
+			 * Output each word destination.
+			 */
+			*To32Ptr++ = *From32Ptr++;
 
-        while (Length > 3)
-        {
-            /*
-             * Output each word destination.
-             */
+			/*
+			 * Adjust length accordingly
+			 */
+			Length -= 4;
+		}
 
-            *To32Ptr++ = *From32Ptr++;
+		/*
+		 * Set up to output the remaining data, zero the temp buffer
+		 first.
+		 */
+		AlignBuffer = 0;
+		To8Ptr = (u8 *) &AlignBuffer;
+		From8Ptr = (u8 *) From32Ptr;
 
-            /*
-             * Adjust length accordingly
-             */
+	}
+	else if ((((u32) SrcPtr) & 0x00000001) != 0) {
+		/*
+		 * Byte aligned buffer, correct.
+		 */
+		AlignBuffer = 0;
+		To8Ptr = (u8 *) &AlignBuffer;
+		From8Ptr = (u8 *) SrcPtr;
 
-            Length -= 4;
-        }
+		while (Length > 3) {
+			/*
+			 * Copy each byte into the temporary buffer.
+			 */
+			for (Index = 0; Index < 4; Index++) {
+				*To8Ptr++ = *From8Ptr++;
+			}
 
-        /*
-         * Set up to output the remaining data, zero the temp buffer first.
-         */
+			/*
+			 * Output the buffer
+			 */
+			*To32Ptr++ = AlignBuffer;
 
-        AlignBuffer = 0;
-        To8Ptr = (Xuint8 *) &AlignBuffer;
-        From8Ptr = (Xuint8 *) From32Ptr;
+			/*.
+			 * Reset the temporary buffer pointer and adjust length.
+			 */
+			To8Ptr = (u8 *) &AlignBuffer;
+			Length -= 4;
+		}
 
-    }
-    else if ((((Xuint32)SrcPtr) & 0x00000001) != 0)
-    {
-        /*
-         * Byte aligned buffer, correct.
-         */
+		/*
+		 * Set up to output the remaining data, zero the temp buffer
+		 * first.
+		 */
+		AlignBuffer = 0;
+		To8Ptr = (u8 *) &AlignBuffer;
 
-        AlignBuffer = 0;
-        To8Ptr = (Xuint8 *) &AlignBuffer;
-        From8Ptr = (Xuint8 *) SrcPtr;
+	}
+	else {
+		/*
+		 * Half-Word aligned buffer, correct.
+		 */
+		AlignBuffer = 0;
 
-        while (Length > 3)
-        {
-            /*
-             * Copy each byte into the temporary buffer.
-             */
+		/*
+		 * This is a funny looking cast. The new gcc, version 3.3.x has
+		 * a strict cast check for 16 bit pointers, aka short pointers.
+		 * The following warning is issued if the initial 'void *' cast
+		 * is  not used:
+		 * 'dereferencing type-punned pointer will break strict-aliasing
+		 * rules'
+		 */
 
-            for (i = 0; i < 4; i++)
-            {
-                *To8Ptr++ = *From8Ptr++;
-            }
+		To16Ptr = (u16 *) ((void *) &AlignBuffer);
+		From16Ptr = (u16 *) SrcPtr;
 
-            /*
-             * Output the buffer
-             */
+		while (Length > 3) {
+			/*
+			 * Copy each half word into the temporary buffer.
+			 */
+			for (Index = 0; Index < 2; Index++) {
+				*To16Ptr++ = *From16Ptr++;
+			}
 
-            *To32Ptr++ = AlignBuffer;
+			/*
+			 * Output the buffer.
+			 */
+			*To32Ptr++ = AlignBuffer;
 
-            /*.
-             * Reset the temporary buffer pointer and adjust length.
-             */
+			/*
+			 * Reset the temporary buffer pointer and adjust length.
+			 */
 
-            To8Ptr = (Xuint8 *) &AlignBuffer;
-            Length -= 4;
-        }
+			/*
+			 * This is a funny looking cast. The new gcc, version
+			 * 3.3.x has a strict cast check for 16 bit pointers,
+			 * aka short  pointers. The following warning is issued
+			 * if the initial 'void *' cast is not used:
+			 * 'dereferencing type-punned pointer will break
+			 * strict-aliasing  rules'
+			 */
+			To16Ptr = (u16 *) ((void *) &AlignBuffer);
+			Length -= 4;
+		}
 
-        /*
-         * Set up to output the remaining data, zero the temp buffer first.
-         */
+		/*
+		 * Set up to output the remaining data, zero the temp buffer
+		 * first.
+		 */
+		AlignBuffer = 0;
+		To8Ptr = (u8 *) &AlignBuffer;
+		From8Ptr = (u8 *) From16Ptr;
+	}
 
-        AlignBuffer = 0;
-        To8Ptr = (Xuint8 *) &AlignBuffer;
+	/*
+	 * Output the remaining data, zero the temp buffer first.
+	 */
+	for (Index = 0; Index < Length; Index++) {
+		*To8Ptr++ = *From8Ptr++;
+	}
 
-    }
-    else
-    {
-        /*
-         * Half-Word aligned buffer, correct.
-         */
-
-        AlignBuffer = 0;
-
-        /*
-         * This is a funny looking cast. The new gcc, version 3.3.x has a
-         * strict cast check for 16 bit pointers, aka short pointers. The
-         * following warning is issued if the initial 'void *' cast is
-         * not used:
-         * 'dereferencing type-punned pointer will break strict-aliasing rules'
-         */
-
-        To16Ptr = (Xuint16 *) ((void *)&AlignBuffer);
-        From16Ptr  = (Xuint16 *)SrcPtr;
-
-        while (Length > 3)
-        {
-            /*
-             * Copy each half word into the temporary buffer.
-             */
-
-            for (i = 0; i < 2; i++)
-            {
-                *To16Ptr++ = *From16Ptr++;
-            }
-
-            /*
-             * Output the buffer.
-             */
-
-            *To32Ptr++ = AlignBuffer;
-
-            /*
-             * Reset the temporary buffer pointer and adjust length.
-             */
-
-            /*
-             * This is a funny looking cast. The new gcc, version 3.3.x has a
-             * strict cast check for 16 bit pointers, aka short pointers. The
-             * following warning is issued if the initial 'void *' cast is
-             * not used:
-             * 'dereferencing type-punned pointer will break strict-aliasing rules'
-             */
-
-            To16Ptr = (Xuint16 *) ((void *)&AlignBuffer);
-            Length -= 4;
-        }
-
-        /*
-         * Set up to output the remaining data, zero the temp buffer first.
-         */
-
-        AlignBuffer = 0;
-        To8Ptr = (Xuint8 *) &AlignBuffer;
-        From8Ptr = (Xuint8 *) From16Ptr;
-    }
-
-    /*
-     * Output the remaining data, zero the temp buffer first.
-     */
-    for (i = 0; i < Length; i++)
-    {
-        *To8Ptr++ = *From8Ptr++;
-    }
-
-    *To32Ptr++ = AlignBuffer;
+	*To32Ptr++ = AlignBuffer;
 
 }
 
@@ -376,155 +385,129 @@ void XEmacLite_AlignedWrite(void *SrcPtr, Xuint32 *DestPtr, unsigned ByteCount)
 * This function reads from a 32-bit aligned source address range and aligns
 * the writes to the provided destination pointer alignment.
 *
-* @param SrcPtr is a pointer to incoming data of 32-bit alignment.
-* @param DestPtr is a pointer to outgoing data of any alignment.
-* @param ByteCount is the number of bytes to read.
+* @param	SrcPtr is a pointer to incoming data of 32-bit alignment.
+* @param	DestPtr is a pointer to outgoing data of any alignment.
+* @param	ByteCount is the number of bytes to read.
 *
-* @return
+* @return	None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note		None.
 *
 ******************************************************************************/
-void XEmacLite_AlignedRead(Xuint32 *SrcPtr, void *DestPtr, unsigned ByteCount)
+void XEmacLite_AlignedRead(u32 *SrcPtr, void *DestPtr, unsigned ByteCount)
 {
-    unsigned i;
-    unsigned Length = ByteCount;
-    Xuint32 AlignBuffer;
-    Xuint32 *To32Ptr;
-    Xuint32 *From32Ptr;
-    Xuint16 *To16Ptr;
-    Xuint16 *From16Ptr;
-    Xuint8  *To8Ptr;
-    Xuint8  *From8Ptr;
+	unsigned Index;
+	unsigned Length = ByteCount;
+	volatile u32 AlignBuffer;
+	u32 *To32Ptr;
+	volatile u32 *From32Ptr;
+	u16 *To16Ptr;
+	volatile u16 *From16Ptr;
+	u8 *To8Ptr;
+	volatile u8 *From8Ptr;
 
-    From32Ptr = (Xuint32 *)SrcPtr;
+	From32Ptr = (u32 *) SrcPtr;
 
-    if ((((Xuint32)DestPtr) & 0x00000003) == 0)
-    {
+	if ((((u32) DestPtr) & 0x00000003) == 0) {
 
-        /*
-         * Word aligned buffer, no correction needed.
-         */
+		/*
+		 * Word aligned buffer, no correction needed.
+		 */
+		To32Ptr = (u32 *) DestPtr;
 
-        To32Ptr  = (Xuint32 *)DestPtr;
+		while (Length > 3) {
+			/*
+			 * Output each word.
+			 */
+			*To32Ptr++ = *From32Ptr++;
 
-        while (Length > 3)
-        {
-            /*
-             * Output each word.
-             */
+			/*
+			 * Adjust length accordingly.
+			 */
+			Length -= 4;
+		}
 
-            *To32Ptr++ = *From32Ptr++;
+		/*
+		 * Set up to read the remaining data.
+		 */
+		To8Ptr = (u8 *) To32Ptr;
 
-            /*
-             * Adjust length accordingly.
-             */
-            Length -= 4;
-        }
+	}
+	else if ((((u32) DestPtr) & 0x00000001) != 0) {
+		/*
+		 * Byte aligned buffer, correct.
+		 */
+		To8Ptr = (u8 *) DestPtr;
 
-        /*
-         * Set up to read the remaining data.
-         */
+		while (Length > 3) {
+			/*
+			 * Copy each word into the temporary buffer.
+			 */
+			AlignBuffer = *From32Ptr++;
+			From8Ptr = (u8 *) &AlignBuffer;
 
-        To8Ptr = (Xuint8 *) To32Ptr;
+			/*
+			 * Write data to destination.
+			 */
+			for (Index = 0; Index < 4; Index++) {
+				*To8Ptr++ = *From8Ptr++;
+			}
 
-    }
-    else if ((((Xuint32)DestPtr) & 0x00000001) != 0)
-    {
-        /*
-         * Byte aligned buffer, correct.
-         */
+			/*
+			 * Adjust length
+			 */
+			Length -= 4;
+		}
 
-        To8Ptr = (Xuint8 *)DestPtr;
+	}
+	else {
+		/*
+		 * Half-Word aligned buffer, correct.
+		 */
+		To16Ptr = (u16 *) DestPtr;
 
-        while (Length > 3)
-        {
-            /*
-             * Copy each word into the temporary buffer.
-             */
+		while (Length > 3) {
+			/*
+			 * Copy each word into the temporary buffer.
+			 */
+			AlignBuffer = *From32Ptr++;
 
-            AlignBuffer = *From32Ptr++;
-            From8Ptr = (Xuint8 *) &AlignBuffer;
+			/*
+			 * This is a funny looking cast. The new gcc, version
+			 * 3.3.x has a strict cast check for 16 bit pointers,
+			 * aka short pointers. The following warning is issued
+			 * if the initial 'void *' cast is not used:
+			 * 'dereferencing type-punned pointer will break
+			 *  strict-aliasing rules'
+			 */
+			From16Ptr = (u16 *) ((void *) &AlignBuffer);
 
-            /*
-             * Write data to destination.
-             */
+			/*
+			 * Write data to destination.
+			 */
+			for (Index = 0; Index < 2; Index++) {
+				*To16Ptr++ = *From16Ptr++;
+			}
 
-            for (i = 0; i < 4; i++)
-            {
-                *To8Ptr++ = *From8Ptr++;
-            }
+			/*
+			 * Adjust length.
+			 */
+			Length -= 4;
+		}
 
-            /*
-             * Adjust length
-             */
+		/*
+		 * Set up to read the remaining data.
+		 */
+		To8Ptr = (u8 *) To16Ptr;
+	}
 
-            Length -= 4;
-        }
+	/*
+	 * Read the remaining data.
+	 */
+	AlignBuffer = *From32Ptr++;
+	From8Ptr = (u8 *) &AlignBuffer;
 
-    }
-    else
-    {
-        /*
-         * Half-Word aligned buffer, correct.
-         */
-
-        To16Ptr  = (Xuint16 *)DestPtr;
-
-        while (Length > 3)
-        {
-            /*
-             * Copy each word into the temporary buffer.
-             */
-
-            AlignBuffer = *From32Ptr++;
-
-            /*
-             * This is a funny looking cast. The new gcc, version 3.3.x has a
-             * strict cast check for 16 bit pointers, aka short pointers. The
-             * following warning is issued if the initial 'void *' cast is
-             * not used:
-             * 'dereferencing type-punned pointer will break strict-aliasing rules'
-             */
-
-            From16Ptr = (Xuint16 *) ((void *)&AlignBuffer);
-
-            /*
-             * Write data to destination.
-             */
-
-            for (i = 0; i < 2; i++)
-            {
-                *To16Ptr++ = *From16Ptr++;
-            }
-
-            /*
-             * Adjust length.
-             */
-
-            Length -= 4;
-        }
-
-        /*
-         * Set up to read the remaining data.
-         */
-
-        To8Ptr = (Xuint8 *) To16Ptr;
-    }
-
-    /*
-     * Read the remaining data.
-     */
-
-    AlignBuffer = *From32Ptr++;
-    From8Ptr = (Xuint8 *) &AlignBuffer;
-
-    for (i = 0; i < Length; i++)
-    {
-        *To8Ptr++ = *From8Ptr++;
-    }
+	for (Index = 0; Index < Length; Index++) {
+		*To8Ptr++ = *From8Ptr++;
+	}
 }

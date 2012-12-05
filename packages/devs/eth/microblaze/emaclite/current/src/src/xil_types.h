@@ -1,7 +1,6 @@
-/* $Id: xemaclite_g.c,v 1.1.2.1 2010/07/12 08:34:27 svemula Exp $ */
 /******************************************************************************
 *
-* (c) Copyright 2004-2009 Xilinx, Inc. All rights reserved.
+* (c) Copyright 2009 Xilinx, Inc. All rights reserved.
 *
 * This file contains confidential and proprietary information of Xilinx, Inc.
 * and is protected under U.S. and international copyright and other
@@ -42,50 +41,84 @@
 /*****************************************************************************/
 /**
 *
-* @file xemaclite_g.c
+* @file xil_types.h
 *
-* This file contains a configuration table that specifies the configuration
-* of EmacLite devices in the system.
+* This file contains basic types for Xilinx software IP.
+
 *
 * <pre>
 * MODIFICATION HISTORY:
 *
-* Ver   Who  Date     Changes
-* ----- ---- -------- -----------------------------------------------
-* 1.01a ecm  02/16/04 First release
-* 1.11a mta  03/21/07 Updated to new coding style
-* 2.00a ktn  02/16/09 Added support for MDIO
+* Ver   Who    Date   Changes
+* ----- ---- -------- -------------------------------------------------------
+* 1.00a hbm  07/14/09 First release
 * </pre>
 *
 ******************************************************************************/
 
-/***************************** Include Files *********************************/
+#ifndef XIL_TYPES_H	/* prevent circular inclusions */
+#define XIL_TYPES_H	/* by using protection macros */
 
-#include "xparameters.h"
-#include "xemaclite.h"
 
 /************************** Constant Definitions *****************************/
 
-/**************************** Type Definitions *******************************/
+#ifndef TRUE
+#  define TRUE		1
+#endif
 
-/***************** Macros (Inline Functions) Definitions *********************/
+#ifndef FALSE
+#  define FALSE		0
+#endif
 
-/************************** Function Prototypes ******************************/
+#ifndef NULL
+#define NULL		0
+#endif
 
-/************************** Variable Prototypes ******************************/
+#define XIL_COMPONENT_IS_READY     0x11111111  /**< component has been initialized */
+#define XIL_COMPONENT_IS_STARTED   0x22222222  /**< component has been started */
 
-/**
- * This table contains configuration information for each EmacLite device
- * in the system.
+/** @name New types
+ * New simple types.
+ * @{
  */
-XEmacLite_Config XEmacLite_ConfigTable[XPAR_XEMACLITE_NUM_INSTANCES] = {
-	{
-	 XPAR_EMACLITE_0_DEVICE_ID,	/* Unique ID of device */
-	 XPAR_EMACLITE_0_BASEADDR,	/* Device base address */
-	 XPAR_EMACLITE_0_TX_PING_PONG,	/* Include TX Ping Pong buffers */
-	 XPAR_EMACLITE_0_RX_PING_PONG,	/* Include RX Ping Pong buffers */
-	 XPAR_EMACLITE_0_INCLUDE_MDIO	/* Include MDIO support */
-	 XPAR_EMACLITE_0_INCLUDE_INTERNAL_LOOPBACK /* Include Internal
-	 					    * loop back support */
-	 }
-};
+#ifndef __KERNEL__
+#ifndef XBASIC_TYPES_H
+/**
+ * guarded against xbasic_types.h.
+ */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned long u32;
+#endif
+/**
+ * xbasic_types.h does not typedef s* or u64
+ */
+typedef unsigned long long u64;
+
+typedef char s8;
+typedef short s16;
+typedef long s32;
+typedef long long s64;
+#else
+#include <linux/types.h>
+#endif
+
+
+/*@}*/
+
+
+/************************** Constant Definitions *****************************/
+
+#ifndef TRUE
+#define TRUE		1
+#endif
+
+#ifndef FALSE
+#define FALSE		0
+#endif
+
+#ifndef NULL
+#define NULL		0
+#endif
+
+#endif	/* end of protection macro */
