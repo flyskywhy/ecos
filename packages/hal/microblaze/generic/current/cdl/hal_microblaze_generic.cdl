@@ -200,7 +200,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             flavor  data
             no_define
 # -fvtable-gc -Woverloaded-virtual -Wstrict-prototypes    not supported in gcc
-            default_value { CYGBLD_GLOBAL_WARNFLAGS . "-msoft-float -mcpu=v4.00.a \
+            default_value { CYGBLD_GLOBAL_WARNFLAGS . "-fmessage-length=0 -mlittle-endian -mxl-barrel-shift -mno-xl-soft-mul \
 				-g -O2 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions -I. -I$(PREFIX)/include/cyg/hal/ " }
             description   "
                 This option controls the global compiler flags which
@@ -213,9 +213,9 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             display "Global linker flags"
             flavor  data
             no_define
-            default_value { "-msoft-float -g -nostdlib -Wl,--gc-sections -Wl,-static" }
+            default_value { "-fmessage-length=0 -mlittle-endian -mxl-barrel-shift -mno-xl-soft-mul -g -nostdlib -Wl,--gc-sections -Wl,-static" }
 #            default_value { "-msoft-float -g -nostdlib" }
-#            default_value { "-mcpu=v4.00.a -nostdlib" }
+#            default_value { "-mcpu=v8.10.a -nostdlib" }
             description   "
                 This option controls the global linker flags. Individual
                 packages may define options which override these global flags."
