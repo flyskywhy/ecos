@@ -357,6 +357,36 @@ cyg_hal_plf_serial_control(channel_data_t *chan, __comm_control_cmd_t func, ...)
         break;
     }
 #endif
+
+#ifdef MON_UARTLITE_0
+    switch (func) {
+    case __COMMCTL_IRQ_ENABLE:
+        HAL_INTERRUPT_UNMASK(chan->isr_vector);
+        chan->int_state = 1;
+        break;
+    case __COMMCTL_IRQ_DISABLE:
+        ret = chan->int_state;
+        chan->int_state = 0;
+        HAL_INTERRUPT_MASK(chan->isr_vector);
+        break;
+    case __COMMCTL_DBG_ISR_VECTOR:
+        ret = chan->isr_vector;
+        break;
+    case __COMMCTL_SET_TIMEOUT:
+    {
+        va_list ap;
+
+        va_start(ap, func);
+
+        ret = chan->msec_timeout;
+        chan->msec_timeout = va_arg(ap, cyg_uint32);
+
+        va_end(ap);
+    }
+    default:
+        break;
+    }
+#endif
     return ret;
 }
 
