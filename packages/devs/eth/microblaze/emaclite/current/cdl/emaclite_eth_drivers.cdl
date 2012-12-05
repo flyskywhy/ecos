@@ -67,7 +67,7 @@ cdl_package CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE {
     implements    CYGHWR_NET_DRIVER_ETH0
 
     compile       -library=libextras.a adapter.c src/xemaclite.c src/xemaclite_intr.c \
-                  src/xemaclite_g.c src/xemaclite_l.c src/xemaclite_selftest.c
+                  src/xemaclite_g.c src/xemaclite_l.c src/xemaclite_sinit.c src/xemaclite_selftest.c
 
     cdl_component CYGPKG_DEVS_ETH_MICROBLAZE_EMACLITE_OPTIONS {
         display "Emaclite build options"
