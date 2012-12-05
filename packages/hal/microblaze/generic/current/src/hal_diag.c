@@ -421,12 +421,8 @@ cyg_hal_plf_serial_isr_recv_handler(channel_data_t *chan, int len)
 static void
 cyg_hal_plf_serial_isr_send_handler(channel_data_t *chan, int len)
 {
-    char ch;
-
     *chan->ctrlc = 0;
-    XUartLite_Send(&chan->dev, &ch, 1);
-    if (cyg_hal_is_break(&ch , 1))
-        *chan->ctrlc = 1;
+    return;
 }
 #endif
 
