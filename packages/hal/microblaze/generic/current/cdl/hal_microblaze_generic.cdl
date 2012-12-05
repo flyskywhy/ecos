@@ -201,7 +201,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_GENERIC {
             no_define
 # -fvtable-gc -Woverloaded-virtual -Wstrict-prototypes    not supported in gcc
             default_value { CYGBLD_GLOBAL_WARNFLAGS . "-fmessage-length=0 -mlittle-endian -mxl-barrel-shift -mno-xl-soft-mul \
-				-g -O2 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions -I. -I$(PREFIX)/include/cyg/hal/ " }
+				-g -O0 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions -I. -I$(PREFIX)/include/cyg/hal/ " }
             description   "
                 This option controls the global compiler flags which
                 are used to compile all packages by
