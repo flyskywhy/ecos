@@ -113,6 +113,11 @@ static channel_data_t channels[] = {
 static void cyg_hal_plf_serial_isr_handler(channel_data_t *chan, int event, int len);
 #endif
 
+#ifdef MON_UARTLITE_0
+static void cyg_hal_plf_serial_isr_recv_handler(channel_data_t *chan, int len);
+static void cyg_hal_plf_serial_isr_send_handler(channel_data_t *chan, int len);
+#endif
+
 //-----------------------------------------------------------------------------
 static void
 init_serial_channel(channel_data_t *chan)
@@ -159,6 +164,21 @@ init_serial_channel(channel_data_t *chan)
     chan->dev_ok = true;
 //	*led = *led + 0x10;
 #endif
+
+#ifdef MON_UARTLITE_0
+    XStatus stat;
+    Xuint16 opt;
+
+    stat = XUartLite_Initialize(&chan->dev, chan->dev_id);
+    if (stat != XST_SUCCESS) {
+        return;  // What else can be done?
+    }
+
+    XUartLite_SetRecvHandler(&chan->dev, cyg_hal_plf_serial_isr_recv_handler, (void *)chan);
+    XUartLite_SetSendHandler(&chan->dev, cyg_hal_plf_serial_isr_send_handler, (void *)chan);
+    chan->qlen = 0;  // No characters buffered
+    chan->dev_ok = true;
+#endif
 }
 
 cyg_uint8 XUartLite_RecvByte2()
@@ -181,8 +201,21 @@ cyg_hal_plf_serial_getc_nonblock(channel_data_t *chan, cyg_uint8 *ch)
 {
 #ifdef MON_UARTLITE_0
 
-	*ch = XUartLite_RecvByte2();
-	return true;
+//	*ch = XUartLite_RecvByte2();
+//	return true;
+    if (!chan->dev_ok) return false;
+    if (chan->qlen == 0) {
+        // See if any characters are now available
+        chan->qp = chan->inq;
+        chan->qlen = XUartLite_Recv(&chan->dev, chan->qp, sizeof(chan->inq));
+
+    }
+    if (chan->qlen) {
+        *ch = *chan->qp++;
+        chan->qlen--;
+        return true;
+    }
+    return false;
 #else
 
     if (!chan->dev_ok) return false;
@@ -239,7 +272,10 @@ cyg_hal_plf_serial_putc(channel_data_t *chan, cyg_uint8 c)
 	}
 #endif
 #ifdef MON_UARTLITE_0
-	XUartLite_SendByte2(c);
+//	XUartLite_SendByte2(c);
+    XUartLite_Send(&chan->dev, &c, 1);
+    // Wait for character to get out
+    while (XUartLite_IsSending(&chan->dev)) ;
 #endif
 
 #ifdef MON_UART16550_0
@@ -368,6 +404,30 @@ cyg_hal_plf_serial_isr_handler(channel_data_t *chan,
     	break;
     }
 }                               
+#endif
+
+#ifdef MON_UARTLITE_0
+static void
+cyg_hal_plf_serial_isr_recv_handler(channel_data_t *chan, int len)
+{
+    char ch;
+
+    *chan->ctrlc = 0;
+    XUartLite_Recv(&chan->dev, &ch, 1);
+    if (cyg_hal_is_break(&ch , 1))
+        *chan->ctrlc = 1;
+}
+
+static void
+cyg_hal_plf_serial_isr_send_handler(channel_data_t *chan, int len)
+{
+    char ch;
+
+    *chan->ctrlc = 0;
+    XUartLite_Send(&chan->dev, &ch, 1);
+    if (cyg_hal_is_break(&ch , 1))
+        *chan->ctrlc = 1;
+}
 #endif
 
 void
