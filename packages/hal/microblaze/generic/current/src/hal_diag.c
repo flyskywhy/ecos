@@ -180,7 +180,7 @@ init_serial_channel(channel_data_t *chan)
     chan->dev_ok = true;
 #endif
 }
-
+/*
 cyg_uint8 XUartLite_RecvByte2()
 {
 	while (  ( XIo_In32(MON_UARTLITE_0_BASE + 0x8) & 0x01 ) != 0x01 );
@@ -194,7 +194,7 @@ void XUartLite_SendByte2(char Data)
 
 	XIo_Out32(MON_UARTLITE_0_BASE + 0x4, Data);
 }
-
+*/
 
 static cyg_bool
 cyg_hal_plf_serial_getc_nonblock(channel_data_t *chan, cyg_uint8 *ch)
