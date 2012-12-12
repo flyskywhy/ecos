@@ -10,15 +10,25 @@
 ECOS_BUILD_DIR=${1-`pwd`}
 ECOS_INSTALL_DIR=`echo ${ECOS_BUILD_DIR}/install`
 if [ ! -d ${ECOS_BUILD_DIR}/install ]; then
-  if [ ! -d ${ECOS_BUILD_DIR}/*_build ]; then
+  ECOS_INSTALL_DIR=`echo ${ECOS_BUILD_DIR}/*_install`
+  for i in `echo ${ECOS_INSTALL_DIR} | sed "s/_install//g"`; do
+    ECOS_ECC_NAME=`basename ${i}`
+    ECOS_ECC_FILE=${ECOS_ECC_NAME}.ecc
+    grep "template    redboot" ${ECOS_ECC_FILE}
+    if [ 1 = $? ]; then
+      echo Using ${ECOS_ECC_FILE}
+      break
+    fi
+  done
+  if [ ! -d ${ECOS_BUILD_DIR}/${ECOS_ECC_NAME}_build ]; then
     echo "Not an eCos install tree"
     echo "usage: <eCos_repository>/build_Make.params [<eCos_install_dir>]"
     echo "... where <eCos_install_dir> is the directory which contains"
     echo "    the *.ecc configuration file used to build the kernel"
     exit
   else
-    ECOS_INSTALL_DIR=`echo ${ECOS_BUILD_DIR}/*_install`
-    ECOS_BUILD_DIR=`echo ${ECOS_BUILD_DIR}/*_build`
+    ECOS_INSTALL_DIR=`echo ${ECOS_BUILD_DIR}/${ECOS_ECC_NAME}_install`
+    ECOS_BUILD_DIR=`echo ${ECOS_BUILD_DIR}/${ECOS_ECC_NAME}_build`
   fi
 fi
 
