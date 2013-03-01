@@ -98,6 +98,10 @@ void hal_platform_init(void)
 {
 	// Initialize I/O interfaces
 	hal_if_init();
+
+#if defined(MON_GPIO_0) || defined(MON_GPIO_1) || defined(MON_GPIO_2) || defined(MON_GPIO_3)
+	gpio_init();
+#endif
 }
 
 #if 0
