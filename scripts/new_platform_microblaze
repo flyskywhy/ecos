@@ -43,6 +43,7 @@ cat ${DB_FILE_PATH} >> ${ECOS_REPOSITORY}/${DB_FILE}
 
 #copy config directory
 cp -R ${BSP_GEN_PATH}/hal ${ECOS_REPOSITORY}
+cp -R ${BSP_GEN_PATH}/../../include ${ECOS_REPOSITORY}/hal/microblaze/`ls ${BSP_GEN_PATH}/hal/microblaze`/current
 
 echo "Success"
 echo "Thank you for using this simple script"
