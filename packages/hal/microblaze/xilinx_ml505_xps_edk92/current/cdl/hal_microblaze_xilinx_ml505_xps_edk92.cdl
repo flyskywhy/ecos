@@ -67,7 +67,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_XILINX_ML505_XPS_EDK92 {
 	cdl_option MON_SYSTEM_CLK {
 		display		"SYSTEM_CLK IP core support"
 		flavor		data
-		default_value	125
+		default_value	125000000
 		description	"System CLK."
 	}
 	cdl_option MON_UARTLITE_0 {

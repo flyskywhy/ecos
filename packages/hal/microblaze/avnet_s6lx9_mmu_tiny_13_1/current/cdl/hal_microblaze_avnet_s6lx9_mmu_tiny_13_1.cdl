@@ -29,7 +29,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
 		puts $::cdl_header "#define MON_CPU_DCACHE_SIZE	8192"
 		puts $::cdl_header "#define MON_CPU_DCACHE_BASE	0x80000000"
 		puts $::cdl_header "#define MON_CPU_DCACHE_HIGH	0x83ffffff"
-		puts $::cdl_header "#define MON_CPU_SYSTEM_CLK	100000000"
+		puts $::cdl_header "#define MON_CPU_SYSTEM_CLK	66666667"
 		puts $::cdl_header "#define MON_CPU_MSR_INSTR	1"
 		puts $::cdl_header "#define MON_CPU_BARREL	1"
 		puts $::cdl_header "#define MON_CPU_DIV	0"
@@ -49,6 +49,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
 		puts $::cdl_header "#define MON_EMACLITE_INTR	3"
 		puts $::cdl_header "/* SPI_FLASH */"
 		puts $::cdl_header "#define MON_SPI_BASE	0x40a00000"
+		puts $::cdl_header "#define MON_SPI_INTR	2"
 		puts $::cdl_header "/* system_timer */"
 		puts $::cdl_header "#define MON_TIMER_BASE	0x41c00000"
 		puts $::cdl_header "#define MON_TIMER_INTR	1"
@@ -62,7 +63,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
 	cdl_option MON_SYSTEM_CLK {
 		display		"SYSTEM_CLK IP core support"
 		flavor		data
-		default_value	100
+		default_value	66666667
 		description	"System CLK."
 	}
 	cdl_option MON_UARTLITE_0 {

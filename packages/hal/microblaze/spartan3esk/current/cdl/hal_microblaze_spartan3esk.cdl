@@ -62,7 +62,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_SPARTAN3ESK {
 	cdl_option MON_SYSTEM_CLK {
 		display		"SYSTEM_CLK IP core support"
 		flavor		data
-		default_value	50
+		default_value	50000000
 		description	"System CLK."
 	}
 	cdl_option MON_UART16550_0 {
