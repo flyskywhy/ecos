@@ -1,0 +1,55 @@
+
+ECOS_ECC_NAME = $(basename $(ECOS_ECC_FILE))
+ECOS_INSTALL_DIR = $(ECOS_ECC_NAME)_install
+ECOS_BUILD_DIR = $(ECOS_ECC_NAME)_build
+
+# Copied from 'makefile' in the "_build" tree
+
+HOST := $(shell grep "export HOST" ${ECOS_BUILD_DIR}/makefile | xargs echo | sed "s/export HOST := //")
+PREFIX := $(shell grep "export PREFIX" ${ECOS_BUILD_DIR}/makefile | xargs echo | sed "s/export PREFIX := //")
+COMMAND_PREFIX := $(shell grep "export COMMAND_PREFIX" ${ECOS_BUILD_DIR}/makefile | xargs echo | sed "s/export COMMAND_PREFIX := //")
+CC := $(COMMAND_PREFIX)gcc
+OBJCOPY := $(COMMAND_PREFIX)objcopy
+AR := $(COMMAND_PREFIX)ar
+
+# Generic Makefile for C/C++ Program needed variables
+
+CXX := $(COMMAND_PREFIX)g++
+
+#
+# Target specific flags, etc.
+#
+include ${ECOS_INSTALL_DIR}/include/pkgconf/ecos.mak
+
+#
+# Add CFLAGS manipulation - this should match <ecos>/packages/pkgconf/rules.mak
+#
+
+#
+# Modify CFLAGS to match newer compilers
+#
+ACTUAL_CFLAGS = $(ECOS_GLOBAL_CFLAGS)
+ACTUAL_CXXFLAGS = $(ECOS_GLOBAL_CFLAGS)
+ACTUAL_LDFLAGS = $(ECOS_GLOBAL_LDFLAGS)
+
+# GCC since 2.95 does -finit-priority by default so remove it from old HALs
+ACTUAL_CFLAGS := $(subst -finit-priority,,$(ACTUAL_CFLAGS))
+
+# -fvtable-gc is known to be broken in all recent GCC.
+ACTUAL_CFLAGS := $(subst -fvtable-gc,,$(ACTUAL_CFLAGS))
+
+# Expand inline functions
+ACTUAL_CFLAGS := -finline-limit=7000 $(ACTUAL_CFLAGS)
+
+# Separate C++ flags out from C flags.
+ACTUAL_CFLAGS := $(subst -fno-rtti,,$(ACTUAL_CFLAGS))
+ACTUAL_CFLAGS := $(subst -frtti,,$(ACTUAL_CFLAGS))
+ACTUAL_CFLAGS := $(subst -Woverloaded-virtual,,$(ACTUAL_CFLAGS))
+ACTUAL_CFLAGS := $(subst -fvtable-gc,,$(ACTUAL_CFLAGS))
+
+ACTUAL_CXXFLAGS := $(subst -Wstrict-prototypes,,$(ACTUAL_CXXFLAGS))
+
+# Generic Makefile for C/C++ Program needed variables
+CFLAGS   := $(ACTUAL_CFLAGS) -I$(PREFIX)/include
+CXXFLAGS := $(ACTUAL_CXXFLAGS) -I$(PREFIX)/include
+LDFLAGS  := $(ACTUAL_LDFLAGS) -L$(PREFIX)/lib -Ttarget.ld
