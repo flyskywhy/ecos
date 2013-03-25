@@ -56,6 +56,7 @@ cdl_package CYGPKG_DEVS_DISK_MMC {
 
     cdl_interface CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS {
 	active_if	CYGPKG_IO_SPI
+	implements	CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS
 	display		"Number of MMC connectors accessed via SPI"
     }
 
