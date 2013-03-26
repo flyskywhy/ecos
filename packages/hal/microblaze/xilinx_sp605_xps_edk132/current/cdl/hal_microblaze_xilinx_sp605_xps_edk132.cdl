@@ -107,7 +107,7 @@ cdl_package CYGPKG_HAL_MICROBLAZE_XILINX_ML505_XPS_EDK92 {
 		description	"Enabling this option adds support to RS232_Uart_2."
 	}
 #	cdl_option MON_SPI_0 {
-#		display		"MON_0 IP core support"
+#		display		"MON_SPI_0 IP core support"
 #		flavor		bool
 #		default_value	1
 #		description	"Enabling this option adds support to SPI"

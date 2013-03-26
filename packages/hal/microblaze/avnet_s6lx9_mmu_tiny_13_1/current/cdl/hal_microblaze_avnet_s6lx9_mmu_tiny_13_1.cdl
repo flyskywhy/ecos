@@ -48,8 +48,8 @@ cdl_package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
 		puts $::cdl_header "#define MON_EMACLITE_RX_PING_PONG	0"
 		puts $::cdl_header "#define MON_EMACLITE_INTR	3"
 		puts $::cdl_header "/* SPI_FLASH */"
-		puts $::cdl_header "#define MON_SPI_BASE	0x40a00000"
-		puts $::cdl_header "#define MON_SPI_INTR	2"
+		puts $::cdl_header "#define MON_SPI_0_BASE	0x40a00000"
+		puts $::cdl_header "#define MON_SPI_0_INTR	2"
 		puts $::cdl_header "/* system_timer */"
 		puts $::cdl_header "#define MON_TIMER_BASE	0x41c00000"
 		puts $::cdl_header "#define MON_TIMER_INTR	1"
@@ -78,8 +78,8 @@ cdl_package CYGPKG_HAL_MICROBLAZE_AVNET_S6LX9_MMU_TINY_13_1 {
 		default_value	1
 		description	"Enabling this option adds support to Ethernet_MAC."
 	}
-	cdl_option MON_SPI {
-		display		"SPI IP core support"
+	cdl_option MON_SPI_0 {
+		display		"SPI_0 IP core support"
 		flavor		bool
 		default_value	1
 		description	"Enabling this option adds support to SPI_FLASH."
