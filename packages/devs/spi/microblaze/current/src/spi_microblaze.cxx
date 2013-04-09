@@ -193,6 +193,7 @@ spi_microblaze_begin(cyg_spi_device *device)
 {
   cyg_spi_microblaze_dev_t *dev = (cyg_spi_microblaze_dev_t *) device;
   cyg_spi_microblaze_bus_t  *bus = (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
+  XSpi_SetSlaveSelect(bus->spi_dev, 0x01);
   XSpi_Start(bus->spi_dev);
 }
 
@@ -226,7 +227,6 @@ spi_microblaze_transfer(cyg_spi_device *device, cyg_bool polled, cyg_uint32 coun
   (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
   if(!count) return;
 
-  XSpi_SetSlaveSelect(bus->spi_dev, 0x01);
   XSpi_IntrGlobalDisable(bus->spi_dev);
   Status =XSpi_Transfer(bus->spi_dev,(cyg_uint8 *)tx_data,rx_data,count);
   if(Status != XST_SUCCESS)
@@ -285,6 +285,7 @@ spi_microblaze_end(cyg_spi_device *device)
 * Use XSpi_Stop function from Xilinx drivers
 */
   XSpi_Stop(bus->spi_dev);
+  XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
 }
 
 
