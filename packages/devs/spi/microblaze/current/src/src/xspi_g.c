@@ -93,9 +93,9 @@ XSpi_Config XSpi_ConfigTable[XPAR_XSPI_NUM_INSTANCES] = {
 	 XPAR_SPI_0_DEVICE_ID,		/* Device ID for instance */
 	 XPAR_SPI_0_BASEADDR,		/* Device base address */
 	 XPAR_SPI_0_FIFO_EXIST,		/* Does device have FIFOs? */
-	 XPAR_SPI_0_SLAVE_ONLY,		/* Is the device slave only? */
+	 XPAR_SPI_0_SPI_SLAVE_ONLY,		/* Is the device slave only? */
 	 XPAR_SPI_0_NUM_SS_BITS,	/* Number of slave select bits */
-	 XPAR_SPI_0_NUM_TRANSFER_BITS	/* Transfer Data width */
+	 XPAR_SPI_0_NUM_TRANSFER_BITS,	/* Transfer Data width */
 	 XPAR_SPI_0_SPI_MODE		/* standard/dual/quad mode */
 	}
 	,
@@ -103,9 +103,9 @@ XSpi_Config XSpi_ConfigTable[XPAR_XSPI_NUM_INSTANCES] = {
 	 XPAR_SPI_1_DEVICE_ID,		/* Device ID for instance */
 	 XPAR_SPI_1_BASEADDR,		/* Device base address */
 	 XPAR_SPI_1_FIFO_EXIST,		/* Does device have FIFOs? */
-	 XPAR_SPI_1_SLAVE_ONLY,		/* Is the device slave only? */
+	 XPAR_SPI_1_SPI_SLAVE_ONLY,		/* Is the device slave only? */
 	 XPAR_SPI_1_NUM_SS_BITS,	/* Number of slave select bits */
-	 XPAR_SPI_1_NUM_TRANSFER_BITS	/* Transfer Data width */
+	 XPAR_SPI_1_NUM_TRANSFER_BITS,	/* Transfer Data width */
 	 XPAR_SPI_1_SPI_MODE		/* standard/dual/quad mode */
 	}
 };

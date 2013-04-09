@@ -228,7 +228,7 @@ spi_microblaze_transfer(cyg_spi_device *device, cyg_bool polled, cyg_uint32 coun
    XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
 
   XSpi_IntrGlobalDisable(bus->spi_dev);
-  Status =XSpi_Transfer(bus->spi_dev,tx_data,rx_data,count);
+  Status =XSpi_Transfer(bus->spi_dev,(cyg_uint8 *)tx_data,rx_data,count);
   if(Status != XST_SUCCESS)
    diag_printf("Transfer failure, error code = %d\n",Status);
 
