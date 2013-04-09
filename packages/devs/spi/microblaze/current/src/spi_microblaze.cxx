@@ -40,10 +40,10 @@
 //#####DESCRIPTIONBEGIN####
 //
 // Author(s):    Kolb Alexandr
-// Contributors: 
+// Contributors: Li Zheng
 // Date:         2011-11-12
 // Purpose:      
-// Description:  
+// Description:  Ref to packages/devs/spi/arm/lpc2xxx/current/src/spi_lpc2xxx.cxx
 //              
 //####DESCRIPTIONEND####
 //
@@ -66,12 +66,12 @@
 #include <cyg/hal/hal_io.h>
 #include <cyg/hal/hal_if.h>
 #include <cyg/hal/hal_intr.h>
+#include <pkgconf/devs_spi_microblaze.h>
 #include <cyg/io/spi_microblaze.h>
 #include <cyg/error/codes.h>
 #include "src/xspi.h"
 #include <pkgconf/hal_microblaze_platform.h>
 #include <stdlib.h>
-#include <pkgconf/devs_spi_microblaze.h> 
 
 
 #define SPI_SPCR_LSBF 0x200
@@ -96,6 +96,10 @@
 #ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
 cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0;
 CYG_SPI_DEFINE_BUS_TABLE(cyg_spi_microblaze_dev_t, 0);
+#endif
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
+cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus1;
+CYG_SPI_DEFINE_BUS_TABLE(cyg_spi_microblaze_dev_t, 1);
 #endif
 
 /**
@@ -128,8 +132,8 @@ spi_microblaze_dsr(cyg_vector_t vec, cyg_ucount32 count, cyg_addrword_t data)
 }
 
 /**
-* Set config function configures bus for device. This function has to contain baud rate settings
-* but Xilinx SPI  core doesn't have a possibility of abud rate configuration at run time
+* Get config function configures bus for device. This function has to contain baud rate settings
+* but Xilinx SPI  core doesn't have a possibility of baud rate configuration at run time
 *
 * @param	device is a pointer to the SPI device to be worked on.
 *
@@ -152,7 +156,7 @@ spi_microblaze_get_config(cyg_spi_device *device, cyg_uint32 key, void *buf,
 
 /**
 * Set config function configures bus for device. This function has to contain baud rate settings
-* but Xilinx SPI  core doesn't have a possibility of abud rate configuration at run time
+* but Xilinx SPI  core doesn't have a possibility of baud rate configuration at run time
 *
 * @param	device is a pointer to the SPI device to be worked on.
 *
@@ -222,17 +226,14 @@ spi_microblaze_transfer(cyg_spi_device *device, cyg_bool polled, cyg_uint32 coun
   (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
   if(!count) return;
 
-  if (drop_cs)
-   XSpi_SetSlaveSelect(bus->spi_dev, 0x01);
-  else
-   XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
-
+  XSpi_SetSlaveSelect(bus->spi_dev, 0x01);
   XSpi_IntrGlobalDisable(bus->spi_dev);
   Status =XSpi_Transfer(bus->spi_dev,(cyg_uint8 *)tx_data,rx_data,count);
   if(Status != XST_SUCCESS)
    diag_printf("Transfer failure, error code = %d\n",Status);
 
-  XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
+  if (drop_cs)
+   XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
 }
 
 /**
@@ -287,6 +288,11 @@ spi_microblaze_end(cyg_spi_device *device)
 }
 
 
+static void AssertPrint(char *FilenamePtr, int LineNumber){
+    diag_printf("ASSERT: File Name: %s ", FilenamePtr);
+    diag_printf("Line Number: %d\r\n",LineNumber);
+}
+
 /*****************************************************************************/
 /**
 *
@@ -298,6 +304,10 @@ spi_microblaze_end(cyg_spi_device *device)
 * @param	dev is a pointer of driver structure
 *
 * @param	vec is interrupt vector for SPI instance
+*
+* @param	prio is the interrupt priority of the SPI bus @which ISR
+*
+* @param	which is the bus number
 *
 * @return	None
 *
@@ -311,13 +321,15 @@ static void
 spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus, 
                      cyg_addrword_t dev,
                      cyg_vector_t vec,
-                     cyg_priority_t prio)
+                     cyg_priority_t prio,
+                     cyg_uint32 which)
 {
   cyg_uint32 Status;
   u32 control;
   diag_printf("__Start SPI Initialization__\n");
   XSpi *spi_dev = (XSpi *) malloc(sizeof(XSpi));
   extern XSpi_Config XSpi_ConfigTable[0];
+
 /*
 * Initialization of SPI bus structure
 */
@@ -340,15 +352,11 @@ spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus,
                            &spi_microblaze_isr, &spi_microblaze_dsr,
                            &bus->spi_hand, &bus->spi_intr);
   cyg_drv_interrupt_attach(bus->spi_hand);
-/*  
-* Reset an SPI device
-*/
-  XSpi_Reset(bus->spi_dev);
-  diag_printf("SPI base address: %X\n",XSpi_ConfigTable[0].BaseAddress);
 /*
 * Initialize SPI core using XSpi_Initialize function from Xilinx driver
 */
-  Status = XSpi_Initialize(bus->spi_dev,50);
+  Status = XSpi_Initialize(bus->spi_dev, XSpi_ConfigTable[which].DeviceId);
+  diag_printf("SPI base address: %x\n",XSpi_ConfigTable[which].BaseAddress);
   if(Status == XST_SUCCESS)
     diag_printf("!_!_! SPI init OK!_!_!\n");
   else
@@ -368,13 +376,22 @@ class cyg_spi_microblaze_init_class {
 public:
   cyg_spi_microblaze_init_class(void) {
     cyg_uint32 addr, tmp;
-    
+
+  Xil_AssertSetCallback(AssertPrint);
+
 #ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
-    
     spi_microblaze_init_bus(&cyg_spi_microblaze_bus0,
-                         MON_SPI_0_BASEADDR,
+                         MON_SPI_0_BASE,
                          MON_SPI_0_INTR,
-                         3);
+                         CYGNUM_IO_SPI_MICROBLAZE_BUS0_INTPRIO,
+                         0);
+#endif
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
+    spi_microblaze_init_bus(&cyg_spi_microblaze_bus1,
+                         MON_SPI_1_BASE,
+                         MON_SPI_1_INTR,
+                         CYGNUM_IO_SPI_MICROBLAZE_BUS1_INTPRIO,
+                         1);
 #endif
   }
 };

@@ -40,7 +40,9 @@
 ######DESCRIPTIONBEGIN####
 #
 # Author(s):      Savin Zlobec <savin@elatec.si> 
+# Contributors:   Li Zheng
 # Date:           2004-08-25
+# Description:    Ref to packages/devs/spi/arm/lpc2xxx/current/cdl/spi_lpc2xxx.cdl
 #
 #####DESCRIPTIONEND####
 #
@@ -59,27 +61,57 @@ cdl_package CYGPKG_DEVS_SPI_MICROBLAZE {
     active_if     MON_SPI_0
     
     include_dir   cyg/io
-    compile       -library=libextras.a spi_microblaze.c src/xspi.c src/xspi_g.c src/xspi_options.c \
-                  src/xspi_selftest.c src/xspi_sinit.c src/xspi_stats.c
+    compile       -library=libextras.a spi_microblaze.cxx spi_devices.c src/xspi.c src/xspi_g.c src/xspi_options.c \
+                  src/xspi_selftest.c src/xspi_sinit.c src/xspi_stats.c src/xil_io.c
 
     cdl_component CYGPKG_DEVS_SPI_MICROBLAZE_BUS0 {
+        active_if     MON_SPI_0
         display       "Enable SPI interface 0"
         flavor        bool
         default_value 1
         description   "Enable this component to get support for SPI interface 0."
+
+        cdl_option CYGNUM_IO_SPI_MICROBLAZE_BUS0_INTPRIO {
+            display       "Interrupt priority of the SPI bus 0 ISR"
+            flavor        data
+            legal_values  0 to 15
+            default_value 12
+            requires      { is_active(CYGNUM_IO_SPI_MICROBLAZE_BUS1_INTPRIO)
+                             implies (CYGNUM_IO_SPI_MICROBLAZE_BUS0_INTPRIO !=
+                             CYGNUM_IO_SPI_MICROBLAZE_BUS1_INTPRIO)
+            }
+            description "
+                This option specifies the interrupt priority of the ISR of
+                the SPI bus 0 interrupt in the VIC. Slot 0 has the highest
+                priority and slot 15 the lowest."
+        }
     }
 
+    cdl_component CYGPKG_DEVS_SPI_MICROBLAZE_BUS1 {
+        active_if     MON_SPI_1
+        display       "Enable SPI interface 1"
+        flavor        bool
+        default_value 1
+        description   "Enable this component to get support for SPI interface 1."
 
-
+        cdl_option CYGNUM_IO_SPI_MICROBLAZE_BUS1_INTPRIO {
+            display       "Interrupt priority of the SPI bus 1 ISR"
+            flavor        data
+            legal_values  0 to 15
+            default_value 13
+            description "
+                This option specifies the interrupt priority of the ISR of
+                the SPI bus 1 interrupt in the VIC. Slot 0 has the highest
+                priority and slot 15 the lowest."
+        }
+    }
 
     cdl_component CYGPKG_DEVS_SPI_MICROBLAZE_OPTIONS {
         display "SPI build options"
         flavor  none
         no_define
-	
-	}
+    }
 
-    
     cdl_option CYGPKG_DEVS_SPI_MICROBLAZE_TESTS {
         display         "SPI tests"
         flavor          data
@@ -88,8 +120,6 @@ cdl_package CYGPKG_DEVS_SPI_MICROBLAZE {
         #tests/eth_test tests/spi 
 #        default value {"tests/spi"}
     } 
-                                            
-    
 }
 
-# EOF spi_at91.cdl
+# EOF spi_microblaze.cdl

@@ -1,5 +1,5 @@
-//#ifndef CYGONCE_DEVS_SPI_MICROBLAZE_H
-//#define CYGONCE_DEVS_SPI_MMICROBLAZE_H
+#ifndef CYGONCE_DEVS_SPI_MICROBLAZE_H
+#define CYGONCE_DEVS_SPI_MMICROBLAZE_H
 
 //==========================================================================
 //
@@ -43,10 +43,10 @@
 //#####DESCRIPTIONBEGIN####
 //
 // Author(s):    Alexander Kolb
-// Contributors: 
+// Contributors: Li Zheng
 // Date:         2011-10-12
 // Purpose:      
-// Description:  
+// Description:  Ref to packages/devs/spi/arm/lpc2xxx/current/include/spi_lpc2xxx.h
 //              
 //####DESCRIPTIONEND####
 //
@@ -90,8 +90,17 @@ struct spi_config {
   XSpi_Config *conf;
 };
 
-//#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
+/* For packages/devs/disk/generic/mmc/current/src/mmc_spi.c */
+//#define cyg_spi_mmc_dev0 spi_mmc_dev0.spi_device;
+
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
 externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus0;
-//#endif
+#endif
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
+externC cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus1;
+#endif
 
+#endif // CYGONCE_DEVS_SPI_MMICROBLAZE_H
 
+//-----------------------------------------------------------------------------
+// End of spi_microblaze.h
