@@ -69,7 +69,6 @@
 /***************************** Include Files *********************************/
 #include "xspi.h"
 #include "xparameters.h"
-#include <pkgconf/hal_microblaze_platform.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -89,25 +88,24 @@
  * This table contains configuration information for each SPI device
  * in the system.
  */
-// 0,MON_SPI_0_BASEADDR,1,0,1,0,0
 XSpi_Config XSpi_ConfigTable[XPAR_XSPI_NUM_INSTANCES] = {
 	{
-	 50,		/* Device ID for instance */
-	 MON_SPI_0_BASEADDR,		/* Device base address */
-	 1,		/* Does device have FIFOs? */
-	 0,		/* Is the device slave only? */
-	 1,	/* Number of slave select bits */
-	 8,
-	 
+	 XPAR_SPI_0_DEVICE_ID,		/* Device ID for instance */
+	 XPAR_SPI_0_BASEADDR,		/* Device base address */
+	 XPAR_SPI_0_FIFO_EXIST,		/* Does device have FIFOs? */
+	 XPAR_SPI_0_SLAVE_ONLY,		/* Is the device slave only? */
+	 XPAR_SPI_0_NUM_SS_BITS,	/* Number of slave select bits */
+	 XPAR_SPI_0_NUM_TRANSFER_BITS	/* Transfer Data width */
+	 XPAR_SPI_0_SPI_MODE		/* standard/dual/quad mode */
 	}
-//	,
-//	{
-//	 XPAR_SPI_1_DEVICE_ID,		/* Device ID for instance */
-//	 XPAR_SPI_1_BASEADDR,		/* Device base address */
-//	 XPAR_SPI_1_FIFO_EXIST,		/* Does device have FIFOs? */
-//	 XPAR_SPI_1_SLAVE_ONLY,		/* Is the device slave only? */
-//	 XPAR_SPI_1_NUM_SS_BITS,	/* Number of slave select bits */
-//	 XPAR_SPI_1_NUM_TRANSFER_BITS	/* Transfer Data width */
-//	 XPAR_SPI_1_SPI_MODE		/* standard/dual/quad mode */
-//	}
+	,
+	{
+	 XPAR_SPI_1_DEVICE_ID,		/* Device ID for instance */
+	 XPAR_SPI_1_BASEADDR,		/* Device base address */
+	 XPAR_SPI_1_FIFO_EXIST,		/* Does device have FIFOs? */
+	 XPAR_SPI_1_SLAVE_ONLY,		/* Is the device slave only? */
+	 XPAR_SPI_1_NUM_SS_BITS,	/* Number of slave select bits */
+	 XPAR_SPI_1_NUM_TRANSFER_BITS	/* Transfer Data width */
+	 XPAR_SPI_1_SPI_MODE		/* standard/dual/quad mode */
+	}
 };

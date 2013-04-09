@@ -98,7 +98,6 @@
 
 #include "xspi.h"
 #include "xspi_i.h"
-#include <cyg/infra/diag.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -475,7 +474,7 @@ void XSpi_Reset(XSpi *InstancePtr)
 * no two threads are transferring data on the SPI bus at the same time.
 *
 ******************************************************************************/
-int XSpi_Transfer(XSpi *InstancePtr,const u8 *SendBufPtr,
+int XSpi_Transfer(XSpi *InstancePtr, u8 *SendBufPtr,
 		  u8 *RecvBufPtr, unsigned int ByteCount)
 {
 	u32 ControlReg;
@@ -495,7 +494,7 @@ int XSpi_Transfer(XSpi *InstancePtr,const u8 *SendBufPtr,
 	if (InstancePtr->IsStarted != XIL_COMPONENT_IS_STARTED) {
 		return XST_DEVICE_IS_STOPPED;
 	}
-//	diag_printf("!&!&! Base address = %X &!&!&!\n",InstancePtr->BaseAddr);
+
 	/*
 	 * Make sure there is not a transfer already in progress. No need to
 	 * worry about a critical section here. Even if the Isr changes the bus
@@ -783,7 +782,7 @@ int XSpi_Transfer(XSpi *InstancePtr,const u8 *SendBufPtr,
 					InstancePtr->SlaveSelectMask);
 		InstancePtr->IsBusy = FALSE;
 	}
-//	InstancePtr->IsBusy = FALSE;
+
 	return XST_SUCCESS;
 }
 

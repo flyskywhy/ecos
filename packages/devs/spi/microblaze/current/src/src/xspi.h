@@ -394,7 +394,7 @@ typedef struct {
 	u32 SlaveSelectMask;	/**< Mask that matches the number of SS bits */
 	u32 SlaveSelectReg;	/**< Slave select register */
 
-	const u8 *SendBufferPtr;	/**< Buffer to send  */
+	u8 *SendBufferPtr;	/**< Buffer to send  */
 	u8 *RecvBufferPtr;	/**< Buffer to receive */
 	unsigned int RequestedBytes; /**< Total bytes to transfer (state) */
 	unsigned int RemainingBytes; /**< Bytes left to transfer (state) */
@@ -728,7 +728,7 @@ void XSpi_Reset(XSpi *InstancePtr);
 int XSpi_SetSlaveSelect(XSpi *InstancePtr, u32 SlaveMask);
 u32 XSpi_GetSlaveSelect(XSpi *InstancePtr);
 
-int XSpi_Transfer(XSpi *InstancePtr,const u8 *SendBufPtr, u8 *RecvBufPtr,
+int XSpi_Transfer(XSpi *InstancePtr, u8 *SendBufPtr, u8 *RecvBufPtr,
 		  unsigned int ByteCount);
 
 void XSpi_SetStatusHandler(XSpi *InstancePtr, void *CallBackRef,
