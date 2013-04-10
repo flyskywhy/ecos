@@ -68,7 +68,6 @@
 #include <cyg/hal/hal_intr.h>
 #include <pkgconf/devs_spi_microblaze.h>
 #include <cyg/io/spi_microblaze.h>
-#include <cyg/error/codes.h>
 #include "src/xspi.h"
 #include <pkgconf/hal_microblaze_platform.h>
 #include <stdlib.h>
@@ -151,7 +150,7 @@ spi_microblaze_get_config(cyg_spi_device *device, cyg_uint32 key, void *buf,
   cyg_spi_microblaze_dev_t *dev = (cyg_spi_microblaze_dev_t *) device;
   cyg_spi_microblaze_bus_t  *bus = (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
   
-  return ENOERR;
+  return 0;
 }
 
 /**
@@ -174,7 +173,7 @@ spi_microblaze_set_config(cyg_spi_device *device, cyg_uint32 key, const void *bu
   cyg_spi_microblaze_dev_t *dev = (cyg_spi_microblaze_dev_t *) device;
   cyg_spi_microblaze_bus_t  *bus = (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
   
-  return ENOERR;
+  return 0;
 }
 
 
