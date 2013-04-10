@@ -166,6 +166,7 @@ static cyg_uint8        mmc_spi_ff_data[512];
 // Details of a specific MMC card
 typedef struct cyg_mmc_spi_disk_info_t {
     cyg_spi_device*     mmc_spi_dev;
+    card_type_t         card_type;
     cyg_uint32          mmc_saved_baudrate;
     cyg_uint32          mmc_block_count;
 #ifdef MMC_SPI_BACKGROUND_WRITES    
@@ -251,7 +252,11 @@ mmc_spi_send_command_start(cyg_mmc_spi_disk_info_t* disk, cyg_uint32 command, cy
     // command switches the device from MMC to SPI mode. That CRC is
     // well-known. Once in SPI mode the card will not use CRCs by
     // default.
-    request[5]  = (command == 0x00) ? 0x0095 : 0x00ff;
+    /* Prepare CRC7 + stop bit. For cmd GO_IDLE_STATE and SEND_IF_COND,
+    the CRC7 should be valid, otherwise, the CRC7 will be ignored. */
+    if      (command == MMC_REQUEST_GO_IDLE_STATE) request[5] = 0x95; /* valid CRC7 + stop bit */
+    else if (command == MMC_REQUEST_SEND_IF_COND)  request[5] = 0x87; /* valid CRC7 + stop bit */
+    else                                           request[5] = 0x01; /* dummy CRC7 + Stop bit */
     // There will need to be at least one extra byte transfer to get
     // the card's response, so send that straightaway. Extra
     // outgoing data like this should be 0xff so that the card
@@ -339,7 +344,7 @@ mmc_spi_read_data(cyg_mmc_spi_disk_info_t* disk, cyg_uint8* buf, cyg_uint32 coun
     for (i = 0; (i < retries) && (0x00FF == response[0]); i++) {
         cyg_spi_transaction_transfer(dev, cyg_mmc_spi_polled, 1, mmc_spi_ff_data, response, 0);
     }
-    
+
     if (MMC_DATA_TOKEN_SUCCESS != response[0]) {
         DEBUG1("mmc_spi_read_data(): got error response %02x after %d iterations\n", response[0], i);
         return response[0];
@@ -540,6 +545,7 @@ mmc_spi_check_for_disk(cyg_mmc_spi_disk_info_t* disk)
 {
     cyg_spi_device*     dev = disk->mmc_spi_dev;
     int                 i;
+    mmc_ocr_register    ocr;
     cyg_uint32          reply;
     Cyg_ErrNo           code;
     mmc_csd_register    csd;
@@ -593,19 +599,138 @@ mmc_spi_check_for_disk(cyg_mmc_spi_disk_info_t* disk)
         return -EIO;
     }
     
-    // Next, wait for the card to initialize. This involves repeatedly
-    // trying the SEND_OP_COND command until we get a reply that is
-    // not idle
-    reply = 0x00ff;
-    for (i = 0; (i < MMC_SPI_OP_COND_RETRIES) && ((0x00ff == reply) || (0 != (MMC_REPLY_IN_IDLE_STATE & reply))); i++) {
+    // get version info of SD/MMC card
+    reply = mmc_spi_send_command_start(disk, MMC_REQUEST_SEND_IF_COND, 0x1AA);
+
+    // 0x05 means version 1.x SD, then init begin
+    if (0x05 == reply) {
+        // set card type to SDV1.0 first，if checked MMC later, then changed it to MMC
+        disk->card_type = CARDTYPE_SDV1;
+        // as V1.0 card, no follow data after CMD8
+        mmc_spi_end_command(disk);
+
+        //-----------------SD/MMC card init begin-----------------
+
+        // send cart init command CMD55+ACMD41
+        cyg_uint32 retry = 0;
+        do {
+            reply = mmc_spi_send_command(disk, MMC_REQUEST_APP_CMD, 0);
+            if (0x01 != reply) {
+                DEBUG1("mmc_spi_check_for_disk(): card did not enter idle state by APP_CMD, code %02x\n", reply);
+                return -EIO;
+            }
+
+            reply = mmc_spi_send_command(disk, MMC_REQUEST_SD_SEND_OP_COND, 0);
+            retry++;
+        } while ((0x00 != reply) && (retry < 400));
+
+        // response means SD card, and init completed
+        // no response means MMC card, will need extra init
+        //----------MMC card extra init begin------------
+        if (400 == retry)
+        {
+            // Next, wait for the card to initialize. This involves repeatedly
+            // trying the SEND_OP_COND command until we get a reply that is
+            // not idle
+            reply = 0x00ff;
+            for (i = 0; (i < MMC_SPI_OP_COND_RETRIES) && ((0x00ff == reply) || (0 != (MMC_REPLY_IN_IDLE_STATE & reply))); i++) {
 #ifdef CYGPKG_DEVS_DISK_MMC_SPI_IDLE_RETRIES_WAIT
-        CYGACC_CALL_IF_DELAY_US(CYGPKG_DEVS_DISK_MMC_SPI_IDLE_RETRIES_WAIT);
+                CYGACC_CALL_IF_DELAY_US(100000);
 #endif
-        reply = mmc_spi_send_command(disk, MMC_REQUEST_SEND_OP_COND, 0);
+                reply = mmc_spi_send_command(disk, MMC_REQUEST_SEND_OP_COND, 0);
+            }
+            if (MMC_REPLY_SUCCESS != reply) {
+                DEBUG1("mmc_spi_check_for_disk(): card has not entered operational state: reply code %02x\n", reply);
+                return (0x00FF == reply) ? -ENODEV : -EIO;
+            }
+
+            disk->card_type = CARDTYPE_MMC;
+            diag_printf("Found MMC card\n");
+        } else {
+            diag_printf("Found V1.x Standard Capacity SD card\n");
+        }
+        //----------MMC card extra init end------------
+
+        // set SPI to high speed mode
+//        SPI_SetSpeed(1);
+
+        // disable CRC
+//        reply = mmc_spi_send_command(disk, MMC_REQUEST_CRC_ON_OFF, 0);
+//        if (MMC_REPLY_SUCCESS != reply) {
+//            DEBUG1("mmc_spi_check_for_disk(): unable to disable CRC: reply code %02x\n", reply);
+//            return (0x00FF == reply) ? -ENODEV : -EIO;
+//        }
+
+        // set Sector Size
+        reply = mmc_spi_send_command(disk, MMC_REQUEST_SET_BLOCKLEN, 512);
+        if (MMC_REPLY_SUCCESS != reply) {
+            DEBUG1("mmc_spi_check_for_disk(): unable to set sector size: reply code %02x\n", reply);
+            return (0x00FF == reply) ? -ENODEV : -EIO;
+        }
+        //-----------------SD/MMC card init end-----------------
+    } // version 1.x SD init end
+
+    // version 2.0 or later SD init begin
+    // will use OCR info to identify SD2.0 or SD2.0HC CARD
+    else if (0x01 == reply) {
+        cyg_uint8 buf[4];
+
+        // as V2.0 card, follow 4 data after CMD8, need read it and end command
+        // buf[] should be 0x00 0x00 0x01 0xAA
+        cyg_spi_transaction_transfer(dev, cyg_mmc_spi_polled, 4, mmc_spi_ff_data, buf, 0);
+        mmc_spi_end_command(disk);
+
+        if (0x01 == buf[2] && 0xAA == buf[3]) {
+            // support 2.7V-3.6V voltage, then init continue
+
+            cyg_uint32 retry = 0;
+            // send cart init command CMD55+ACMD41
+            do {
+                reply = mmc_spi_send_command(disk, MMC_REQUEST_APP_CMD, 0);
+                if (0x01 != reply) {
+                    DEBUG1("mmc_spi_check_for_disk(): card did not enter idle state by APP_CMD, code %02x\n", reply);
+                    return -EIO;
+                }
+
+                reply = mmc_spi_send_command(disk, MMC_REQUEST_SD_SEND_OP_COND, 0x40000000);
+                if(retry++ > 200) {
+                    DEBUG1("mmc_spi_check_for_disk(): unable to get a response from SD_SEND_OP_COND: code %02x\n", reply);
+                    return -EIO;
+                }
+            } while (0x00 != reply);
+
+            // card init completed, then get OCR info
+
+            //-----------identify SD2.0 card version begin-----------
+            reply = mmc_spi_send_command_start(disk, MMC_REQUEST_READ_OCR, 0);
+            if (MMC_REPLY_SUCCESS != reply) {
+                DEBUG1("mmc_spi_check_for_disk(): unexpected response to command %02x, reply code %02x\n", MMC_REQUEST_READ_OCR, reply);
+                mmc_spi_end_command(disk);
+                return (0x00FF == reply) ? -ENODEV : -EIO;
+            }
+            cyg_spi_transaction_transfer(dev, cyg_mmc_spi_polled, 4, mmc_spi_ff_data, (cyg_uint8*) &ocr, 0);
+            mmc_spi_end_command(disk);
+
+            // check bit 30of OCR (CCS)
+            // CCS=1：SDHC   CCS=0：SD2.0
+            if ( ocr.ocr_data[0] & 0x40 ) {
+                disk->card_type = CARDTYPE_SDV2_HC;
+                diag_printf("Found V2.0 or later High/eXtended Capacity SD card\n");
+            } else {
+                disk->card_type = CARDTYPE_SDV2_SC;
+                diag_printf("Found V2.0 or later Standard Capacity SD card\n");
+            }
+            //-----------identify SD2.0 card version end-----------
+
+            // set SPI to high speed mode
+//            SPI_SetSpeed(1);
+        }
     }
-    if (MMC_REPLY_SUCCESS != reply) {
-        DEBUG1("mmc_spi_check_for_disk(): card has not entered operational state: reply code %02x\n", reply);
-        return (0x00FF == reply) ? -ENODEV : -EIO;
+
+    else {
+        disk->card_type = CARDTYPE_UNKNOWN;
+        DEBUG1("mmc_spi_check_for_disk(): unknown card\n");
+        return -EIO;
     }
 
     // The card has now generated sufficient responses that we don't need to
