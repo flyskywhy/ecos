@@ -50,65 +50,76 @@ cdl_package CYGPKG_DEVS_DISK_MMC {
     doc         ecos-ref/devs-disk-mmc-part.html
 
     include_dir cyg/io
-    
+
     parent      CYGPKG_IO_DISK_DEVICES
     active_if   CYGPKG_IO_DISK
+    active_if   CYGPKG_IO_SPI
 
-    cdl_interface CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS {
-	active_if	CYGPKG_IO_SPI
-	implements	CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS
-	display		"Number of MMC connectors accessed via SPI"
+    compile     -library=libextras.a mmc_spi.c
+    requires    CYGPKG_ERROR CYGPKG_LIBC_STRING 
+
+    define_proc {
+        puts $::cdl_system_header "/***** MMC/SPI disk driver output start *****/"
+            puts $::cdl_system_header "#ifndef CYGDAT_DEVS_DISK_CFG"
+        puts $::cdl_system_header "#define CYGDAT_DEVS_DISK_CFG <pkgconf/devs_disk_mmc.h>"
+            puts $::cdl_system_header "#endif"
+        puts $::cdl_system_header "/*****  MMC/SPI disk driver output end  *****/"
     }
 
-    cdl_component CYGPKG_DEVS_DISK_MMC_SPI {
-	display		"Access an MMC card via an SPI bus"
-	default_value	{ CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS > 0 }
-	compile		-library=libextras.a mmc_spi.c
-	requires	CYGPKG_ERROR CYGPKG_LIBC_STRING 
-	description "
-            This option enables support for accessing an MMC card via an
-            SPI bus."
-	
-	define_proc {
-	    puts $::cdl_system_header "/***** MMC/SPI disk driver output start *****/"
-            puts $::cdl_system_header "#ifndef CYGDAT_DEVS_DISK_CFG"
-	    puts $::cdl_system_header "#define CYGDAT_DEVS_DISK_CFG <pkgconf/devs_disk_mmc.h>"
-            puts $::cdl_system_header "#endif"
-	    puts $::cdl_system_header "/***** MMC/SPI disk driver output end *****/"
-	}
+    cdl_component CYGPKG_DEVS_DISK_MMC_SPI_DISK0 {
+        display         "Provide disk 0 device"
+        flavor          bool
+        default_value   0
+        description     "SPI chanel 0 disk driver"
 
-	cdl_option CYGDAT_DEVS_DISK_MMC_SPI_DISK0_NAME {
-	    display		"Device name for the MMC/SPI disk 0 device"
-	    flavor		data
-	    default_value	{ "\"/dev/mmcdisk0/\"" }
-	    description "
-                This is the device name used to access the raw disk device
-                in eCos, for example for mount operations. Note that the
-                trailing slash must be present."
-	    }
-	}
-	
-	cdl_option CYGIMP_DEVS_DISK_MMC_SPI_POLLED {
-	    display		"Run the driver in polled mode rather than interrupt-driven"
-	    default_value	!CYGPKG_KERNEL
-	    description "
+        cdl_option CYGDAT_DEVS_DISK_MMC_SPI_DISK0_NAME {
+            display         "Device name for the MMC/SPI disk 0 device"
+            flavor          data
+            default_value   { "\"/dev/mmcdisk0/\"" }
+            description "
+                    This is the device name used to access the raw disk device
+                    in eCos, for example for mount operations. Note that the
+                    trailing slash must be present."
+        }
+    }
+
+    cdl_component CYGPKG_DEVS_DISK_MMC_SPI_DISK1 {
+        display         "Provide disk 1 device"
+        flavor          bool
+        default_value   1
+        description     "SPI chanel 1 disk driver"
+
+        cdl_option CYGDAT_DEVS_DISK_MMC_SPI_DISK1_NAME {
+            display         "Device name for the MMC/SPI disk 1 device"
+            flavor          data
+            default_value   { "\"/dev/mmcdisk1/\"" }
+            description "
+                    This is the device name used to access the raw disk device
+                    in eCos, for example for mount operations. Note that the
+                    trailing slash must be present."
+        }
+    }
+
+    cdl_option CYGIMP_DEVS_DISK_MMC_SPI_POLLED {
+        display         "Run the driver in polled mode rather than interrupt-driven"
+        default_value   !CYGPKG_KERNEL
+        description "
                 By default the MMC disk driver will operate in
                 interrupt-driven mode if the kernel is present,
                 i.e. if the application is likely to be
                 multi-threaded. Otherwise it will operate in polled
                 mode."
+    }
 
-	}
-        cdl_option CYGPKG_DEVS_DISK_MMC_SPI_IDLE_RETRIES_WAIT {
-            display          "Idle to operational retry wait"
-            flavor           booldata
-            default_value    10000
-            description      "
-
+    cdl_option CYGPKG_DEVS_DISK_MMC_SPI_IDLE_RETRIES_WAIT {
+        display          "Idle to operational retry wait"
+        flavor           booldata
+        default_value    10000
+        description      "
                 This option sets how long to wait between retries of
                 attempts to change the card state from idle to
                 operational. It is measured in microseconds."
-        }
+    }
 }
 
 # EOF devs_disk_mmc.cdl

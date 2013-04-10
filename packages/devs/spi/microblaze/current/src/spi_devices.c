@@ -51,17 +51,36 @@
 #include <cyg/io/spi.h>
 #include "src/xspi.h"
 
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
+
+cyg_spi_microblaze_dev_t spi_dev0 CYG_SPI_DEVICE_ON_BUS(0) =
+{
+    .spi_device.spi_bus = &cyg_spi_microblaze_bus0.spi_bus
+};
+
+#ifdef CYGPKG_DEVS_DISK_MMC
+#include <pkgconf/devs_disk_mmc.h>
+#ifdef CYGPKG_DEVS_DISK_MMC_SPI_DISK0
+cyg_spi_device cyg_spi_mmc_dev0 =
+{
+    .spi_bus = &cyg_spi_microblaze_bus0.spi_bus
+};
+#endif
+#endif
+
+#endif
+
 #ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
 
-cyg_spi_microblaze_dev_t spi_mmc_dev0 CYG_SPI_DEVICE_ON_BUS(1) =
+cyg_spi_microblaze_dev_t spi_dev1 CYG_SPI_DEVICE_ON_BUS(1) =
 {
     .spi_device.spi_bus = &cyg_spi_microblaze_bus1.spi_bus
 };
 
 #ifdef CYGPKG_DEVS_DISK_MMC
 #include <pkgconf/devs_disk_mmc.h>
-#ifdef CYGINT_DEVS_DISK_MMC_SPI_CONNECTORS
-cyg_spi_device cyg_spi_mmc_dev0 =
+#ifdef CYGPKG_DEVS_DISK_MMC_SPI_DISK1
+cyg_spi_device cyg_spi_mmc_dev1 =
 {
     .spi_bus = &cyg_spi_microblaze_bus1.spi_bus
 };

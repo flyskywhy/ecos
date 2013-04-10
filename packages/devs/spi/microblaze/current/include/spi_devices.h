@@ -54,7 +54,8 @@
 // microblaze SPI exported devices
 
 #define HAL_SPI_EXPORTED_DEVICES \
-    externC cyg_spi_device cyg_spi_mmc_dev0;
+    externC cyg_spi_device cyg_spi_mmc_dev0; \
+    externC cyg_spi_device cyg_spi_mmc_dev1;
 
 //-----------------------------------------------------------------------------
 

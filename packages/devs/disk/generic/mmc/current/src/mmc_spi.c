@@ -149,10 +149,11 @@ cyg_bool    cyg_mmc_spi_polled = false;
 // ----------------------------------------------------------------------------
 // Structures and statics.
 //
-// There should be an SPI device cyg_spi_mmc_dev0, probably provided by
+// There should be an SPI device cyg_spi_mmc_dev0 or cyg_spi_mmc_dev1, probably provided by
 // the HAL, possibly by the application. Because of the latter we cannot
 // assume the variable will be defined in a header.
 extern cyg_spi_device   cyg_spi_mmc_dev0;
+extern cyg_spi_device   cyg_spi_mmc_dev1;
 
 // When retrieving data it is necessary to send an 0xff byte stream,
 // which the card will not confuse with further commands. The largest
@@ -1294,6 +1295,7 @@ DISK_FUNS(cyg_mmc_spi_disk_funs,
           mmc_spi_disk_set_config
           );
 
+#ifdef CYGDAT_DEVS_DISK_MMC_SPI_DISK0_NAME
 static cyg_mmc_spi_disk_info_t cyg_mmc_spi_disk0_hwinfo = {
     .mmc_spi_dev        = &cyg_spi_mmc_dev0,
 #ifdef MMC_SPI_BACKGROUND_WRITES    
@@ -1321,5 +1323,36 @@ BLOCK_DEVTAB_ENTRY(cyg_mmc_spi_disk0_devtab_entry,
                    &mmc_spi_disk_init,
                    &mmc_spi_disk_lookup,
                    &cyg_mmc_spi_disk0_channel);
+#endif
+
+#ifdef CYGDAT_DEVS_DISK_MMC_SPI_DISK1_NAME
+static cyg_mmc_spi_disk_info_t cyg_mmc_spi_disk1_hwinfo = {
+    .mmc_spi_dev        = &cyg_spi_mmc_dev1,
+#ifdef MMC_SPI_BACKGROUND_WRITES
+    .mmc_writing        = 0,
+#endif
+    .mmc_connected      = 0
+};
+
+// No h/w controller structure is needed, but the address of the
+// second argument is taken anyway.
+DISK_CONTROLLER(cyg_mmc_spi_disk_controller_1, cyg_mmc_spi_disk1_hwinfo);
+
+DISK_CHANNEL(cyg_mmc_spi_disk1_channel,
+             cyg_mmc_spi_disk_funs,
+             cyg_mmc_spi_disk1_hwinfo,
+             cyg_mmc_spi_disk_controller_1,
+             true,                            /* MBR support */
+             1                                /* Number of partitions supported */
+             );
+
+BLOCK_DEVTAB_ENTRY(cyg_mmc_spi_disk1_devtab_entry,
+                   CYGDAT_DEVS_DISK_MMC_SPI_DISK1_NAME,
+                   0,
+                   &cyg_io_disk_devio,
+                   &mmc_spi_disk_init,
+                   &mmc_spi_disk_lookup,
+                   &cyg_mmc_spi_disk1_channel);
+#endif
 
 // EOF mmc_spi.c
