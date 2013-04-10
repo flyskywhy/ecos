@@ -256,8 +256,8 @@ spi_microblaze_transfer(cyg_spi_device *device, cyg_bool polled, cyg_uint32 coun
 static void
 spi_microblaze_tick(cyg_spi_device *device, cyg_bool polled, cyg_uint32 count)
 {
-  cyg_uint8 tx_zero[10] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
-  spi_microblaze_transfer(device, polled, count, tx_zero, NULL,false);
+  cyg_uint8 tx_zero[1] = {0xff};
+  for (; count--;) spi_microblaze_transfer(device, polled, 1, tx_zero, NULL,false);
 }
 
 
