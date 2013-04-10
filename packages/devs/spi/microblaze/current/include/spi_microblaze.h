@@ -72,6 +72,7 @@ typedef struct cyg_spi_microblaze_bus_s {
 	cyg_priority_t  spi_prio;
 	cyg_drv_mutex_t spi_lock;
 	cyg_drv_cond_t  spi_wait;
+	XSpi xspi;
 	XSpi *spi_dev;
 
 	volatile cyg_uint32       count;

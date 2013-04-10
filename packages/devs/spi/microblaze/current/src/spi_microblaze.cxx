@@ -328,7 +328,6 @@ spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus,
   cyg_uint32 Status;
   u32 control;
   diag_printf("__Start SPI Initialization__\n");
-  XSpi *spi_dev = (XSpi *) malloc(sizeof(XSpi));
   extern XSpi_Config XSpi_ConfigTable[0];
 
 /*
@@ -345,7 +344,7 @@ spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus,
   cyg_drv_mutex_init(&bus->spi_lock);
   cyg_drv_cond_init(&bus->spi_wait, &bus->spi_lock);
   
-  bus->spi_dev = spi_dev;
+  bus->spi_dev = &bus->xspi;
   bus->spi_vect = vec;
   bus->spi_prio = prio;
   cyg_drv_interrupt_create(  
