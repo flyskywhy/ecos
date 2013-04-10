@@ -576,6 +576,11 @@ mmc_spi_check_for_disk(cyg_mmc_spi_disk_info_t* disk)
         // currently in MMC or SPI mode, and will leave the card in SPI mode.
         reply = mmc_spi_send_command(disk, MMC_REQUEST_GO_IDLE_STATE, 0);
 
+        // I found Xilinx axi spi need delay here just at the 1st SD card init
+        // after power-on even the 2nd init is OK, we need 1st init, so be it.
+        // Li Zheng <flyskywhy@gmail.com>
+        HAL_DELAY_US(500000);
+
         // The card should reply with 0x01. FF suggests that there is
         // no card. Any other response indicates some synchronization
         // problem. For example the card might still be responding to
