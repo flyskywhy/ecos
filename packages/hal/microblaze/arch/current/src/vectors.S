@@ -324,6 +324,8 @@ __call_vcr_reserved_e:
 _start:
 	# Initialize CPU to a post-reset state, ensuring the ground doesn't
 	# shift under us while we try to set things up.
+#ifndef CYGPKG_HAL_MB_CPU_DEFINED
+
 	#ifdef MON_CPU_MSR_INSTR
 	.macro hal_cpu_init
 	msrclr r0, 0 # MSR = 0
@@ -336,6 +338,9 @@ _start:
 	nop
 	.endm
 	#endif
+
+#define CYGPKG_HAL_MB_CPU_DEFINED
+#endif // CYGPKG_HAL_MB_CPU_DEFINED
 	
 	hal_cpu_init
 
@@ -454,6 +459,8 @@ _hal_hardware_init_done:
 
 
 
+#ifndef CYGPKG_HAL_MB_REGS_DEFINED
+
        .macro hal_variant_save regs
 			# read regs and store them
 #ifdef CYGHWR_HAL_MICROBLAZE_FPU
@@ -478,6 +485,9 @@ _hal_hardware_init_done:
 			// ESR and EAR can't be written
 #endif
         .endm
+
+#define CYGPKG_HAL_MB_REGS_DEFINED
+#endif // CYGPKG_HAL_MB_REGS_DEFINED
 
 ##-----------------------------------------------------------------------------
 ## Indicate that the ISR tables are defined in variant.S
