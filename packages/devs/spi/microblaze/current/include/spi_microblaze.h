@@ -75,9 +75,7 @@ typedef struct cyg_spi_microblaze_bus_s {
 	XSpi xspi;
 	XSpi *spi_dev;
 
-	volatile cyg_uint32       count;
-	volatile const cyg_uint8 *tx;
-	volatile cyg_uint8       *rx;
+	volatile cyg_bool       TransferInProgress;
 } cyg_spi_microblaze_bus_t;
 
 typedef struct cyg_spi_microblaze_dev_s {

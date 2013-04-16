@@ -101,6 +101,41 @@ cyg_spi_microblaze_bus_t cyg_spi_microblaze_bus1;
 CYG_SPI_DEFINE_BUS_TABLE(cyg_spi_microblaze_dev_t, 1);
 #endif
 
+/******************************************************************************/
+/**
+*
+* This function is the handler which performs processing for the SPI driver. It
+* is called from an interrupt context such that the amount of processing to be
+* performed should be minimized.
+*
+* @param 	CallBackRef is a reference passed to the handler.
+* @param	StatusEvent is the status of the SPI.
+* @param	ByteCount is the number of bytes transferred.
+*
+* @return	None.
+*
+* @note		None.
+*
+******************************************************************************/
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS0
+static void SpiHandlerBus0(void *CallBackRef, u32 StatusEvent,
+		       unsigned int ByteCount)
+{
+	if (StatusEvent == XST_SPI_TRANSFER_DONE) {
+		cyg_spi_microblaze_bus0.TransferInProgress = false;
+	}
+}
+#endif
+#ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
+static void SpiHandlerBus1(void *CallBackRef, u32 StatusEvent,
+		       unsigned int ByteCount)
+{
+	if (StatusEvent == XST_SPI_TRANSFER_DONE) {
+		cyg_spi_microblaze_bus1.TransferInProgress = false;
+	}
+}
+#endif
+
 /**
 * Interrupt routine
 *
@@ -117,8 +152,8 @@ static cyg_uint32
 spi_microblaze_isr(cyg_vector_t vec, cyg_addrword_t data)
 {
   cyg_spi_microblaze_bus_t *bus = (cyg_spi_microblaze_bus_t  *) data;
+  XSpi_InterruptHandler(bus->spi_dev);
   cyg_drv_interrupt_acknowledge(bus->spi_vect);
-  XSpi_InterruptHandler(&bus->spi_dev);
   return CYG_ISR_HANDLED | CYG_ISR_CALL_DSR;
 }
 
@@ -226,10 +261,28 @@ spi_microblaze_transfer(cyg_spi_device *device, cyg_bool polled, cyg_uint32 coun
   (cyg_spi_microblaze_bus_t  *) dev->spi_device.spi_bus;
   if(!count) return;
 
-  XSpi_IntrGlobalDisable(bus->spi_dev);
-  Status =XSpi_Transfer(bus->spi_dev,(cyg_uint8 *)tx_data,rx_data,count);
-  if(Status != XST_SUCCESS)
-   diag_printf("Transfer failure, error code = %d\n",Status);
+  if (!polled) {
+    bus->TransferInProgress = true;
+
+    cyg_drv_mutex_lock(&bus->spi_lock);
+    cyg_drv_dsr_lock();
+    XSpi_IntrEnable(bus->spi_dev, XSP_INTR_TX_HALF_EMPTY_MASK);
+    cyg_drv_interrupt_unmask(bus->spi_vect);
+    Status = XSpi_Transfer(bus->spi_dev, (cyg_uint8 *)tx_data, rx_data, count);
+    if (Status != XST_SUCCESS)
+      diag_printf("Transfer failure, error code = %d\n", Status);
+    while(bus->TransferInProgress)
+      cyg_drv_cond_wait(&bus->spi_wait);
+    cyg_drv_interrupt_mask(bus->spi_vect);
+    XSpi_IntrDisable(bus->spi_dev, XSP_INTR_TX_HALF_EMPTY_MASK);
+    cyg_drv_dsr_unlock();
+    cyg_drv_mutex_unlock(&bus->spi_lock);
+  } else {
+    XSpi_IntrGlobalDisable(bus->spi_dev);
+    Status = XSpi_Transfer(bus->spi_dev, (cyg_uint8 *)tx_data, rx_data, count);
+    if (Status != XST_SUCCESS)
+      diag_printf("Transfer failure, error code = %d\n", Status);
+  }
 
   if (drop_cs)
    XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
@@ -285,6 +338,7 @@ spi_microblaze_end(cyg_spi_device *device)
 */
   XSpi_Stop(bus->spi_dev);
   XSpi_SetSlaveSelect(bus->spi_dev, 0x00);
+  bus->TransferInProgress = false;
 }
 
 
@@ -322,7 +376,8 @@ spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus,
                      cyg_addrword_t dev,
                      cyg_vector_t vec,
                      cyg_priority_t prio,
-                     cyg_uint32 which)
+                     cyg_uint32 which,
+                     XSpi_StatusHandler status)
 {
   cyg_uint32 Status;
   u32 control;
@@ -360,6 +415,8 @@ spi_microblaze_init_bus(cyg_spi_microblaze_bus_t  *bus,
     diag_printf("!_!_! SPI init OK!_!_!\n");
   else
     diag_printf("SPI init failure(((\n");
+  XSpi_SetStatusHandler(bus->spi_dev, bus->spi_dev, (XSpi_StatusHandler) status);
+  XSpi_Reset(bus->spi_dev);
 /*
 * Set control register of SPI core
 */
@@ -383,14 +440,16 @@ public:
                          MON_SPI_0_BASE,
                          MON_SPI_0_INTR,
                          CYGNUM_IO_SPI_MICROBLAZE_BUS0_INTPRIO,
-                         0);
+                         0,
+                         SpiHandlerBus0);
 #endif
 #ifdef CYGPKG_DEVS_SPI_MICROBLAZE_BUS1
     spi_microblaze_init_bus(&cyg_spi_microblaze_bus1,
                          MON_SPI_1_BASE,
                          MON_SPI_1_INTR,
                          CYGNUM_IO_SPI_MICROBLAZE_BUS1_INTPRIO,
-                         1);
+                         1,
+                         SpiHandlerBus1);
 #endif
   }
 };
