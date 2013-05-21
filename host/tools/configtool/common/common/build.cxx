@@ -58,7 +58,7 @@
 // ECOS_USE_CYGDRIVE = 1: use e.g. /cygdrive/c/
 // ECOS_USE_CYGDRIVE = 2: use e.g. c:/ notation
 // ECOS_USE_CYGDRIVE = 3: use e.g. /ecos-x notation where x is a drive name.
-#define ECOS_USE_CYGDRIVE 0
+#define ECOS_USE_CYGDRIVE 2
 
 // Use registry functions to find out location of /cygdrive
 #define ECOS_USE_REGISTRY 1
@@ -361,7 +361,11 @@ bool generate_makefile (const CdlConfiguration config, const CdlBuildInfo_Loadab
 	fprintf (stream, makefile_header.c_str ());
 
 	// generate the global variables
-	fprintf (stream, "export PREFIX := %s\n", install_tree.c_str ());
+#if ECOS_USE_CYGDRIVE > 0
+    fprintf (stream, "export PREFIX := %s\n", cygpath (nativepath (install_tree)).c_str ());
+#else
+    fprintf (stream, "export PREFIX := %s\n", install_tree.c_str ());
+#endif
 	fprintf (stream, "export COMMAND_PREFIX := %s\n", command_prefix.c_str ());
 	fprintf (stream, "export CC := $(COMMAND_PREFIX)gcc\n");
 	fprintf (stream, "export OBJCOPY := $(COMMAND_PREFIX)objcopy\n");
@@ -373,7 +377,7 @@ bool generate_makefile (const CdlConfiguration config, const CdlBuildInfo_Loadab
 	fprintf (stream, "export AR := $(COMMAND_PREFIX)ar\n\n");
 
 	// generate the package variables
-#if ECOS_USE_CYGDRIVE == 1
+#if ECOS_USE_CYGDRIVE > 0
 	fprintf (stream, "export REPOSITORY := %s\n", cygpath (nativepath (info.repository)).c_str()); // double conversion to force /cygdrive/c format
 #else
 	fprintf (stream, "export REPOSITORY := %s\n", info.repository.c_str());
@@ -382,8 +386,8 @@ bool generate_makefile (const CdlConfiguration config, const CdlBuildInfo_Loadab
 	fprintf (stream, "OBJECT_PREFIX := %s\n", object_prefix.c_str ());
 	fprintf (stream, "CFLAGS := %s\n", get_flags (config, &info, "CFLAGS").c_str ());
 	fprintf (stream, "LDFLAGS := %s\n", get_flags (config, &info, "LDFLAGS").c_str ());
-	fprintf (stream, "VPATH := $(REPOSITORY)/$(PACKAGE)\n");
-	fprintf (stream, "INCLUDE_PATH := $(INCLUDE_PATH) -I$(PREFIX)/include $(foreach dir,$(VPATH),-I$(dir) -I$(dir)/src -I$(dir)/tests) -I.\n");
+	fprintf (stream, "VPATH := %s/$(PACKAGE)\n", info.repository.c_str());
+	fprintf (stream, "INCLUDE_PATH := $(INCLUDE_PATH) -I$(PREFIX)/include $(foreach dir,$(REPOSITORY)/$(PACKAGE),-I$(dir) -I$(dir)/src -I$(dir)/tests) -I.\n");
 	fprintf (stream, "MLT := $(wildcard $(REPOSITORY)/$(PACKAGE)/include/pkgconf/mlt*.ldi $(REPOSITORY)/$(PACKAGE)/include/pkgconf/mlt*.h)\n");
 	fprintf (stream, "TESTS := %s\n\n", get_tests (config, info).c_str ());
 
@@ -534,7 +538,11 @@ bool generate_toplevel_makefile (const CdlConfiguration config, const std::strin
 #else
     fprintf (stream, "export HOST := UNIX\n");
 #endif
-	fprintf (stream, "export PREFIX := %s\n", install_tree.c_str ());
+#if ECOS_USE_CYGDRIVE > 0
+    fprintf (stream, "export PREFIX := %s\n", cygpath (nativepath (install_tree)).c_str ());
+#else
+    fprintf (stream, "export PREFIX := %s\n", install_tree.c_str ());
+#endif
 	fprintf (stream, "export COMMAND_PREFIX := %s\n", command_prefix.c_str ());
 	fprintf (stream, "export CC := $(COMMAND_PREFIX)gcc\n");
 	fprintf (stream, "export OBJCOPY := $(COMMAND_PREFIX)objcopy\n");

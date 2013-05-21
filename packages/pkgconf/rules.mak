@@ -87,40 +87,44 @@ ACTUAL_CXXFLAGS = $(subst -Wstrict-prototypes,,$(CFLAGS))
 %.o.d : %.c
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.o.d=.tmp) > $@
 	@rm $(@:.o.d=.tmp)
 
 %.o.d : %.cxx
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.o.d=.tmp) > $@
 	@rm $(@:.o.d=.tmp)
 
 %.o.d : %.cpp
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.o.d=.tmp) > $@
 	@rm $(@:.o.d=.tmp)
 
 %.o.d : %.S
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif	
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.o.d=.tmp) -o $(dir $@)$(OBJECT_PREFIX)_$(notdir $(@:.o.d=.o)) $<
+endif	
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.o.d=.tmp) > $@
 	@rm $(@:.o.d=.tmp)
 
@@ -130,40 +134,44 @@ endif
 %.d : %.c
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.d=.tmp) > $@
 	@rm $(@:.d=.tmp)
 
 %.d : %.cxx
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.d=.tmp) > $@
 	@rm $(@:.d=.tmp)
 
 %.d : %.cpp
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CXXFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) $<
+endif
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.d=.tmp) > $@
 	@rm $(@:.d=.tmp)
 
 %.d : %.S
 ifeq ($(HOST),CYGWIN)
 	@mkdir -p `cygpath -w "$(dir $@)" | sed "s@\\\\\\\\@/@g"`
+	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) `cygpath -m $<`
 else
 	@mkdir -p $(dir $@)
-endif	
 	$(CC) -c $(INCLUDE_PATH) -I$(dir $<) $(ACTUAL_CFLAGS) -Wp,-MD,$(@:.d=.tmp) -o $(@:.d=.o) $<
+endif	
 	@sed -e '/^ *\\/d' -e "s#.*: #$@: #" $(@:.d=.tmp) > $@
 	@rm $(@:.d=.tmp)
 
