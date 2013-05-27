@@ -119,5 +119,29 @@ void gpio_write(cyg_uint32 channel, cyg_uint32 value)
 	*(cyg_uint32 *)gpio_dev[channel].baseaddr = value;
 }
 
+// Bellow functions can deal with the 2nd channel (real channel) in each GPIO instance (called channel in up functions )
+
+/* The following constant describes the offset of each channels data and
+ * tristate register from the base address.
+ */
+#define XGPIO_CHAN_OFFSET  8
+
+void gpio2_tri_write(cyg_uint32 channel, cyg_uint32 value)
+{
+//  diag_printf("write 0x%x = 0x%x\n",gpio_dev[channel].baseaddr + 0x4 + XGPIO_CHAN_OFFSET, value);
+    *(cyg_uint32 *)(gpio_dev[channel].baseaddr + 0x4 + XGPIO_CHAN_OFFSET) = value;
+}
+
+cyg_uint32 gpio2_read(cyg_uint32 channel)
+{
+//  diag_printf("read 0x%x\n", gpio_dev[channel].baseaddr, *(cyg_uint32 *)(gpio_dev[channel].baseaddr + XGPIO_CHAN_OFFSET));
+    return *(cyg_uint32 *)(gpio_dev[channel].baseaddr + XGPIO_CHAN_OFFSET);
+}
+
+void gpio2_write(cyg_uint32 channel, cyg_uint32 value)
+{
+//  diag_printf("write 0x%x = 0x%x\n",gpio_dev[channel].baseaddr + XGPIO_CHAN_OFFSET, value);
+    *(cyg_uint32 *)(gpio_dev[channel].baseaddr + XGPIO_CHAN_OFFSET) = value;
+}
 
 // EOF plf_io.c

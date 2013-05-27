@@ -64,8 +64,12 @@ struct gpio {
 };
 
 cyg_uint32 gpio_init(void);
+void gpio_tri_write(cyg_uint32 channel, cyg_uint32 value);
 cyg_uint32 gpio_read(cyg_uint32 channel);
 void gpio_write(cyg_uint32 channel, cyg_uint32 value);
+void gpio2_tri_write(cyg_uint32 channel, cyg_uint32 value);
+cyg_uint32 gpio2_read(cyg_uint32 channel);
+void gpio2_write(cyg_uint32 channel, cyg_uint32 value);
 
 //-----------------------------------------------------------------------------
 // end of plf_io.h
