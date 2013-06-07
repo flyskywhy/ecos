@@ -54,6 +54,14 @@ cdl_package CYGPKG_DEVS_DISK_IDE {
 
     compile     -library=libextras.a   ide_disk.c
     
+    define_proc {
+        puts $::cdl_system_header "/***** IDE disk driver output start *****/"
+            puts $::cdl_system_header "#ifndef CYGDAT_DEVS_DISK_CFG"
+        puts $::cdl_system_header "#define CYGDAT_DEVS_DISK_CFG <pkgconf/devs_disk_ide.h>"
+            puts $::cdl_system_header "#endif"
+        puts $::cdl_system_header "/*****  IDE disk driver output end  *****/"
+    }
+
     cdl_component CYGVAR_DEVS_DISK_IDE_DISK0 {
         display         "Provide disk 0 device"
         flavor          bool
