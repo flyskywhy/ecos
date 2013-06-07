@@ -101,6 +101,12 @@ cyg_uint32 gpio_init(void)
 	return 1;
 }
 
+void gpio_tri_write(cyg_uint32 channel, cyg_uint32 value)
+{
+//	diag_printf("write 0x%x = 0x%x\n",gpio_dev[channel].baseaddr + 0x4, value);
+	*(cyg_uint32 *)(gpio_dev[channel].baseaddr + 0x4) = value;
+}
+
 cyg_uint32 gpio_read(cyg_uint32 channel)
 {
 //	diag_printf("read 0x%x\n", gpio_dev[channel].baseaddr, *(cyg_uint32 *)gpio_dev[channel].baseaddr);
