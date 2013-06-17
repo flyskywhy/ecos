@@ -37,12 +37,12 @@ Or you can follow the steps described in [CLONE_COMPILE_RUN](https://github.com/
 
 ## microblaze
 
-- Support microblaze cpu (From [monecos](http://www.monstr.eu/monecos-pre-1.tar.gz))
-- Support GPIO module (From [monecos](http://www.monstr.eu/monecos-pre-1.tar.gz))
-- Support Uart16550 module (From [monecos](http://www.monstr.eu/monecos-pre-1.tar.gz))
-- Support EmacLite module in BigEndian (From [monecos](http://www.monstr.eu/monecos-pre-1.tar.gz))
-- Support SPI module (From [itrgmbh](ftp://87.138.69.10/eCosOnMicroblazeAXI/120614161824_axi_ecos.zip))
-- Support AXI module and thus LittleEndian (From [itrgmbh](ftp://87.138.69.10/eCosOnMicroblazeAXI/120614161824_axi_ecos.zip))
+- Support microblaze cpu (From [monecos-pre-1.tar.gz](http://www.monstr.eu/monecos-pre-1.tar.gz) in [mONeCos](http://www.monstr.eu))
+- Support GPIO module (From [monecos-pre-1.tar.gz](http://www.monstr.eu/monecos-pre-1.tar.gz) in [mONeCos](http://www.monstr.eu))
+- Support Uart16550 module (From [monecos-pre-1.tar.gz](http://www.monstr.eu/monecos-pre-1.tar.gz) in [mONeCos](http://www.monstr.eu))
+- Support EmacLite module in BigEndian (From [monecos-pre-1.tar.gz](http://www.monstr.eu/monecos-pre-1.tar.gz) in [mONeCos](http://www.monstr.eu))
+- Support SPI module (From [axi_ecos.zip](http://www.ecos4arm.com/redmine/attachments/download/153/axi_ecos.zip) in [eCos on Xilinx Microblaze for AXI](http://www.ecos4arm.com/redmine/projects/ecos-on-microblaze-axi/files))
+- Support AXI module and thus LittleEndian (From [axi_ecos.zip](http://www.ecos4arm.com/redmine/attachments/download/153/axi_ecos.zip) in [eCos on Xilinx Microblaze for AXI](http://www.ecos4arm.com/redmine/projects/ecos-on-microblaze-axi/files))
 - Support Avnet S6LX9 MMU tiny 13.1 board (From [mbref](https://git.gitorious.org/mbref/mbref.git))
 - Support 2nd channel and tri_write() of GPIO module
 - Support UartLite module (`packages/devs/serial/microblaze/uartlite/`)
