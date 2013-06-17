@@ -43,7 +43,7 @@ Or you can follow the steps described in [CLONE_COMPILE_RUN](https://github.com/
 - Support EmacLite module in BigEndian (From [monecos-pre-1.tar.gz](http://www.monstr.eu/monecos-pre-1.tar.gz) in [mONeCos](http://www.monstr.eu))
 - Support SPI module (From [axi_ecos.zip](http://www.ecos4arm.com/redmine/attachments/download/153/axi_ecos.zip) in [eCos on Xilinx Microblaze for AXI](http://www.ecos4arm.com/redmine/projects/ecos-on-microblaze-axi/files))
 - Support AXI module and thus LittleEndian (From [axi_ecos.zip](http://www.ecos4arm.com/redmine/attachments/download/153/axi_ecos.zip) in [eCos on Xilinx Microblaze for AXI](http://www.ecos4arm.com/redmine/projects/ecos-on-microblaze-axi/files))
-- Support Avnet S6LX9 MMU tiny 13.1 board (From [mbref](https://git.gitorious.org/mbref/mbref.git))
+- Support Avnet S6LX9 MMU tiny 13.1 board (From [mbref](https://gitorious.org/~flyskywhy/mbref/flyskywhys-mbref))
 - Support 2nd channel and tri_write() of GPIO module
 - Support UartLite module (`packages/devs/serial/microblaze/uartlite/`)
 - Support EmacLite module in LittleEndian
