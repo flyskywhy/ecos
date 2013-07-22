@@ -18,7 +18,7 @@ You can just use the following command if you can:
     source proj/env.sh
     cp -a tools/ecos-tools/bin/.eCosPlatforms/ ~/
     cd apps/ecos_app_base
-    configtool ecos_avnet_s6lx9_mmu_tiny_13_1.ecc (and then click on `Build->Library`)
+    configtool ecos_avnet_s6lx9_mmu_tiny_13_1.ecc (then click on `Build->Generate Build Tree` and `Build->Library`)
     lunch
     make
 
