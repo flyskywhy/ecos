@@ -26,9 +26,9 @@ Now you will get the .elf file.
 
 ## Detailed Description
 
-Or you can follow the steps described in [CLONE_COMPILE_RUN](https://github.com/flyskywhy/g/blob/master/i主观的体验方式/t快乐的体验/电信/Os/Ecos/CLONE_COMPILE_RUN.en.md).
+Or you can follow the steps described in [CLONE_COMPILE_RUN (English Version)](https://github.com/flyskywhy/g/blob/master/i主观的体验方式/t快乐的体验/电信/Os/Ecos/CLONE_COMPILE_RUN.en.md) or [CLONE_COMPILE_RUN (中文版)](https://github.com/flyskywhy/g/blob/master/i主观的体验方式/t快乐的体验/电信/Os/Ecos/CLONE_COMPILE_RUN.cn.md).
 
-# Future
+# Feature
 
 ## common
 
