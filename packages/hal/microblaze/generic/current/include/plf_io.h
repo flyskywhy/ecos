@@ -63,7 +63,7 @@ struct gpio {
 	cyg_uint32	type; /* LED, DIP, SWITCH */
 };
 
-/* gpio_*() means 1st channel, gpio2_*() means 2st channel */
+/* gpio_*() means 1st channel, gpio2_*() means 2nd channel */
 cyg_uint32 gpio_init(void);
 void gpio_tri_write(cyg_uint32 instance, cyg_uint32 value);
 cyg_uint32 gpio_read(cyg_uint32 instance);

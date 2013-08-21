@@ -88,7 +88,7 @@ static struct gpio gpio_dev[] = {
 };
 
 /* simple gpio function for testing */
-/* gpio_*() means 1st channel, gpio2_*() means 2st channel */
+/* gpio_*() means 1st channel, gpio2_*() means 2nd channel */
 cyg_uint32 gpio_init(void)
 {
 	cyg_uint32 i;
