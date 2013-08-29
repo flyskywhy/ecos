@@ -105,29 +105,6 @@
 // Response formats are different for MMC vs. SPI mode, so are defined
 // in the appropriate source files.
 
-/* Command definitions in SPI bus mode by SD */
-#define MMC_REQUEST_SEND_IF_COND            8
-#define MMC_REQUEST_APP_CMD                 55
-#define MMC_REQUEST_READ_OCR                58
-#define MMC_REQUEST_CRC_ON_OFF              59
-
-/* Application specific commands supported by SD.
-All these commands shall be preceded with APP_CMD (CMD55). */
-#define MMC_REQUEST_SD_SEND_OP_COND         41
-
-typedef struct mmc_ocr_register {
-    cyg_uint8   ocr_data[4];
-} mmc_ocr_register;
-
-/* Memory card type definitions */
-typedef enum {
-    CARDTYPE_UNKNOWN,
-    CARDTYPE_MMC,               /* MMC */
-    CARDTYPE_SDV1,              /* V1.x Standard Capacity SD card */
-    CARDTYPE_SDV2_SC,           /* V2.0 or later Standard Capacity SD card */
-    CARDTYPE_SDV2_HC            /* V2.0 or later High/eXtended Capacity SD card */
-} card_type_t;
-
 // The CID register is generally treated as an opaque data structure
 // used only for unique identification of cards.
 typedef struct mmc_cid_register {
