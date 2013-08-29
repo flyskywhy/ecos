@@ -49,7 +49,7 @@ Or you can follow the steps described in [CLONE_COMPILE_RUN (English Version)](h
 - Support EmacLite module in LittleEndian
 - More accurate Timer
 - Support 2 SPI module instances (`packages/devs/spi/microblaze/`)
-- Support SDSC (SD Standard Capacity, <4GB) card in SPI mode (`packages/devs/disk/generic/mmc/`)
+- Support SDHC card in SPI mode (`packages/devs/disk/generic/mmc/`)
 - Support LogicCORE interrupt controller module
 
 # TODO
@@ -57,6 +57,5 @@ Or you can follow the steps described in [CLONE_COMPILE_RUN (English Version)](h
 I'm busy recently, maybe someone can deal with the remaining:
 
 - To get the windows version of microblazeel-unknown-linux-gnu toolchain (Even microblaze-xilinx-elf from Xilinx 14.1 can pass compile in windows, elf can't run well)
-- To support SDHC (SD High/eXtended Capacity, >4GB) card
 - To reduce the interrupt occur frequency on SPI (which slowdown the speed of SD card)
 - To support launch ecos by redboot
